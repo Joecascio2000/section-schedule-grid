@@ -39,6 +39,7 @@
   --ge-5b: #15803d; /* Biological Sciences (Emerald Jade) */
   --ge-5c: #be123c; /* Laboratory Activity (Rose Crimson) */
   --ge-6:  #4338ca; /* Languages (Deep Iris) */
+  --ge-us1: #047857; /* American Institutions (Emerald Green) */
   --ge-e:  #0891b2; /* Lifelong Learning (Cyan) */
   --ge-f:  #9333ea; /* Ethnic Studies (Purple) */
   --ge-other: #475569; /* Other General Ed (Slate) */
@@ -127,6 +128,7 @@
   --ge-5b: #16a34a;
   --ge-5c: #e11d48;
   --ge-6:  #4f46e5;
+  --ge-us1: #059669;
   --ge-e:  #0891b2;
   --ge-f:  #a855f7;
   --ge-other: #64748b;
@@ -1307,6 +1309,7 @@ body {
 .ge-color-5b { background-color: var(--ge-5b); color: #ffffff !important; }
 .ge-color-5c { background-color: var(--ge-5c); color: #ffffff !important; }
 .ge-color-6  { background-color: var(--ge-6);  color: #ffffff !important; }
+.ge-color-us1 { background-color: var(--ge-us1); color: #ffffff !important; }
 .ge-color-e  { background-color: var(--ge-e);  color: #ffffff !important; }
 .ge-color-f  { background-color: var(--ge-f);  color: #ffffff !important; }
 .ge-color-other { background-color: var(--ge-other); color: #ffffff !important; }

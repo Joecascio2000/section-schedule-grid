@@ -57,54 +57,213 @@ const DAY_MAP = {
 };
 
 // Standard California General Education Areas for Academic Auditing
+// Valid Patterns: CalGETC (11 audited areas; 5C hidden) and Chaffey Local (7 audited areas)
 const GE_STANDARD_AREAS = {
   'CALGETC': [
-    { code: '1A', name: 'English Composition', desc: 'Written Communication' },
-    { code: '1B', name: 'Critical Thinking and Composition', desc: 'Critical Thinking' },
-    { code: '1C', name: 'Oral Communication', desc: 'Public Speaking' },
-    { code: '2', name: 'Mathematical Concepts & Quantitative Reasoning', desc: 'Mathematics / Statistics' },
-    { code: '3A', name: 'Arts', desc: 'Arts, Cinema, Dance, Music, Theater' },
-    { code: '3B', name: 'Humanities', desc: 'Literature, Philosophy, World Languages' },
-    { code: '4', name: 'Social and Behavioral Sciences', desc: 'History, Psychology, Sociology, Poli Sci' },
-    { code: '5A', name: 'Physical Sciences', desc: 'Chemistry, Physics, Astronomy, Geology' },
-    { code: '5B', name: 'Biological Sciences', desc: 'Biology, Anatomy, Microbiology, Ecology' },
-    { code: '5C', name: 'Laboratory Activity', desc: 'Physical/Bio Science Laboratory Component' }
-  ],
-  'CSUGE': [
-    { code: 'A1', name: 'Oral Communication', desc: 'Public Speaking' },
-    { code: 'A2', name: 'Written Communication', desc: 'English Composition' },
-    { code: 'A3', name: 'Critical Thinking', desc: 'Logic & Reasoning' },
-    { code: 'B1', name: 'Physical Science', desc: 'Physical Sciences' },
-    { code: 'B2', name: 'Life Science', desc: 'Biological Sciences' },
-    { code: 'B3', name: 'Laboratory Activity', desc: 'Lab' },
-    { code: 'B4', name: 'Mathematics/Quantitative Reasoning', desc: 'Math & Quantitative' },
-    { code: 'C1', name: 'Arts', desc: 'Arts & Cinema' },
-    { code: 'C2', name: 'Humanities', desc: 'Literature, Philosophy, Languages' },
-    { code: 'D', name: 'Social Sciences', desc: 'Social & Behavioral Sciences' },
-    { code: 'E', name: 'Lifelong Learning', desc: 'Self-Development' },
-    { code: 'F', name: 'Ethnic Studies', desc: 'Ethnic Studies' }
+    { code: '1A', name: 'English Composition', desc: 'Written Communication', matchAreas: ['1A'] },
+    { code: '1B', name: 'Critical Thinking and Composition', desc: 'Critical Thinking', matchAreas: ['1B'] },
+    { code: '1C', name: 'Oral Communication', desc: 'Oral Communication / Public Speaking', matchAreas: ['1C'] },
+    { code: '2',  name: 'Mathematical Concepts & Quantitative Reasoning', desc: 'Mathematics / Statistics', matchAreas: ['2'] },
+    { code: '3A', name: 'Arts', desc: 'Arts, Cinema, Dance, Music, Theater', matchAreas: ['3A'] },
+    { code: '3B', name: 'Humanities', desc: 'Literature, Philosophy, World Languages', matchAreas: ['3B'] },
+    { code: '4',  name: 'Social and Behavioral Sciences', desc: 'History, Psychology, Sociology, Poli Sci', matchAreas: ['4'] },
+    { code: '5A', name: 'Physical Sciences', desc: 'Chemistry, Physics, Astronomy, Geology', matchAreas: ['5A'] },
+    { code: '5B', name: 'Biological Sciences', desc: 'Biology, Anatomy, Microbiology, Ecology', matchAreas: ['5B'] },
+    { code: '6',  name: 'Ethnic Studies', desc: 'Ethnic Studies', matchAreas: ['6'] },
+    { code: 'US1', name: 'American Institutions', desc: 'U.S. History, Constitution & American Ideals', matchAreas: ['US1'] }
   ],
   'CHAFFEY': [
-    { code: '1A', name: 'English Composition', desc: 'Language & Rationality' },
-    { code: '1C', name: 'Oral Communication', desc: 'Oral Communication' },
-    { code: '2A', name: 'Mathematics', desc: 'Mathematics Competency' },
-    { code: '3A', name: 'Arts', desc: 'Arts & Humanities' },
-    { code: '3B', name: 'Humanities', desc: 'Humanities' },
-    { code: '4', name: 'Social and Behavioral Sciences', desc: 'Social Sciences' },
-    { code: '5A', name: 'Natural Sciences', desc: 'Physical & Life Sciences' }
-  ],
-  'IGETC': [
-    { code: '1A', name: 'English Composition', desc: 'English Composition' },
-    { code: '1B', name: 'Critical Thinking', desc: 'Critical Thinking' },
-    { code: '1C', name: 'Oral Communication', desc: 'Oral Communication' },
-    { code: '2A', name: 'Mathematical Concepts', desc: 'Math Concepts' },
-    { code: '3A', name: 'Arts', desc: 'Arts' },
-    { code: '3B', name: 'Humanities', desc: 'Humanities' },
-    { code: '4', name: 'Social and Behavioral Sciences', desc: 'Social Sciences' },
-    { code: '5A', name: 'Physical Sciences', desc: 'Physical Sciences' },
-    { code: '5B', name: 'Biological Sciences', desc: 'Biological Sciences' }
+    { code: '1A', name: 'English Composition', desc: 'Language & Rationality - English Composition', matchAreas: ['1A'] },
+    { code: '1B or 1C', name: 'Communication & Analytical Thinking', desc: 'Critical Thinking (1B) or Oral Communication (1C)', matchAreas: ['1B', '1C'] },
+    { code: '2',  name: 'Mathematics', desc: 'Mathematics Competency', matchAreas: ['2'] },
+    { code: '3A or 3B', name: 'Arts & Humanities', desc: 'Arts (3A) or Humanities (3B)', matchAreas: ['3A', '3B'] },
+    { code: '4',  name: 'Social and Behavioral Sciences', desc: 'Social & Behavioral Sciences', matchAreas: ['4'] },
+    { code: '5',  name: 'Natural Sciences', desc: 'Physical and Life Sciences', matchAreas: ['5'] },
+    { code: '6',  name: 'Ethnic Studies', desc: 'Ethnic Studies', matchAreas: ['6'] }
   ]
 };
+
+// Canonical sorting order for General Education areas
+const GE_AREA_ORDER = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5', '5A', '5B', '6', 'US1'];
+
+function sortGeAreas(areas) {
+  return Array.from(areas).sort((a, b) => {
+    const idxA = GE_AREA_ORDER.indexOf(a);
+    const idxB = GE_AREA_ORDER.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function formatGePatternLabel(pattern) {
+  if (pattern === 'CALGETC') return 'CalGETC';
+  if (pattern === 'CHAFFEY') return 'Chaffey Local';
+  return pattern;
+}
+
+function formatGeAreaLabel(area) {
+  return `Area ${area}`;
+}
+
+/**
+ * Format a section's sanitized GE Pattern & Area associations for popovers and modals,
+ * suppressing any references to CSU, CSUGE, or IGETC.
+ */
+function formatSectionGeInfo(sec) {
+  if (!sec || !sec.geAssociations || sec.geAssociations.length === 0) {
+    return {
+      patternsFormatted: 'None',
+      areasFormatted: 'None',
+      combinedFormatted: 'None'
+    };
+  }
+
+  const calAreas = Array.from((sec.gePatternAreaMap && sec.gePatternAreaMap['CALGETC']) || []);
+  const chafAreas = Array.from((sec.gePatternAreaMap && sec.gePatternAreaMap['CHAFFEY']) || []);
+
+  const patternsList = [];
+  const parts = [];
+
+  if (calAreas.length > 0) {
+    patternsList.push('CalGETC');
+    parts.push(`CalGETC (Area ${sortGeAreas(calAreas).join(', ')})`);
+  }
+  if (chafAreas.length > 0) {
+    patternsList.push('Chaffey Local');
+    parts.push(`Chaffey Local (Area ${sortGeAreas(chafAreas).join(', ')})`);
+  }
+
+  const uniqueAreas = sortGeAreas(new Set([...calAreas, ...chafAreas]));
+
+  return {
+    patternsFormatted: patternsList.join(', ') || 'None',
+    areasFormatted: uniqueAreas.map(a => `Area ${a}`).join(', ') || 'None',
+    combinedFormatted: parts.join(' • ') || 'None'
+  };
+}
+
+/**
+ * DATA NORMALIZATION HELPERS:
+ * Consistent normalization for Location (Campuses), Schedule - Buildings, and ACCs.
+ */
+
+// 1. Location (Campus) Normalization:
+// "Chino" -> "Chino Campus", "Fontana Center" -> "Fontana Campus", "Rancho Campus" -> "Rancho Campus"
+function normalizeLocation(rawLoc) {
+  if (!rawLoc) return '';
+  const s = String(rawLoc).trim();
+  const lower = s.toLowerCase();
+  if (lower === 'chino' || lower === 'chino campus') return 'Chino Campus';
+  if (lower === 'fontana center' || lower === 'fontana' || lower === 'fontana campus') return 'Fontana Campus';
+  if (lower === 'rancho' || lower === 'rancho campus') return 'Rancho Campus';
+  return s;
+}
+
+// 2. Schedule - Building Normalization:
+// "G" -> "Gym" (desc: "Gymnasium"), "Via" -> "Canvas" (desc: "Online")
+function normalizeBuilding(bldgRaw, descRaw) {
+  let bldg = String(bldgRaw || '').trim();
+  let desc = String(descRaw || '').trim();
+
+  const bldgUpper = bldg.toUpperCase();
+  if (bldgUpper === 'G') {
+    bldg = 'Gym';
+    if (!desc || desc.toUpperCase() === 'G') desc = 'Gymnasium';
+  } else if (bldgUpper === 'VIA') {
+    bldg = 'Canvas';
+    if (!desc || desc.toUpperCase() === 'VIA') desc = 'Online';
+  }
+
+  return { building: bldg, buildingDesc: desc };
+}
+
+// Format Building Dropdown and filter labels (e.g. "BE - Business Education")
+function formatBuildingDropdownLabel(bldg, desc) {
+  if (!bldg) return '';
+  if (desc && desc.toLowerCase() !== bldg.toLowerCase()) {
+    return `${bldg} - ${desc}`;
+  }
+  return bldg;
+}
+
+// 3. ACC (Academic & Career Community) Normalization:
+// Normalizes variations (including "-Chino" variants) to the 8 standard categories
+const STANDARD_ACCS = [
+  'ACD: Arts, Communication, and Design',
+  'BTH: Business, Technology, and Hospitality',
+  'HW: Health and Wellness',
+  'MIT: Manufacturing, Industrial Design, and Transportation',
+  'PCS: Public Service, Culture, and Society',
+  'STEM: Science, Technology, Engineering, and Mathematics',
+  'Counseling and Matriculation',
+  'Athletics'
+];
+
+function normalizeAcc(rawAcc) {
+  if (!rawAcc) return '';
+  let s = String(rawAcc).trim();
+  const parts = s.split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length > 0) {
+    s = parts[0];
+  }
+
+  const sl = s.toLowerCase();
+
+  // ACD: Arts, Communication, and Design (including -Chino variant)
+  if (sl.includes('art') || sl.includes('communication') || sl.startsWith('acd')) {
+    return 'ACD: Arts, Communication, and Design';
+  }
+
+  // BTH: Business, Technology, and Hospitality (including -Chino variant)
+  if (sl.includes('business') || sl.includes('hosp') || sl.startsWith('bth')) {
+    return 'BTH: Business, Technology, and Hospitality';
+  }
+
+  // HW: Health and Wellness
+  if (sl.includes('health') || sl.includes('wellness') || sl.startsWith('hw')) {
+    return 'HW: Health and Wellness';
+  }
+
+  // MIT: Manufacturing, Industrial Design, and Transportation
+  if (sl.includes('manufacturing') || sl.includes('transportation') || sl.includes('ind design') || sl.startsWith('mit')) {
+    return 'MIT: Manufacturing, Industrial Design, and Transportation';
+  }
+
+  // PCS: Public Service, Culture, and Society
+  if (sl.includes('public service') || sl.includes('society') || sl.includes('culture') || sl.startsWith('pcs')) {
+    return 'PCS: Public Service, Culture, and Society';
+  }
+
+  // STEM: Science, Technology, Engineering, and Mathematics
+  if (sl.includes('stem') || sl.includes('science') || sl.includes('math') || sl.includes('engineering')) {
+    return 'STEM: Science, Technology, Engineering, and Mathematics';
+  }
+
+  // Counseling and Matriculation
+  if (sl.includes('counseling') || sl.includes('matriculation')) {
+    return 'Counseling and Matriculation';
+  }
+
+  // Athletics
+  if (sl.includes('athletic') || sl.includes('kinesiology')) {
+    return 'Athletics';
+  }
+
+  return s;
+}
+
+function sortAccs(accList) {
+  return Array.from(accList).sort((a, b) => {
+    const idxA = STANDARD_ACCS.indexOf(a);
+    const idxB = STANDARD_ACCS.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
 
 // Built-in Dataset matching IR - Schedule Sections Building-Room Grids (JC) - Copy.xlsx
 // Enriched with stacked classes and multi-campus GE sections for full feature demonstration
@@ -112,12 +271,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210928",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-40",
     "Section Name": "FASHD-40-48898",
     "Section Number": "48898",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -139,12 +298,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210928",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-40",
     "Section Name": "FASHD-40-48898",
     "Section Number": "48898",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -167,12 +326,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210929",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-45",
     "Section Name": "FASHD-45-48900",
     "Section Number": "48900",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -194,12 +353,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210954",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-40",
     "Section Name": "FASHD-40-48924",
     "Section Number": "48924",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "E",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -221,12 +380,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210954",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-40",
     "Section Name": "FASHD-40-48924",
     "Section Number": "48924",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "E",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -248,12 +407,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210963",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-42",
     "Section Name": "FASHD-42-48933",
     "Section Number": "48933",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -275,12 +434,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210963",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-42",
     "Section Name": "FASHD-42-48933",
     "Section Number": "48933",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -302,12 +461,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "210994",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-470",
     "Section Name": "FASHD-470-48964",
     "Section Number": "48964",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -329,12 +488,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "211007",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-61",
     "Section Name": "FASHD-61-48977",
     "Section Number": "48977",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -356,12 +515,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "211007",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-61",
     "Section Name": "FASHD-61-48977",
     "Section Number": "48977",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -383,12 +542,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "211058",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Merchandising",
     "Course": "FASHM-60",
     "Section Name": "FASHM-60-49027",
     "Section Number": "49027",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Early 14-Week",
     "Modality": "In-Person",
@@ -410,12 +569,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "213779",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-72",
     "Section Name": "FASHD-72-51708",
     "Section Number": "51708",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "14-Week",
     "Modality": "In-Person",
@@ -437,12 +596,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "213779",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-72",
     "Section Name": "FASHD-72-51708",
     "Section Number": "51708",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "14-Week",
     "Modality": "In-Person",
@@ -464,12 +623,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "213779",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication & Design-Chino",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Fashion Design",
     "Course": "FASHD-72",
     "Section Name": "FASHD-72-51708",
     "Section Number": "51708",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "14-Week",
     "Modality": "In-Person",
@@ -492,12 +651,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "209114",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication and Design",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Communication Studies",
     "Course": "COMM-C1000",
     "Section Name": "COMM-C1000-47109",
     "Section Number": "47109",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "14-Week",
     "Modality": "In-Person",
@@ -519,19 +678,19 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "209115",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication and Design",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Art",
     "Course": "ART-10",
     "Section Name": "ART-10-47200",
     "Section Number": "47200",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
     "Number of Weeks": 18,
     "Section Traits": "In-Person,Zero Textbook Cost ($0)",
-    "General Ed Pattern": "CHAFFEY,CALGETC,CSUGE",
-    "General Ed Area": "CalGETC,3A,C1",
+    "General Ed Pattern": "CHAFFEY,CALGETC",
+    "General Ed Area": "3A,3A",
     "Faculty Name": "Gale, Robert",
     "Schedule - Instruction Type": "Lec; Required In-Person Mtgs",
     "Schedule - Building": "CHMB",
@@ -546,19 +705,19 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "209116",
     "Term": "2026/FA",
-    "ACC": "Arts, Humanities & Social Sciences",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "English",
     "Course": "ENGL-1A",
     "Section Name": "ENGL-1A-47300",
     "Section Number": "47300",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
     "Number of Weeks": 18,
     "Section Traits": "In-Person,Low-Cost Textbook (<$50)",
     "General Ed Pattern": "CHAFFEY,CALGETC",
-    "General Ed Area": "CalGETC,1A",
+    "General Ed Area": "1A,1A",
     "Faculty Name": "Alvarez, Maria",
     "Schedule - Instruction Type": "Lec; Required In-Person Mtgs",
     "Schedule - Building": "CHMB",
@@ -574,19 +733,19 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "220101",
     "Term": "2026/FA",
-    "ACC": "Mathematics and Science",
+    "ACC": "STEM: Science, Technology, Engineering, and Mathematics",
     "Subject": "Mathematics",
     "Course": "MATH-25",
     "Section Name": "MATH-25-50111",
     "Section Number": "50111",
-    "Location": "Rancho",
+    "Location": "Rancho Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
     "Number of Weeks": 18,
     "Section Traits": "Not Basic Skills,In-Person,Transferable to UC/CSU,Zero Textbook Cost ($0)",
-    "General Ed Pattern": "CHAFFEY,CALGETC,CSUGE",
-    "General Ed Area": "CalGETC,2,B4",
+    "General Ed Pattern": "CHAFFEY,CALGETC",
+    "General Ed Area": "2,2",
     "Faculty Name": "Brouwer, Peter",
     "Schedule - Instruction Type": "Lec; Required In-Person Mtgs",
     "Schedule - Building": "VSS",
@@ -601,19 +760,19 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "220102",
     "Term": "2026/FA",
-    "ACC": "Arts, Humanities & Social Sciences",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "English",
     "Course": "ENGL-1A",
     "Section Name": "ENGL-1A-50222",
     "Section Number": "50222",
-    "Location": "Rancho",
+    "Location": "Rancho Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
     "Number of Weeks": 18,
     "Section Traits": "In-Person,Low-Cost Textbook (<$50)",
     "General Ed Pattern": "CALGETC",
-    "General Ed Area": "CalGETC,1A",
+    "General Ed Area": "1A",
     "Faculty Name": "Miller, Sarah",
     "Schedule - Instruction Type": "Lec; Required In-Person Mtgs",
     "Schedule - Building": "WH",
@@ -629,12 +788,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "224501",
     "Term": "2026/FA",
-    "ACC": "Social and Behavioral Sciences",
+    "ACC": "PCS: Public Service, Culture, and Society",
     "Subject": "Psychology",
     "Course": "PSYCH-1",
     "Section Name": "PSYCH-1-51204",
     "Section Number": "51204",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "E",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -656,12 +815,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "224502",
     "Term": "2026/FA",
-    "ACC": "Arts, Communication and Design",
+    "ACC": "ACD: Arts, Communication, and Design",
     "Subject": "Art",
     "Course": "ART-10",
     "Section Name": "ART-10-51402",
     "Section Number": "51402",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "E",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -683,12 +842,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "224503",
     "Term": "2026/FA",
-    "ACC": "STEM & Health Sciences",
+    "ACC": "STEM: Science, Technology, Engineering, and Mathematics",
     "Subject": "Biology",
     "Course": "BIOL-10",
     "Section Name": "BIOL-10-51610",
     "Section Number": "51610",
-    "Location": "Rancho",
+    "Location": "Rancho Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -711,12 +870,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "225101",
     "Term": "2026/FA",
-    "ACC": "STEM & Health Sciences",
+    "ACC": "STEM: Science, Technology, Engineering, and Mathematics",
     "Subject": "Dental Assisting",
     "Course": "DENTAL-100",
     "Section Name": "DENTAL-100-52010",
     "Section Number": "52010",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -738,12 +897,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "225102",
     "Term": "2026/FA",
-    "ACC": "STEM & Health Sciences",
+    "ACC": "STEM: Science, Technology, Engineering, and Mathematics",
     "Subject": "Dental Assisting",
     "Course": "DENTAL-102",
     "Section Name": "DENTAL-102-52012",
     "Section Number": "52012",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -765,12 +924,12 @@ const BUILT_IN_DATASET = [
   {
     "Section Unique ID": "225103",
     "Term": "2026/FA",
-    "ACC": "STEM & Health Sciences",
+    "ACC": "STEM: Science, Technology, Engineering, and Mathematics",
     "Subject": "Radiologic Technology",
     "Course": "RADTEC-10",
     "Section Name": "RADTEC-10-52020",
     "Section Number": "52020",
-    "Location": "Chino",
+    "Location": "Chino Campus",
     "Day or Evening": "D",
     "Calendar Session": "Full-Term",
     "Modality": "In-Person",
@@ -798,6 +957,7 @@ const MULTI_CAMPUS_DATASET = BUILT_IN_DATASET;
 const appState = {
   rawRows: [],             // All parsed spreadsheet rows
   sections: [],            // Grouped parent course objects
+  filteredSections: [],    // Currently matched parent course objects after all active filters
   scheduleBlocks: [],      // Flattened list of individual day meeting occurrences
   filteredBlocks: [],      // Currently displayed meeting blocks after filtering
   conflicts: [],           // List of detected real room conflicts (different instructors)
@@ -965,6 +1125,68 @@ function parseCommaSeparatedList(rawStr) {
 }
 
 /**
+ * INLINE COMMENT EXPLAINING GENERAL EDUCATION MULTIVALUED ASSOCIATIONS:
+ * In scheduling records, `General Ed Pattern` and `General Ed Area` are multivalued
+ * position-correlated comma-separated lists. E.g.:
+ * General Ed Pattern: "CHAFFEY,IGETC,CSU,CALGETC"
+ * General Ed Area:    "2,2,B4,2"
+ * Index 0 maps CHAFFEY -> Area 2
+ * Index 1 maps IGETC -> Area 2
+ * Index 2 maps CSU -> Area B4
+ * Index 3 maps CALGETC -> Area 2
+ *
+ * Requirements:
+ * 1. Hide all references to CSU and IGETC patterns.
+ * 2. CalGETC valid options: 1A, 1B, 1C, 2, 3A, 3B, 4, 5A, 5B, 6, US1 (hide 5C).
+ * 3. Chaffey Local valid options: 1A, 1B, 1C, 2, 3A, 3B, 4, 5, 6 (remove invalid 2A).
+ */
+function parseGeAssociations(patternRaw, areaRaw) {
+  if (!patternRaw || !areaRaw) return [];
+  const patterns = String(patternRaw).split(',').map(s => s.trim()).filter(Boolean);
+  const areas = String(areaRaw).split(',').map(s => s.trim()).filter(Boolean);
+
+  const minLen = Math.min(patterns.length, areas.length);
+  const associations = [];
+  const seen = new Set();
+
+  for (let i = 0; i < minLen; i++) {
+    const rawP = patterns[i].toUpperCase();
+    const rawA = areas[i].toUpperCase();
+
+    let normPattern = null;
+    if (rawP === 'CALGETC' || rawP.includes('CALGETC')) {
+      normPattern = 'CALGETC';
+    } else if (rawP === 'CHAFFEY' || rawP.includes('CHAFFEY')) {
+      normPattern = 'CHAFFEY';
+    }
+    // Omit CSU, CSUGE, IGETC, etc.
+    if (!normPattern) continue;
+
+    if (normPattern === 'CALGETC') {
+      const validCalGetc = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5A', '5B', '6', 'US1'];
+      if (validCalGetc.includes(rawA)) {
+        const key = `${normPattern}:${rawA}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          associations.push({ pattern: normPattern, area: rawA });
+        }
+      }
+    } else if (normPattern === 'CHAFFEY') {
+      const validChaffey = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5', '6'];
+      if (validChaffey.includes(rawA)) {
+        const key = `${normPattern}:${rawA}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          associations.push({ pattern: normPattern, area: rawA });
+        }
+      }
+    }
+  }
+
+  return associations;
+}
+
+/**
  * INLINE COMMENT EXPLAINING SECTION UNIQUE ID GROUPING:
  * A single academic course section can have multiple rows in the scheduling spreadsheet
  * (for example, a Lecture meeting and a Lab meeting in FASHD-40, or multiple meeting days).
@@ -985,18 +1207,28 @@ function processRawDataset(rawData) {
 
     if (!sectionMap.has(groupKey)) {
       const traitsList = parseCommaSeparatedList(row['Section Traits']);
-      const gePatternList = parseCommaSeparatedList(row['General Ed Pattern']);
-      const geAreaList = parseCommaSeparatedList(row['General Ed Area']);
+      const associations = parseGeAssociations(row['General Ed Pattern'], row['General Ed Area']);
+      const patternSet = new Set();
+      const areaSet = new Set();
+      const patternAreaMap = { 'CALGETC': new Set(), 'CHAFFEY': new Set() };
+
+      associations.forEach(pair => {
+        patternSet.add(pair.pattern);
+        areaSet.add(pair.area);
+        if (patternAreaMap[pair.pattern]) {
+          patternAreaMap[pair.pattern].add(pair.area);
+        }
+      });
 
       sectionMap.set(groupKey, {
         sectionUniqueId: sectionUniqueId,
         sectionName: sectionName,
         sectionNumber: String(row['Section Number'] || '').trim(),
         term: String(row['Term'] || '').trim(),
-        acc: String(row['ACC'] || '').trim(),
+        acc: normalizeAcc(row['ACC']),
         subject: String(row['Subject'] || '').trim(),
         course: String(row['Course'] || '').trim(),
-        location: String(row['Location'] || '').trim(),
+        location: normalizeLocation(row['Location']),
         dayOrEvening: String(row['Day or Evening'] || '').trim(),
         calendarSession: String(row['Calendar Session'] || '').trim(),
         modality: String(row['Modality'] || '').trim(),
@@ -1004,9 +1236,11 @@ function processRawDataset(rawData) {
         facultyName: String(row['Faculty Name'] || '').trim(),
         sectionTraits: traitsList,
         sectionTraitsRaw: row['Section Traits'] || '',
-        generalEdPattern: gePatternList,
+        geAssociations: associations,
+        gePatternAreaMap: patternAreaMap,
+        generalEdPattern: Array.from(patternSet),
         generalEdPatternRaw: row['General Ed Pattern'] || '',
-        generalEdArea: geAreaList,
+        generalEdArea: Array.from(areaSet),
         generalEdAreaRaw: row['General Ed Area'] || '',
         scheduleBlocks: []
       });
@@ -1014,15 +1248,35 @@ function processRawDataset(rawData) {
 
     const parentSection = sectionMap.get(groupKey);
 
+    // Merge any additional GE associations across multiple rows of the same section if present
+    if (row['General Ed Pattern'] && row['General Ed Area']) {
+      const rowAssocs = parseGeAssociations(row['General Ed Pattern'], row['General Ed Area']);
+      rowAssocs.forEach(pair => {
+        if (!parentSection.geAssociations.some(p => p.pattern === pair.pattern && p.area === pair.area)) {
+          parentSection.geAssociations.push(pair);
+          if (!parentSection.generalEdPattern.includes(pair.pattern)) {
+            parentSection.generalEdPattern.push(pair.pattern);
+          }
+          if (!parentSection.generalEdArea.includes(pair.area)) {
+            parentSection.generalEdArea.push(pair.area);
+          }
+          if (parentSection.gePatternAreaMap[pair.pattern]) {
+            parentSection.gePatternAreaMap[pair.pattern].add(pair.area);
+          }
+        }
+      });
+    }
+
     const startMinutes = parseTimeToMinutes(row['Schedule - Start Time']);
     const endMinutes = parseTimeToMinutes(row['Schedule - End Time']);
     const daysArray = parseScheduleDays(row['Schedule - Days']);
+    const bldgNorm = normalizeBuilding(row['Schedule - Building'], row['Schedule - Building Description']);
 
     const meetingRow = {
       rowId: `row_${rowIndex}`,
       instructionType: String(row['Schedule - Instruction Type'] || 'Instruction').trim(),
-      building: String(row['Schedule - Building'] || '').trim(),
-      buildingDesc: String(row['Schedule - Building Description'] || '').trim(),
+      building: bldgNorm.building,
+      buildingDesc: bldgNorm.buildingDesc,
       room: String(row['Schedule - Room'] || '').trim(),
       startTimeRaw: row['Schedule - Start Time'],
       endTimeRaw: row['Schedule - End Time'],
@@ -1065,6 +1319,7 @@ function processRawDataset(rawData) {
   });
 
   appState.sections = Array.from(sectionMap.values());
+  appState.filteredSections = appState.sections;
   appState.scheduleBlocks = allMeetingBlocks;
 
   populateFilterControls();
@@ -1292,9 +1547,9 @@ function populateFilterControls() {
 
   updateCascadingBuildingAndRoom();
 
-  renderCheckboxList('list-ge-area', Array.from(geAreas).sort(), appState.filters.geArea, 'badge-ge-area');
-  renderCheckboxList('list-ge-pattern', Array.from(gePatterns).sort(), appState.filters.gePattern, 'badge-ge-pattern');
-  renderCheckboxList('list-acc', Array.from(accs).sort(), appState.filters.acc, 'badge-acc');
+  renderCheckboxList('list-ge-area', sortGeAreas(geAreas), appState.filters.geArea, 'badge-ge-area', formatGeAreaLabel);
+  renderCheckboxList('list-ge-pattern', Array.from(gePatterns).sort(), appState.filters.gePattern, 'badge-ge-pattern', formatGePatternLabel);
+  renderCheckboxList('list-acc', sortAccs(accs), appState.filters.acc, 'badge-acc');
   renderCheckboxList('list-subject', Array.from(subjects).sort(), appState.filters.subject, 'badge-subject');
   renderCheckboxList('list-course', Array.from(courses).sort(), appState.filters.course, 'badge-course');
   renderCheckboxList('list-modality', Array.from(modalities).sort(), appState.filters.modality, 'badge-modality');
@@ -1308,18 +1563,26 @@ function updateCascadingBuildingAndRoom() {
   const selectedBuilding = appState.filters.building;
 
   const validBuildings = new Set();
+  const bldgDescMap = new Map();
   const validRooms = new Set();
 
   appState.sections.forEach(sec => {
     if (!selectedLocation || sec.location.toLowerCase() === selectedLocation.toLowerCase()) {
       sec.scheduleBlocks.forEach(b => {
-        if (b.building) validBuildings.add(b.building);
+        if (b.building) {
+          validBuildings.add(b.building);
+          if (b.buildingDesc && !bldgDescMap.has(b.building)) {
+            bldgDescMap.set(b.building, b.buildingDesc);
+          }
+        }
         if (!selectedBuilding || b.building.toLowerCase() === selectedBuilding.toLowerCase()) {
           if (b.room) validRooms.add(b.room);
         }
       });
     }
   });
+
+  appState.buildingDescMap = bldgDescMap;
 
   const bldgSelect = document.getElementById('filter-building');
   if (bldgSelect) {
@@ -1328,7 +1591,8 @@ function updateCascadingBuildingAndRoom() {
     Array.from(validBuildings).sort().forEach(bldg => {
       const opt = document.createElement('option');
       opt.value = bldg;
-      opt.textContent = bldg;
+      const desc = bldgDescMap.get(bldg);
+      opt.textContent = formatBuildingDropdownLabel(bldg, desc);
       if (bldg === prevBldg && validBuildings.has(prevBldg)) opt.selected = true;
       bldgSelect.appendChild(opt);
     });
@@ -1425,14 +1689,19 @@ function applyFiltersAndRender() {
     if (modality.size > 0 && !modality.has(sec.modality)) return false;
     if (session.size > 0 && !session.has(sec.calendarSession)) return false;
 
-    if (geArea.size > 0) {
-      const hasGeArea = Array.from(geArea).some(a => sec.generalEdArea.some(sa => sa.toLowerCase() === a.toLowerCase()));
-      if (!hasGeArea) return false;
-    }
-
-    if (gePattern.size > 0) {
-      const hasGePat = Array.from(gePattern).some(p => sec.generalEdPattern.some(sp => sp.toLowerCase() === p.toLowerCase()));
+    // Respect multivalued associated GE Pattern & GE Area pairing
+    if (gePattern.size > 0 && geArea.size > 0) {
+      // Both selected: section must have at least one association matching both
+      const hasMatchingPair = (sec.geAssociations || []).some(pair =>
+        gePattern.has(pair.pattern) && geArea.has(pair.area)
+      );
+      if (!hasMatchingPair) return false;
+    } else if (gePattern.size > 0) {
+      const hasGePat = (sec.geAssociations || []).some(pair => gePattern.has(pair.pattern));
       if (!hasGePat) return false;
+    } else if (geArea.size > 0) {
+      const hasGeArea = (sec.geAssociations || []).some(pair => geArea.has(pair.area));
+      if (!hasGeArea) return false;
     }
 
     if (traits.size > 0) {
@@ -1465,9 +1734,13 @@ function applyFiltersAndRender() {
   // Evaluate Conflicts and Stacked Classes across filtered set
   evaluateRoomConflicts(filteredBlocks);
 
-  // If in GE Coverage view, show only sections with General Ed attributes
+  // If in GE Coverage view, show only sections belonging to the active GE audit pattern
   if (appState.layoutMode === 'ge') {
-    filteredBlocks = filteredBlocks.filter(b => b.parentSection.generalEdPattern.length > 0 || b.parentSection.generalEdArea.length > 0);
+    const activePat = appState.geActivePattern || 'CALGETC';
+    filteredBlocks = filteredBlocks.filter(b =>
+      b.parentSection.geAssociations &&
+      b.parentSection.geAssociations.some(pair => pair.pattern === activePat)
+    );
   }
 
   // If in Evening Coverage view, show only Evening/Weekend classes
@@ -1481,6 +1754,7 @@ function applyFiltersAndRender() {
   }
 
   appState.filteredBlocks = filteredBlocks;
+  appState.filteredSections = matchedSections;
 
   document.getElementById('stat-total-sections').textContent = appState.sections.length;
   document.getElementById('stat-total-meetings').textContent = appState.scheduleBlocks.length;
@@ -1526,7 +1800,10 @@ function renderActiveFilterPills() {
   }
 
   if (appState.filters.building) {
-    addPill('Building', appState.filters.building, () => {
+    const bldgCode = appState.filters.building;
+    const bldgDesc = appState.buildingDescMap?.get(bldgCode);
+    const bldgLabel = formatBuildingDropdownLabel(bldgCode, bldgDesc);
+    addPill('Building', bldgLabel, () => {
       appState.filters.building = '';
       document.getElementById('filter-building').value = '';
       updateCascadingBuildingAndRoom();
@@ -1551,7 +1828,7 @@ function renderActiveFilterPills() {
   });
 
   appState.filters.geArea.forEach(area => {
-    addPill('GE Area', area, () => {
+    addPill('GE Area', `Area ${area}`, () => {
       appState.filters.geArea.delete(area);
       populateFilterControls();
       applyFiltersAndRender();
@@ -1559,7 +1836,7 @@ function renderActiveFilterPills() {
   });
 
   appState.filters.gePattern.forEach(pat => {
-    addPill('GE Pattern', pat, () => {
+    addPill('GE Pattern', formatGePatternLabel(pat), () => {
       appState.filters.gePattern.delete(pat);
       populateFilterControls();
       applyFiltersAndRender();
@@ -1974,7 +2251,7 @@ function renderStackedRoomMatrix() {
         <span class="room-code-badge">${roomKey}</span>
         <div>
           <div class="room-bldg-desc">${bldgDesc}</div>
-          <div style="font-size:11px; color:var(--text-muted);">${campusLoc} Campus</div>
+          <div style="font-size:11px; color:var(--text-muted);">${campusLoc.includes('Campus') ? campusLoc : `${campusLoc} Campus`}</div>
         </div>
       </div>
       <div class="room-card-meta">
@@ -2074,23 +2351,34 @@ function getGeAreaBadgeClass(areaStr) {
   if (!areaStr) return 'ge-color-other';
   const s = String(areaStr).trim().toUpperCase();
 
-  if (s.includes('1A') || s.includes('A2')) return 'ge-color-1a';
-  if (s.includes('1B') || s.includes('A3')) return 'ge-color-1b';
-  if (s.includes('1C') || s.includes('A1')) return 'ge-color-1c';
-  if (s.includes('2A') || s === '2' || s.includes('B4') || s.includes('AREA 2')) return 'ge-color-2';
-  if (s.includes('3A') || s.includes('C1')) return 'ge-color-3a';
-  if (s.includes('3B') || s.includes('C2')) return 'ge-color-3b';
-  if (s.includes('4') || s.includes('AREA 4') || s === 'D' || s.startsWith('D')) return 'ge-color-4';
-  if (s.includes('5A') || s.includes('B1')) return 'ge-color-5a';
-  if (s.includes('5B') || s.includes('B2')) return 'ge-color-5b';
-  if (s.includes('5C') || s.includes('B3')) return 'ge-color-5c';
-  if (s.includes('6') || s.includes('AREA 6')) return 'ge-color-6';
-  if (s === 'E' || s.includes('AREA E')) return 'ge-color-e';
-  if (s === 'F' || s.includes('AREA F')) return 'ge-color-f';
-  if (s.includes('1')) return 'ge-color-1a';
-  if (s.includes('2')) return 'ge-color-2';
-  if (s.includes('3')) return 'ge-color-3a';
-  if (s.includes('5')) return 'ge-color-5a';
+  if (s === '1A') return 'ge-color-1a';
+  if (s === '1B') return 'ge-color-1b';
+  if (s === '1C') return 'ge-color-1c';
+  if (s === '1B OR 1C' || s.includes('1B OR 1C') || (s.includes('1B') && s.includes('1C'))) return 'ge-color-1b';
+  if (s === '2') return 'ge-color-2';
+  if (s === '3A') return 'ge-color-3a';
+  if (s === '3B') return 'ge-color-3b';
+  if (s === '3A OR 3B' || s.includes('3A OR 3B') || (s.includes('3A') && s.includes('3B'))) return 'ge-color-3a';
+  if (s === '4') return 'ge-color-4';
+  if (s === '5A') return 'ge-color-5a';
+  if (s === '5B') return 'ge-color-5b';
+  if (s === '5') return 'ge-color-5a';
+  if (s === '6') return 'ge-color-6';
+  if (s === 'US1' || s.includes('US1')) return 'ge-color-us1';
+
+  // Fallbacks
+  if (s.startsWith('1A')) return 'ge-color-1a';
+  if (s.startsWith('1B')) return 'ge-color-1b';
+  if (s.startsWith('1C')) return 'ge-color-1c';
+  if (s.startsWith('2')) return 'ge-color-2';
+  if (s.startsWith('3A')) return 'ge-color-3a';
+  if (s.startsWith('3B')) return 'ge-color-3b';
+  if (s.startsWith('4')) return 'ge-color-4';
+  if (s.startsWith('5A')) return 'ge-color-5a';
+  if (s.startsWith('5B')) return 'ge-color-5b';
+  if (s.startsWith('5')) return 'ge-color-5a';
+  if (s.startsWith('6')) return 'ge-color-6';
+
   return 'ge-color-other';
 }
 
@@ -2099,22 +2387,41 @@ function getGeAreaBadgeClass(areaStr) {
  * Audits GE Pattern & Area offerings for the selected campus,
  * displaying coverage status, missing areas, interactive course chips,
  * and swappable calendar grid (Day View vs Room Matrix).
+ * Valid Patterns: CalGETC (11 areas) and Chaffey Local (7 areas).
  */
 function renderGeCoverageDashboard() {
   const container = document.getElementById('ge-coverage-container');
   if (!container) return;
   container.innerHTML = '';
 
-  const activePattern = appState.geActivePattern || 'CALGETC';
-  const campusLocation = appState.filters.location || 'All Campuses';
-  const standardAreas = GE_STANDARD_AREAS[activePattern] || GE_STANDARD_AREAS['CALGETC'];
+  let activePattern = appState.geActivePattern || 'CALGETC';
+  if (activePattern !== 'CHAFFEY') activePattern = 'CALGETC';
+  appState.geActivePattern = activePattern;
 
-  // Check which sections satisfy each area for this pattern
-  const currentSections = appState.sections.filter(sec => {
-    if (appState.filters.location && sec.location.toLowerCase() !== appState.filters.location.toLowerCase()) {
-      return false;
-    }
-    return sec.generalEdPattern.some(p => p.toUpperCase().includes(activePattern.toUpperCase()));
+  const standardAreas = GE_STANDARD_AREAS[activePattern] || GE_STANDARD_AREAS['CALGETC'];
+  const patternDisplayLabel = activePattern === 'CHAFFEY' ? 'Chaffey Local' : 'CalGETC';
+
+  // Construct comprehensive scope label from active filters
+  const scopeParts = [];
+  if (appState.filters.location) scopeParts.push(appState.filters.location);
+  else scopeParts.push('All Campuses');
+
+  if (appState.filters.building) scopeParts.push(`Bldg ${appState.filters.building}`);
+  if (appState.filters.room) scopeParts.push(`Room ${appState.filters.room}`);
+  if (appState.filters.subject.size > 0) scopeParts.push(`Subject: ${Array.from(appState.filters.subject).join(', ')}`);
+  if (appState.filters.course.size > 0) scopeParts.push(`Course: ${Array.from(appState.filters.course).join(', ')}`);
+  if (appState.filters.dayEvening.size > 0) scopeParts.push(`Type: ${Array.from(appState.filters.dayEvening).map(formatDayEveningLabel).join(', ')}`);
+  if (appState.filters.acc.size > 0) scopeParts.push(`ACC: ${Array.from(appState.filters.acc).join(', ')}`);
+  if (appState.filters.modality.size > 0) scopeParts.push(`Modality: ${Array.from(appState.filters.modality).join(', ')}`);
+  if (appState.filters.session.size > 0) scopeParts.push(`Session: ${Array.from(appState.filters.session).join(', ')}`);
+  if (appState.filters.search) scopeParts.push(`"${appState.filters.search}"`);
+
+  const scopeLabel = scopeParts.join(' • ');
+
+  // Base sections respect all active user filters!
+  const baseSections = appState.filteredSections || appState.sections;
+  const currentSections = baseSections.filter(sec => {
+    return sec.geAssociations && sec.geAssociations.some(a => a.pattern === activePattern);
   });
 
   const areaCoverageMap = new Map();
@@ -2126,12 +2433,12 @@ function renderGeCoverageDashboard() {
   });
 
   currentSections.forEach(sec => {
-    sec.generalEdArea.forEach(areaCode => {
-      // Find matching standard area
-      const matched = standardAreas.find(sa => sa.code.toUpperCase() === areaCode.toUpperCase() || areaCode.toUpperCase().includes(sa.code.toUpperCase()));
-      if (matched && areaCoverageMap.has(matched.code)) {
-        const item = areaCoverageMap.get(matched.code);
-        if (!item.offerings.some(o => o.sectionUniqueId === sec.sectionUniqueId)) {
+    const secAreas = (sec.gePatternAreaMap && sec.gePatternAreaMap[activePattern]) || new Set();
+    standardAreas.forEach(stdArea => {
+      const satisfies = stdArea.matchAreas.some(targetArea => secAreas.has(targetArea));
+      if (satisfies) {
+        const item = areaCoverageMap.get(stdArea.code);
+        if (item && !item.offerings.some(o => o.sectionUniqueId === sec.sectionUniqueId)) {
           item.offerings.push(sec);
         }
       }
@@ -2145,7 +2452,7 @@ function renderGeCoverageDashboard() {
     else missingCount++;
   });
 
-  const coveragePercent = Math.round((coveredCount / standardAreas.length) * 100);
+  const coveragePercent = standardAreas.length > 0 ? Math.round((coveredCount / standardAreas.length) * 100) : 0;
 
   // 1. Header Row (Title, Campus, Pattern Tabs, and Sub-Layout Switcher)
   const headerRow = document.createElement('div');
@@ -2154,18 +2461,16 @@ function renderGeCoverageDashboard() {
     <div class="ge-coverage-title">
       <h3>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#990000" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        General Education Coverage Audit: <span>${campusLocation}</span>
+        General Education Coverage Audit: <span>${scopeLabel}</span>
       </h3>
-      <p>Identify active offerings and unscheduled GE requirements for <strong>${activePattern}</strong>.</p>
+      <p>Identify active offerings and unscheduled GE requirements for <strong>${patternDisplayLabel}</strong>.</p>
     </div>
     <div class="ge-header-controls">
       <div style="display:flex; align-items:center; gap:6px;">
         <span style="font-size:11px; font-weight:700; color:var(--text-muted);">PATTERN:</span>
         <div class="ge-pattern-tabs" id="ge-pattern-tabs">
           <button type="button" class="ge-pattern-tab ${activePattern === 'CALGETC' ? 'active' : ''}" data-pattern="CALGETC">CalGETC</button>
-          <button type="button" class="ge-pattern-tab ${activePattern === 'CHAFFEY' ? 'active' : ''}" data-pattern="CHAFFEY">CHAFFEY Local</button>
-          <button type="button" class="ge-pattern-tab ${activePattern === 'CSUGE' ? 'active' : ''}" data-pattern="CSUGE">CSUGE</button>
-          <button type="button" class="ge-pattern-tab ${activePattern === 'IGETC' ? 'active' : ''}" data-pattern="IGETC">IGETC</button>
+          <button type="button" class="ge-pattern-tab ${activePattern === 'CHAFFEY' ? 'active' : ''}" data-pattern="CHAFFEY">Chaffey Local</button>
         </div>
       </div>
       <div class="sub-layout-switcher" id="ge-sub-layout-switcher">
@@ -2234,10 +2539,12 @@ function renderGeCoverageDashboard() {
   const areasGrid = document.createElement('div');
   areasGrid.className = 'ge-areas-grid';
 
+  let renderedCardsCount = 0;
   areaCoverageMap.forEach((data, areaCode) => {
     const isCovered = data.offerings.length > 0;
     if (appState.geShowMissingOnly && isCovered) return;
 
+    renderedCardsCount++;
     const card = document.createElement('div');
     card.className = `ge-area-card ${isCovered ? 'is-covered' : 'is-missing'}`;
 
@@ -2252,7 +2559,7 @@ function renderGeCoverageDashboard() {
       <div class="ge-area-card-header">
         <span class="ge-area-badge ${colorClass}">Area ${areaCode}</span>
         <span class="ge-status-pill ${isCovered ? 'status-covered' : 'status-missing'}">
-          ${isCovered ? `✓ ${data.offerings.length} Scheduled` : `⚠ Missing at ${campusLocation}`}
+          ${isCovered ? `✓ ${data.offerings.length} Scheduled` : `⚠ Missing in ${scopeLabel}`}
         </span>
       </div>
       <div class="ge-area-name">${data.meta.name}</div>
@@ -2270,6 +2577,15 @@ function renderGeCoverageDashboard() {
 
     areasGrid.appendChild(card);
   });
+
+  if (renderedCardsCount === 0 && appState.geShowMissingOnly) {
+    areasGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 28px; text-align: center; background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">
+        <span style="font-size: 18px; margin-right: 6px;">🎉</span>
+        <strong>All ${standardAreas.length} general education areas are scheduled!</strong> No unscheduled requirements exist for this scope.
+      </div>
+    `;
+  }
 
   container.appendChild(areasGrid);
 
@@ -2298,10 +2614,35 @@ function renderEveningCoverageDashboard() {
   if (!container) return;
   container.innerHTML = '';
 
-  const campusLocation = appState.filters.location || 'All Campuses';
-  const eveningSections = appState.sections.filter(sec => {
-    if (appState.filters.location && sec.location.toLowerCase() !== appState.filters.location.toLowerCase()) {
-      return false;
+  // Construct comprehensive scope label from active filters
+  const scopeParts = [];
+  if (appState.filters.location) scopeParts.push(appState.filters.location);
+  else scopeParts.push('All Campuses');
+
+  if (appState.filters.building) scopeParts.push(`Bldg ${appState.filters.building}`);
+  if (appState.filters.room) scopeParts.push(`Room ${appState.filters.room}`);
+  if (appState.filters.subject.size > 0) scopeParts.push(`Subject: ${Array.from(appState.filters.subject).join(', ')}`);
+  if (appState.filters.course.size > 0) scopeParts.push(`Course: ${Array.from(appState.filters.course).join(', ')}`);
+  if (appState.filters.dayEvening.size > 0) scopeParts.push(`Type: ${Array.from(appState.filters.dayEvening).map(formatDayEveningLabel).join(', ')}`);
+  if (appState.filters.acc.size > 0) scopeParts.push(`ACC: ${Array.from(appState.filters.acc).join(', ')}`);
+  if (appState.filters.modality.size > 0) scopeParts.push(`Modality: ${Array.from(appState.filters.modality).join(', ')}`);
+  if (appState.filters.session.size > 0) scopeParts.push(`Session: ${Array.from(appState.filters.session).join(', ')}`);
+  if (appState.filters.search) scopeParts.push(`"${appState.filters.search}"`);
+
+  const scopeLabel = scopeParts.join(' • ');
+
+  // Base sections respect ALL active filters (Building, Room, Subject, ACC, Search, etc.)
+  const baseSections = appState.filteredSections || appState.sections;
+  const eveningSections = baseSections.filter(sec => {
+    // If building or room filter is active, only include sections that actually have an evening meeting in that building/room
+    const matchingBlocks = sec.scheduleBlocks.filter(b => {
+      if (appState.filters.building && b.building.toLowerCase() !== appState.filters.building.toLowerCase()) return false;
+      if (appState.filters.room && b.room.toLowerCase() !== appState.filters.room.toLowerCase()) return false;
+      return true;
+    });
+
+    if (appState.filters.building || appState.filters.room) {
+      return matchingBlocks.some(isEveningBlock);
     }
     return isEveningSection(sec);
   });
@@ -2315,7 +2656,14 @@ function renderEveningCoverageDashboard() {
   const weekendOfferings = []; // Saturday & Sunday classes
 
   eveningSections.forEach(sec => {
-    sec.scheduleBlocks.forEach(b => {
+    // Only inspect blocks matching the active building & room filters
+    const relevantBlocks = sec.scheduleBlocks.filter(b => {
+      if (appState.filters.building && b.building.toLowerCase() !== appState.filters.building.toLowerCase()) return false;
+      if (appState.filters.room && b.room.toLowerCase() !== appState.filters.room.toLowerCase()) return false;
+      return true;
+    });
+
+    relevantBlocks.forEach(b => {
       const days = b.days || [];
       if (days.includes(6) || days.includes(7)) {
         if (!weekendOfferings.includes(sec)) weekendOfferings.push(sec);
@@ -2346,7 +2694,7 @@ function renderEveningCoverageDashboard() {
     <div class="evening-coverage-title">
       <h3>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#990000" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        Evening & Weekend Coverage Audit: <span>${campusLocation}</span>
+        Evening & Weekend Coverage Audit: <span>${scopeLabel}</span>
       </h3>
       <p>Auditing classes scheduled Friday–Sunday, starting at/after 4:30 PM, or designated Evening.</p>
     </div>
@@ -2445,10 +2793,16 @@ function renderEveningCoverageDashboard() {
 
     const chipsHtml = band.sections.length > 0
       ? band.sections.map(sec => {
-          const times = sec.scheduleBlocks.map(b => `${DAY_MAP[b.days[0]]?.short || ''} ${b.startTimeStr}`).join(', ');
+          const times = sec.scheduleBlocks
+            .filter(b => {
+              if (appState.filters.building && b.building.toLowerCase() !== appState.filters.building.toLowerCase()) return false;
+              if (appState.filters.room && b.room.toLowerCase() !== appState.filters.room.toLowerCase()) return false;
+              return true;
+            })
+            .map(b => `${DAY_MAP[b.days[0]]?.short || ''} ${b.startTimeStr}`).join(', ');
           return `<span class="ge-course-chip" data-sec-id="${sec.sectionUniqueId}" title="${sec.sectionName} (${times})">${sec.course} (${sec.facultyName || 'Staff'})</span>`;
         }).join('')
-      : `<span style="font-size:12px; color:var(--text-muted); font-style:italic;">No classes currently scheduled in this band at ${campusLocation}.</span>`;
+      : `<span style="font-size:12px; color:var(--text-muted); font-style:italic;">No classes currently scheduled in this band matching active filters (${scopeLabel}).</span>`;
 
     card.innerHTML = `
       <div class="evening-band-header">
@@ -2517,10 +2871,21 @@ function createScheduleTileElement(block, leftPercent, widthPercent, topPx, heig
 
   // GE Area Badge for GE Coverage View (and when GE area is available)
   let geTagHtml = '';
-  if (sec.generalEdArea.length > 0) {
-    const areaFirst = sec.generalEdArea[0];
-    const colorClass = getGeAreaBadgeClass(areaFirst);
-    geTagHtml = `<span class="tile-ge-tag ${colorClass}">Area ${areaFirst}</span>`;
+  if (sec.geAssociations && sec.geAssociations.length > 0) {
+    let displayArea = '';
+    if (appState.layoutMode === 'ge' && appState.geActivePattern) {
+      const activeAreas = sec.gePatternAreaMap && sec.gePatternAreaMap[appState.geActivePattern];
+      if (activeAreas && activeAreas.size > 0) {
+        displayArea = Array.from(activeAreas)[0];
+      }
+    }
+    if (!displayArea && sec.generalEdArea.length > 0) {
+      displayArea = sec.generalEdArea[0];
+    }
+    if (displayArea) {
+      const colorClass = getGeAreaBadgeClass(displayArea);
+      geTagHtml = `<span class="tile-ge-tag ${colorClass}">Area ${displayArea}</span>`;
+    }
   }
 
   // Evening indicator tag
@@ -2613,6 +2978,8 @@ function showPopover(event, target) {
   const timeDayStr = block && block.day ? `${DAY_MAP[block.day]?.name || ''}: ${block.startTimeStr} – ${block.endTimeStr}` : (sec.scheduleBlocks?.map(b => `${(b.days || []).map(d => DAY_MAP[d]?.short || d).join('/')} ${b.startTimeStr}-${b.endTimeStr}`).join('; ') || 'TBA');
   const locationStr = block && block.building ? `${sec.location} – ${block.building} ${block.room}` : `${sec.location}`;
 
+  const geInfo = formatSectionGeInfo(sec);
+
   popoverEl.innerHTML = `
     <div class="popover-header">
       <div class="popover-title-row">
@@ -2624,6 +2991,11 @@ function showPopover(event, target) {
     <div class="popover-grid">
       <span class="popover-field-label">Subject:</span>
       <span class="popover-field-value">${sec.subject}</span>
+
+      ${sec.acc ? `
+        <span class="popover-field-label">ACC:</span>
+        <span class="popover-field-value">${sec.acc}</span>
+      ` : ''}
 
       <span class="popover-field-label">Faculty:</span>
       <span class="popover-field-value">${sec.facultyName || 'Staff'}</span>
@@ -2647,10 +3019,10 @@ function showPopover(event, target) {
       <span class="popover-field-value">${sec.numberOfWeeks ? `${sec.numberOfWeeks} Weeks` : 'N/A'}</span>
 
       <span class="popover-field-label">GE Pattern:</span>
-      <span class="popover-field-value">${sec.generalEdPatternRaw || 'None'}</span>
+      <span class="popover-field-value">${geInfo.patternsFormatted}</span>
 
       <span class="popover-field-label">GE Area:</span>
-      <span class="popover-field-value">${sec.generalEdAreaRaw || 'None'}</span>
+      <span class="popover-field-value">${geInfo.combinedFormatted !== 'None' ? geInfo.combinedFormatted : 'None'}</span>
     </div>
 
     ${traitsHtml ? `
@@ -2725,6 +3097,8 @@ function showSectionModal(section, activeBlock) {
 
   const traitsHtml = section.sectionTraits.map(t => `<span class="trait-tag">${t}</span>`).join('');
 
+  const geInfo = formatSectionGeInfo(section);
+
   modalBody.innerHTML = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
       <div>
@@ -2753,11 +3127,11 @@ function showSectionModal(section, activeBlock) {
       </div>
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">GENERAL ED PATTERN</div>
-        <div style="font-size:13px; font-weight:600;">${section.generalEdPatternRaw || 'None'}</div>
+        <div style="font-size:13px; font-weight:600;">${geInfo.patternsFormatted}</div>
       </div>
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">GENERAL ED AREA</div>
-        <div style="font-size:13px; font-weight:600;">${section.generalEdAreaRaw || 'None'}</div>
+        <div style="font-size:13px; font-weight:600;">${geInfo.combinedFormatted !== 'None' ? geInfo.combinedFormatted : 'None'}</div>
       </div>
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">DAY / EVENING</div>
@@ -3009,6 +3383,7 @@ function exportAsCsv() {
 
   const rows = appState.filteredBlocks.map(b => {
     const sec = b.parentSection;
+    const geInfo = formatSectionGeInfo(sec);
     return [
       `"${sec.sectionUniqueId}"`,
       `"${sec.course}"`,
@@ -3022,8 +3397,8 @@ function exportAsCsv() {
       `"${b.startTimeStr}"`,
       `"${b.endTimeStr}"`,
       `"${b.instructionType}"`,
-      `"${sec.generalEdPatternRaw}"`,
-      `"${sec.generalEdAreaRaw}"`,
+      `"${geInfo.patternsFormatted}"`,
+      `"${geInfo.combinedFormatted !== 'None' ? geInfo.combinedFormatted : 'None'}"`,
       `"${sec.sectionTraitsRaw}"`,
       `"${b.isStacked ? 'YES' : 'NO'}"`,
       `"${b.isConflict ? 'YES' : 'NO'}"`
