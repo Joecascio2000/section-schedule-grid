@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chaffey College | Academic Schedule Grid & Room Conflict Analyzer</title>
+  
+  <!-- SheetJS (xlsx) for client-side Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- html2canvas and jsPDF for client-side PNG and PDF export -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  
+  <!-- Google Fonts for clean typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="light">
+  <div class="app-container">
+    
+    <!-- Top Navigation Header with Chaffey College Branding -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-badge">
+          <div class="brand-crest">CC</div>
+          <div class="brand-text">
+            <span class="college-name">CHAFFEY COLLEGE</span>
+            <span class="app-title">Schedule Grid & Room Conflict Analyzer</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Summary Metrics Bar -->
+      <div class="header-metrics">
+        <div class="metric-pill" title="Total unique course sections loaded">
+          <span class="metric-label">Sections:</span>
+          <span class="metric-value" id="stat-total-sections">0</span>
+        </div>
+        <div class="metric-pill" title="Total lecture and lab class meeting blocks">
+          <span class="metric-label">Meetings:</span>
+          <span class="metric-value" id="stat-total-meetings">0</span>
+        </div>
+        <div class="metric-pill" id="metric-stacked-pill" title="Stacked classes (same room, day & instructor)">
+          <span class="metric-icon">🔗</span>
+          <span class="metric-label">Stacked:</span>
+          <span class="metric-value" id="stat-stacked">0</span>
+        </div>
+        <div class="metric-pill" id="metric-conflicts-pill" title="Room conflicts detected (different instructors)">
+          <span class="metric-icon">⚠</span>
+          <span class="metric-label">Conflicts:</span>
+          <span class="metric-value conflict-count" id="stat-conflicts">0</span>
+        </div>
+      </div>
+
+      <!-- Action Toolbar -->
+      <div class="header-actions">
+        <!-- Step 1: Highly Visible Upload File CTA Button & Hidden Input -->
+        <label class="btn btn-upload-cta" for="file-upload-input" id="btn-header-upload" title="Step 1: Upload Excel or CSV schedule file">
+          <span class="upload-step-badge">STEP 1</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="btn-upload-text">Upload Spreadsheet</span>
+        </label>
+        <input type="file" id="file-upload-input" accept=".xlsx,.xls,.csv" style="display:none;">
+
+        <!-- Export Dropdown -->
+        <div class="dropdown-container" id="export-dropdown-container">
+          <button id="btn-export-menu" class="btn btn-chaffey" title="Export schedule view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="dropdown-menu" id="export-dropdown-menu">
+            <button class="dropdown-item" id="btn-export-png">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Export as PNG</span>
+            </button>
+            <button class="dropdown-item" id="btn-export-pdf">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              <span>Export as PDF</span>
+            </button>
+            <button class="dropdown-item" id="btn-export-csv">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h4"/></svg>
+              <span>Export Filtered CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Light / Dark Mode Toggle -->
+        <button id="btn-theme-toggle" class="btn btn-icon" title="Toggle Light / Dark mode" aria-label="Toggle Theme">
+          <svg id="icon-theme-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="icon-theme-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace (Sidebar + Grid Content) -->
+    <div class="app-workspace">
+      
+      <!-- Collapsible Sidebar: Filters & Conflict Center -->
+      <aside class="sidebar" id="app-sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <h2>Schedule Filters</h2>
+          </div>
+          <button id="btn-reset-filters" class="btn-text" title="Reset all filters to default">Reset All</button>
+        </div>
+
+        <!-- Quick Text Search -->
+        <div class="filter-section">
+          <label class="filter-heading" for="filter-search">Quick Search</label>
+          <div class="search-input-wrapper">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="filter-search" placeholder="Course, Section, Room, Faculty..." />
+            <button id="btn-clear-search" class="btn-clear-icon" style="display:none;">&times;</button>
+          </div>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Primary Cascading Filters -->
+        <div class="filter-section">
+          <span class="filter-badge">Primary Location Filters</span>
+          
+          <!-- Location Dropdown -->
+          <div class="form-group">
+            <label for="filter-location" class="form-label">
+              <span>Location (Campus)</span>
+              <span class="filter-count" id="count-location"></span>
+            </label>
+            <select id="filter-location" class="form-select">
+              <option value="">All Locations</option>
+            </select>
+          </div>
+
+          <!-- Schedule - Building Dropdown (Cascading) -->
+          <div class="form-group">
+            <label for="filter-building" class="form-label">
+              <span>Schedule - Building</span>
+              <span class="filter-count" id="count-building"></span>
+            </label>
+            <select id="filter-building" class="form-select">
+              <option value="">All Buildings</option>
+            </select>
+          </div>
+
+          <!-- Schedule - Room Dropdown (Cascading) -->
+          <div class="form-group">
+            <label for="filter-room" class="form-label">
+              <span>Schedule - Room</span>
+              <span class="filter-count" id="count-room"></span>
+            </label>
+            <select id="filter-room" class="form-select">
+              <option value="">All Rooms</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Secondary Curriculum Filters -->
+        <div class="filter-section">
+          <span class="filter-badge">Curriculum & Academic Filters</span>
+
+          <!-- General Education Area (Multi-Select) -->
+          <div class="accordion-item" id="acc-ge-area">
+            <button class="accordion-header" type="button">
+              <span>General Ed Area</span>
+              <span class="badge" id="badge-ge-area">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-ge-area"></div>
+            </div>
+          </div>
+
+          <!-- General Education Pattern (Multi-Select) -->
+          <div class="accordion-item" id="acc-ge-pattern">
+            <button class="accordion-header" type="button">
+              <span>General Ed Pattern</span>
+              <span class="badge" id="badge-ge-pattern">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-ge-pattern"></div>
+            </div>
+          </div>
+
+          <!-- ACC (Academic & Career Community) -->
+          <div class="accordion-item" id="acc-acc">
+            <button class="accordion-header" type="button">
+              <span>ACC</span>
+              <span class="badge" id="badge-acc">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-acc"></div>
+            </div>
+          </div>
+
+          <!-- Subject -->
+          <div class="accordion-item" id="acc-subject">
+            <button class="accordion-header" type="button">
+              <span>Subject</span>
+              <span class="badge" id="badge-subject">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-subject"></div>
+            </div>
+          </div>
+
+          <!-- Course -->
+          <div class="accordion-item" id="acc-course">
+            <button class="accordion-header" type="button">
+              <span>Course</span>
+              <span class="badge" id="badge-course">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-course"></div>
+            </div>
+          </div>
+
+          <!-- Modality -->
+          <div class="accordion-item" id="acc-modality">
+            <button class="accordion-header" type="button">
+              <span>Modality</span>
+              <span class="badge" id="badge-modality">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-modality"></div>
+            </div>
+          </div>
+
+          <!-- Calendar Session -->
+          <div class="accordion-item" id="acc-session">
+            <button class="accordion-header" type="button">
+              <span>Calendar Session</span>
+              <span class="badge" id="badge-session">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-session"></div>
+            </div>
+          </div>
+
+          <!-- Day / Evening Filter (Multi-Select) -->
+          <div class="accordion-item" id="acc-day-evening">
+            <button class="accordion-header" type="button">
+              <span>Day / Evening</span>
+              <span class="badge" id="badge-day-evening">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-list" id="list-day-evening"></div>
+            </div>
+          </div>
+
+          <!-- Section Traits (Parsed from comma-separated strings) -->
+          <div class="accordion-item" id="acc-traits">
+            <button class="accordion-header" type="button">
+              <span>Section Traits</span>
+              <span class="badge" id="badge-traits">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-search-wrapper">
+                <input type="text" id="filter-traits-search" placeholder="Search traits..." class="form-input-sm" />
+              </div>
+              <div class="checkbox-list" id="list-traits"></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Schedule Grid Content -->
+      <main class="main-content">
+        
+        <!-- Controls & Conflict Bar -->
+        <div class="grid-controls-bar">
+          <div class="controls-left">
+            
+            <!-- Conflict Toggle Button (Defaults to Isolate Conflicts Only) -->
+            <button id="btn-toggle-conflicts" class="btn-conflict-toggle" aria-pressed="false" title="Isolate & view room conflicts">
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                View Room Conflicts
+              </span>
+              <span class="conflict-badge-counter" id="controls-conflict-badge">0</span>
+            </button>
+
+            <!-- Conflict Display Mode Sub-Switcher (Visible when conflicts are on) -->
+            <div class="conflict-mode-switcher" id="conflict-mode-switcher" style="display:none;">
+              <button class="btn-sub-toggle active" id="btn-conflict-isolate" title="Isolate only conflicting sections">Isolate Conflicts</button>
+              <button class="btn-sub-toggle" id="btn-conflict-context" title="Show all sections with conflicts highlighted in context">Show in Context</button>
+            </div>
+
+            <!-- Filtered Count Badge -->
+            <div class="view-status-tag" id="view-status-tag">
+              Showing <strong id="status-sections-count">0</strong> sections (<span id="status-meetings-count">0</span> blocks)
+            </div>
+          </div>
+
+          <div class="controls-right">
+            <!-- Day Span Toggle (Defaulted to Active Days) -->
+            <div class="button-group" id="btn-group-days">
+              <button class="btn-toggle" data-days="5" title="Monday to Friday">Mon–Fri</button>
+              <button class="btn-toggle" data-days="6" title="Monday to Saturday">Mon–Sat</button>
+              <button class="btn-toggle" data-days="7" title="Monday to Sunday">Mon–Sun</button>
+              <button class="btn-toggle" data-days="weekend" title="Friday, Saturday, and Sunday (Weekend & Late Week)">Fri–Sun</button>
+              <button class="btn-toggle active" data-days="active" title="Only days with scheduled classes">Active Days</button>
+            </div>
+
+            <!-- View Layout Toggle (Defaulted to Room Matrix) -->
+            <div class="button-group" id="btn-group-layout">
+              <button class="btn-toggle" data-layout="day" title="Standard day calendar with all rooms">Day View</button>
+              <button class="btn-toggle active" data-layout="room" title="Stacked grids separated by Building & Room">Room Matrix</button>
+              <button class="btn-toggle" data-layout="ge" title="General Education coverage and audit view">GE Coverage</button>
+              <button class="btn-toggle" data-layout="evening" title="Evening and Weekend class coverage audit & schedule">Evening Coverage</button>
+            </div>
+
+            <!-- Sidebar Toggle Button for small screens -->
+            <button id="btn-toggle-sidebar" class="btn btn-ghost" title="Toggle Filters Sidebar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Filter Pills Bar -->
+        <div class="active-filters-bar" id="active-filters-bar" style="display:none;">
+          <div class="active-filters-label">Active Filters:</div>
+          <div class="active-pills-list" id="active-pills-list"></div>
+          <button class="btn-clear-all" id="btn-clear-active-pills">Clear All</button>
+        </div>
+
+        <!-- Conflict Alert Banner (Shown when conflicts are active and detected) -->
+        <div class="conflict-alert-banner" id="conflict-alert-banner" style="display:none;">
+          <div class="conflict-banner-icon">⚠</div>
+          <div class="conflict-banner-text">
+            <strong>Room Conflicts Detected!</strong>
+            <span id="conflict-banner-desc">There are schedule overlaps in the same room on the same day.</span>
+          </div>
+          <div class="conflict-banner-actions">
+            <button class="btn btn-sm btn-outline-danger" id="btn-open-conflict-modal">View Conflict Details</button>
+          </div>
+        </div>
+
+        <!-- Schedule Grid Viewport (Scrollable Container) -->
+        <div class="schedule-grid-viewport" id="schedule-grid-viewport">
+          
+          <!-- Empty State / Welcome Hero (Visible when no data is loaded) -->
+          <div class="welcome-upload-hero" id="welcome-upload-hero">
+            <div class="welcome-card">
+              <div class="welcome-step-pill">
+                <span class="step-num">STEP 1</span>
+                <span>GET STARTED</span>
+              </div>
+              <div class="welcome-icon-circle">
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <h2 class="welcome-title">Upload Academic Schedule Spreadsheet</h2>
+              <p class="welcome-desc">
+                Upload your course schedule export (e.g., <code>IR - Schedule Sections Building-Room Grids (JC) - Copy.xlsx</code> or any <code>.xlsx</code> / <code>.csv</code>) to generate interactive calendar grids and analyze room conflicts.
+              </p>
+              
+              <label class="btn btn-hero-upload" for="file-upload-input">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>Choose Spreadsheet File</span>
+              </label>
+              <span class="welcome-drop-hint">or drag and drop your Excel / CSV file anywhere on this window</span>
+
+              <div class="welcome-features-list">
+                <div class="welcome-feature-item">
+                  <span class="feature-icon">🏢</span>
+                  <div class="feature-text">
+                    <strong>Stacked Room Matrix</strong>
+                    <span>Dedicated weekly grids per room</span>
+                  </div>
+                </div>
+                <div class="welcome-feature-item">
+                  <span class="feature-icon">⚠</span>
+                  <div class="feature-text">
+                    <strong>Conflict Resolution</strong>
+                    <span>Distinguishes true conflicts from stacked cohorts</span>
+                  </div>
+                </div>
+                <div class="welcome-feature-item">
+                  <span class="feature-icon">🎓</span>
+                  <div class="feature-text">
+                    <strong>GE & Evening Audits</strong>
+                    <span>Campus pattern coverage & weekend scheduling</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- GE Coverage Audit Dashboard (Shown in GE Coverage mode) -->
+          <div class="ge-coverage-container" id="ge-coverage-container" style="display:none;">
+            <!-- Dynamically populated via app.js -->
+          </div>
+
+          <!-- Evening & Weekend Coverage Audit Dashboard (Shown in Evening Coverage mode) -->
+          <div class="evening-coverage-container" id="evening-coverage-container" style="display:none;">
+            <!-- Dynamically populated via app.js -->
+          </div>
+
+          <!-- Standard Schedule Grid (Day View & filtered views) -->
+          <div class="schedule-grid" id="schedule-grid">
+            <!-- Dynamically generated via app.js -->
+          </div>
+
+          <!-- Stacked Room Matrix Container (Room Matrix mode) -->
+          <div class="room-matrix-stacked" id="room-matrix-stacked" style="display:none;">
+            <!-- Dynamically generated stacked room grids via app.js -->
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Drag & Drop Overlay -->
+    <div class="drag-drop-overlay" id="drag-drop-overlay">
+      <div class="drag-drop-modal">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#990000" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <h3>Drop Excel or CSV File Here</h3>
+        <p>Drop <code>IR - Schedule Sections Building-Room Grids (JC) - Copy.xlsx</code> to visualize immediately.</p>
+      </div>
+    </div>
+
+    <!-- Rich Interactive Hover Popover Tooltip -->
+    <div class="schedule-popover" id="schedule-popover" style="display:none;">
+      <!-- Populated dynamically on hover -->
+    </div>
+
+    <!-- Section Details Modal -->
+    <div class="modal-backdrop" id="modal-details-backdrop" style="display:none;">
+      <div class="modal-dialog" id="modal-details-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-badge" id="modal-sec-id">#000000</span>
+            <h3 id="modal-sec-name">Course Section</h3>
+          </div>
+          <button class="modal-close-btn" id="btn-close-modal">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-details-body">
+          <!-- Populated dynamically on tile click -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Conflict Center Modal -->
+    <div class="modal-backdrop" id="modal-conflict-backdrop" style="display:none;">
+      <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header modal-header-danger">
+          <div class="modal-title-group">
+            <span class="modal-badge-danger">⚠ ROOM CONFLICT RESOLVER</span>
+            <h3>Detected Scheduling Conflicts</h3>
+          </div>
+          <button class="modal-close-btn" id="btn-close-conflict-modal">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-conflict-body">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Loading Spinner Toast -->
+    <div class="export-toast" id="export-toast" style="display:none;">
+      <div class="spinner"></div>
+      <span id="export-toast-text">Generating export...</span>
+    </div>
+
+  </div>
+
+  <!-- Main Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
