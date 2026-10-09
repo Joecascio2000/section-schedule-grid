@@ -965,9 +965,11 @@ const appState = {
   isConflictMode: false,   // "View Room Conflicts" toggle state
   conflictsOnly: true,     // Default to Isolate Conflicts Only when conflict mode is active!
   daySpan: 'active',       // Default to Active Days: only days with scheduled classes in view
-  layoutMode: 'room',      // Default to Room Matrix rather than Day View
-  geSubLayout: 'room',     // Default GE Coverage grid view to Room Matrix
-  eveningSubLayout: 'room',// Default Evening Coverage grid view to Room Matrix
+  layoutMode: 'room',      // Default to Room View rather than Day View
+  geSubLayout: 'room',     // Default GE Coverage grid view to Room View
+  eveningSubLayout: 'room',// Default Evening Coverage grid view to Room View
+  fasttrackSubLayout: 'room', // Default Fast-Track Coverage grid view to Room View
+  fasttrackActiveTab: 'all',  // Default to showing all Fast-Track audit items (pairs and unpaired)
   geActivePattern: 'CALGETC', // Active pattern for GE Coverage audit
   geShowMissingOnly: false,
   filters: {
@@ -1087,6 +1089,57 @@ function isEveningSection(sec) {
   })) return true;
   if (sec.sectionTraits && sec.sectionTraits.some(t => t.toUpperCase().includes('EVENING'))) return true;
   return false;
+}
+
+/**
+ * Helpers to identify Fast-Track 1 & Fast-Track 2 sections and meeting blocks.
+ * Fast-Track 1: First 8-week session in the 18-week semester.
+ * Fast-Track 2: Second 8-week session in the 18-week semester.
+ */
+function getFastTrackSessionType(sec) {
+  if (!sec) return null;
+  const sess = String(sec.calendarSession || '').toLowerCase();
+  if (sess.includes('fast-track 1') || sess.includes('fast track 1') || sess === 'ft1') return 'FT1';
+  if (sess.includes('fast-track 2') || sess.includes('fast track 2') || sess === 'ft2') return 'FT2';
+  return null;
+}
+
+function isFastTrackSection(sec) {
+  return Boolean(getFastTrackSessionType(sec));
+}
+
+function isFastTrackBlock(block) {
+  return block ? isFastTrackSection(block.parentSection) : false;
+}
+
+/**
+ * Helper to determine if a scheduled meeting block/component has complete physical scheduling info.
+ * For Fast-Track Coverage:
+ * - IGNORES meeting components/parts that do not list days, times, locations, or hours (e.g., Success Center Hrs in #209439).
+ * - IGNORES components/parts listed as Online Lec / Canvas / Via (e.g., Online Lec; Location: Canvas CANVAS in #213742).
+ */
+function isPhysicalMeetingBlock(blk) {
+  if (!blk) return false;
+  // Must list meeting days (supports meetingRow with blk.days and calendar block with blk.day / blk.meetingRow.days)
+  const days = blk.days || (blk.meetingRow && blk.meetingRow.days) || (blk.day ? [blk.day] : []);
+  if (!days || days.length === 0) return false;
+  // Must list start and end times
+  if (blk.startMinutes === null || blk.endMinutes === null) return false;
+  // Must list building & room
+  const bldg = String(blk.building || '').trim();
+  const room = String(blk.room || '').trim();
+  if (!bldg || !room) return false;
+
+  const bldgUpper = bldg.toUpperCase();
+  const roomUpper = room.toUpperCase();
+  const instUpper = String(blk.instructionType || '').toUpperCase();
+
+  // Ignore components/parts listed as Online Lec / Canvas / Via (Online)
+  if (bldgUpper === 'CANVAS' || bldgUpper === 'VIA' || bldgUpper === 'ONLINE') return false;
+  if (roomUpper === 'CANVAS' || roomUpper === 'ONLINE') return false;
+  if (instUpper.includes('ONLINE') && !instUpper.includes('IN-PERSON')) return false;
+
+  return true;
 }
 
 // --- 4. DATA NORMALIZATION & GROUPING LOGIC ---
@@ -1298,6 +1351,7 @@ function processRawDataset(rawData) {
         allMeetingBlocks.push({
           blockId: `block_${rowIndex}_d${dayNumber}`,
           day: dayNumber,
+          days: daysArray,
           startMinutes: startMinutes,
           endMinutes: endMinutes,
           duration: Math.max(endMinutes - startMinutes, 20),
@@ -1307,6 +1361,8 @@ function processRawDataset(rawData) {
           room: meetingRow.room,
           startTimeStr: meetingRow.startTimeStr,
           endTimeStr: meetingRow.endTimeStr,
+          startDate: meetingRow.startDate,
+          endDate: meetingRow.endDate,
           parentSection: parentSection,
           meetingRow: meetingRow,
           isConflict: false,
@@ -1367,9 +1423,64 @@ function getSectionStackSubject(sec) {
 }
 
 /**
+ * Helper to parse academic date strings (e.g., 'Aug 17, 2026') into epoch timestamps.
+ */
+function parseDateToTimestamp(dateVal) {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return dateVal.getTime();
+  const str = String(dateVal).trim();
+  if (!str) return null;
+  const ts = Date.parse(str);
+  return isNaN(ts) ? null : ts;
+}
+
+/**
+ * Detects whether two overlapping meeting blocks represent a Fast-track 1 and Fast-track 2 pairing
+ * where Fast-track 1 ends before Fast-track 2 begins (or non-overlapping date spans).
+ * These are sequential courses that share a room across the term without conflicting.
+ */
+function isSequentialFastTrackPair(blockA, blockB) {
+  const secA = blockA?.parentSection;
+  const secB = blockB?.parentSection;
+  if (!secA || !secB) return false;
+
+  const sessA = String(secA.calendarSession || '').toLowerCase();
+  const sessB = String(secB.calendarSession || '').toLowerCase();
+
+  const isA_FT1 = sessA.includes('fast-track 1') || sessA.includes('fast track 1') || sessA === 'ft1';
+  const isA_FT2 = sessA.includes('fast-track 2') || sessA.includes('fast track 2') || sessA === 'ft2';
+  const isB_FT1 = sessB.includes('fast-track 1') || sessB.includes('fast track 1') || sessB === 'ft1';
+  const isB_FT2 = sessB.includes('fast-track 2') || sessB.includes('fast track 2') || sessB === 'ft2';
+
+  let ft1Block = null;
+  let ft2Block = null;
+
+  if (isA_FT1 && isB_FT2) {
+    ft1Block = blockA;
+    ft2Block = blockB;
+  } else if (isA_FT2 && isB_FT1) {
+    ft1Block = blockB;
+    ft2Block = blockA;
+  } else {
+    return false;
+  }
+
+  // Fast-track 1 must end on or before Fast-track 2 begins
+  const end1 = parseDateToTimestamp(ft1Block.endDate || ft1Block.meetingRow?.endDate);
+  const start2 = parseDateToTimestamp(ft2Block.startDate || ft2Block.meetingRow?.startDate);
+
+  if (end1 !== null && start2 !== null) {
+    return end1 <= start2;
+  }
+
+  // If date strings are unavailable, FT1 and FT2 are inherently sequential
+  return true;
+}
+
+/**
  * Evaluates Room Scheduling Conflicts & Stacked Classes.
- * - STACKED CLASSES: Overlapping classes with the SAME instructor OR classes in the same cohort
- *   program (AMT, NURADN, DENTAL, RADTEC) with matching subjects.
+ * - STACKED CLASSES: Overlapping classes with the SAME instructor, classes in the same cohort
+ *   program (AMT, NURADN, DENTAL, RADTEC), OR sequential Fast-Track 1 & Fast-Track 2 pairings.
  * - REAL ROOM CONFLICTS: Overlapping classes with DIFFERENT instructors / DIFFERENT programs.
  */
 function evaluateRoomConflicts(blocks) {
@@ -1410,18 +1521,26 @@ function evaluateRoomConflicts(blocks) {
         // Check if both classes share the same program known to stack across instructors (AMT, NURADN, DENTAL, RADTEC)
         const isSameProgramMultiStack = stackProgA && stackProgB && (stackProgA === stackProgB);
 
-        const isStacked = isSameInstructor || isSameProgramMultiStack;
+        // Check if this is a Fast-Track 1 and Fast-Track 2 pairing where FT1 ends before FT2 begins
+        const isFastTrackSeq = isSequentialFastTrackPair(a, b);
+
+        const isStacked = isSameInstructor || isSameProgramMultiStack || isFastTrackSeq;
 
         if (isStacked) {
-          // STACKED CLASS: Same room, day, time, and either same faculty OR same program in (AMT, NURADN, DENTAL, RADTEC)!
+          // STACKED CLASS: Same room, day, time, and either same faculty, same specialized program, OR sequential FT1/FT2!
           a.isStacked = true;
           b.isStacked = true;
           if (!a.stackedWith.includes(b)) a.stackedWith.push(b);
           if (!b.stackedWith.includes(a)) b.stackedWith.push(a);
 
-          const stackReason = isSameInstructor
-            ? `Same Instructor: ${a.parentSection.facultyName}`
-            : `Cohort Program Stack: ${stackProgA} (Multi-Instructor)`;
+          let stackReason = '';
+          if (isFastTrackSeq) {
+            stackReason = `Fast-Track Sequential Session (FT1 & FT2 - Non-overlapping Dates)`;
+          } else if (isSameInstructor) {
+            stackReason = `Same Instructor: ${a.parentSection.facultyName}`;
+          } else {
+            stackReason = `Cohort Program Stack: ${stackProgA} (Multi-Instructor)`;
+          }
 
           stackedPairs.push({
             day: a.day,
@@ -1432,6 +1551,7 @@ function evaluateRoomConflicts(blocks) {
             program: stackProgA || '',
             reason: stackReason,
             isMultiInstructor: isSameProgramMultiStack && !isSameInstructor,
+            isFastTrack: isFastTrackSeq,
             blockA: a,
             blockB: b,
             overlapStart: Math.max(a.startMinutes, b.startMinutes),
@@ -1901,7 +2021,7 @@ function applyFiltersAndRender() {
   const { building, room } = appState.filters;
 
   // Filter Parent Sections using matchesOtherFilters with no excluded dimension
-  const matchedSections = appState.sections.filter(sec => matchesOtherFilters(sec, null));
+  let matchedSections = appState.sections.filter(sec => matchesOtherFilters(sec, null));
 
   const matchedSectionIds = new Set(matchedSections.map(s => s.sectionUniqueId));
 
@@ -1928,6 +2048,68 @@ function applyFiltersAndRender() {
   // If in Evening Coverage view, show only Evening/Weekend classes
   if (appState.layoutMode === 'evening') {
     filteredBlocks = filteredBlocks.filter(isEveningBlock);
+  }
+
+  // If in Fast-Track Coverage view, analyze physical Fast-Track 1 & 2 offerings and slice by active tab
+  if (appState.layoutMode === 'fasttrack') {
+    const ftScopeBlocks = filteredBlocks.filter(b => isFastTrackBlock(b) && isPhysicalMeetingBlock(b));
+    const ftAnalysis = analyzeFastTrackOfferings(matchedSections, ftScopeBlocks);
+    appState.currentFtAnalysis = ftAnalysis;
+
+    const activeTab = appState.fasttrackActiveTab || 'all';
+    if (activeTab === 'optimized') {
+      const pairedRowIds = new Set();
+      const tabSecIds = new Set();
+      ftAnalysis.optPairs.forEach(p => {
+        if (p.block1 && p.block1.rowId) pairedRowIds.add(p.block1.rowId);
+        if (p.block2 && p.block2.rowId) pairedRowIds.add(p.block2.rowId);
+        if (p.sec1 && p.sec1.sectionUniqueId) tabSecIds.add(p.sec1.sectionUniqueId);
+        if (p.sec2 && p.sec2.sectionUniqueId) tabSecIds.add(p.sec2.sectionUniqueId);
+      });
+      filteredBlocks = ftScopeBlocks.filter(b => {
+        const rowId = (b.meetingRow && b.meetingRow.rowId) || b.rowId;
+        return pairedRowIds.has(rowId);
+      });
+      matchedSections = matchedSections.filter(s => tabSecIds.has(s.sectionUniqueId));
+    } else if (activeTab === 'unoptimized') {
+      const pairedRowIds = new Set();
+      const tabSecIds = new Set();
+      ftAnalysis.unoptPairs.forEach(p => {
+        if (p.block1 && p.block1.rowId) pairedRowIds.add(p.block1.rowId);
+        if (p.block2 && p.block2.rowId) pairedRowIds.add(p.block2.rowId);
+        if (p.sec1 && p.sec1.sectionUniqueId) tabSecIds.add(p.sec1.sectionUniqueId);
+        if (p.sec2 && p.sec2.sectionUniqueId) tabSecIds.add(p.sec2.sectionUniqueId);
+      });
+      filteredBlocks = ftScopeBlocks.filter(b => {
+        const rowId = (b.meetingRow && b.meetingRow.rowId) || b.rowId;
+        return pairedRowIds.has(rowId);
+      });
+      matchedSections = matchedSections.filter(s => tabSecIds.has(s.sectionUniqueId));
+    } else if (activeTab === 'unpaired') {
+      const unpairedRowIds = new Set();
+      const tabSecIds = new Set();
+      ftAnalysis.unpairedList.forEach(u => {
+        if (u.block && u.block.rowId) unpairedRowIds.add(u.block.rowId);
+        if (u.section && u.section.sectionUniqueId) tabSecIds.add(u.section.sectionUniqueId);
+      });
+      filteredBlocks = ftScopeBlocks.filter(b => {
+        const rowId = (b.meetingRow && b.meetingRow.rowId) || b.rowId;
+        return unpairedRowIds.has(rowId);
+      });
+      matchedSections = matchedSections.filter(s => tabSecIds.has(s.sectionUniqueId));
+    } else {
+      // 'all' tab: all physical Fast-Track blocks in current scope
+      filteredBlocks = ftScopeBlocks;
+      const ftSecIds = new Set();
+      ftAnalysis.pairs.forEach(p => {
+        if (p.sec1 && p.sec1.sectionUniqueId) ftSecIds.add(p.sec1.sectionUniqueId);
+        if (p.sec2 && p.sec2.sectionUniqueId) ftSecIds.add(p.sec2.sectionUniqueId);
+      });
+      ftAnalysis.unpairedList.forEach(u => {
+        if (u.section && u.section.sectionUniqueId) ftSecIds.add(u.section.sectionUniqueId);
+      });
+      matchedSections = matchedSections.filter(s => ftSecIds.has(s.sectionUniqueId));
+    }
   }
 
   // REQUIREMENT 1: If Conflict Mode is active and "Isolate Conflicts Only" is on, isolate conflicts!
@@ -2084,9 +2266,10 @@ function renderActiveFilterPills() {
 /**
  * Dispatches view rendering based on active layout mode:
  * - 'day': Standard Day View calendar with side-by-side tiles
- * - 'room': Stacked Room Matrix View (vertically stacked grids by Building/Room)
- * - 'ge': General Education Coverage Audit Dashboard & GE Schedule (swappable to Day or Room Matrix)
- * - 'evening': Evening & Weekend Coverage Audit Dashboard & Schedule (swappable to Day or Room Matrix)
+ * - 'room': Stacked Room View (vertically stacked grids by Building/Room)
+ * - 'ge': General Education Coverage Audit Dashboard & GE Schedule (swappable to Day or Room View)
+ * - 'evening': Evening & Weekend Coverage Audit Dashboard & Schedule (swappable to Day or Room View)
+ * - 'fasttrack': Fast-Track Coverage Audit Dashboard & Schedule (swappable to Day or Room View)
  */
 function dispatchViewRender() {
   const welcomeHero = document.getElementById('welcome-upload-hero');
@@ -2094,6 +2277,7 @@ function dispatchViewRender() {
   const stackedContainer = document.getElementById('room-matrix-stacked');
   const geContainer = document.getElementById('ge-coverage-container');
   const eveningContainer = document.getElementById('evening-coverage-container');
+  const fasttrackContainer = document.getElementById('fasttrack-coverage-container');
 
   // If no sections are loaded yet, display prominent Step 1 upload hero
   if (appState.sections.length === 0) {
@@ -2102,6 +2286,7 @@ function dispatchViewRender() {
     if (stackedContainer) stackedContainer.style.display = 'none';
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     return;
   }
 
@@ -2112,17 +2297,19 @@ function dispatchViewRender() {
     if (standardGrid) standardGrid.style.display = 'none';
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (stackedContainer) {
       stackedContainer.style.display = 'flex';
       renderStackedRoomMatrix();
     }
   } else if (appState.layoutMode === 'ge') {
     if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (geContainer) {
       geContainer.style.display = 'flex';
       renderGeCoverageDashboard();
     }
-    // Swap grid below coverage audit to either Day View or Room Matrix
+    // Swap grid below coverage audit to either Day View or Room View
     if (appState.geSubLayout === 'room') {
       if (standardGrid) standardGrid.style.display = 'none';
       if (stackedContainer) {
@@ -2138,12 +2325,34 @@ function dispatchViewRender() {
     }
   } else if (appState.layoutMode === 'evening') {
     if (geContainer) geContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (eveningContainer) {
       eveningContainer.style.display = 'flex';
       renderEveningCoverageDashboard();
     }
-    // Swap grid below coverage audit to either Day View or Room Matrix
+    // Swap grid below coverage audit to either Day View or Room View
     if (appState.eveningSubLayout === 'room') {
+      if (standardGrid) standardGrid.style.display = 'none';
+      if (stackedContainer) {
+        stackedContainer.style.display = 'flex';
+        renderStackedRoomMatrix();
+      }
+    } else {
+      if (stackedContainer) stackedContainer.style.display = 'none';
+      if (standardGrid) {
+        standardGrid.style.display = 'grid';
+        renderScheduleGrid();
+      }
+    }
+  } else if (appState.layoutMode === 'fasttrack') {
+    if (geContainer) geContainer.style.display = 'none';
+    if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) {
+      fasttrackContainer.style.display = 'flex';
+      renderFastTrackCoverageDashboard();
+    }
+    // Swap grid below coverage audit to either Day View or Room View
+    if (appState.fasttrackSubLayout === 'room') {
       if (standardGrid) standardGrid.style.display = 'none';
       if (stackedContainer) {
         stackedContainer.style.display = 'flex';
@@ -2160,6 +2369,7 @@ function dispatchViewRender() {
     // Default 'day' view
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (stackedContainer) stackedContainer.style.display = 'none';
     if (standardGrid) {
       standardGrid.style.display = 'grid';
@@ -2244,6 +2454,47 @@ function renderScheduleGrid() {
   gridContainer.innerHTML = '';
 
   const blocks = appState.filteredBlocks;
+
+  // Limit Day View to <= 200 blocks to prevent overcrowded congestion
+  if (blocks.length > 200) {
+    gridContainer.style.gridTemplateColumns = '1fr';
+    gridContainer.style.gridTemplateRows = 'auto';
+    gridContainer.innerHTML = `
+      <div class="grid-limit-warning">
+        <div class="limit-warning-icon">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3>Too Many Sections to Display in Day View</h3>
+        <p>The current selection contains <strong>${blocks.length} scheduled meetings</strong>. Day View is limited to displaying up to 200 blocks to prevent visual clutter and overlapping congestion.</p>
+        <p class="limit-warning-hint">Please update your filters (such as Location, Building, or Subject) to narrow down results, or switch to the <strong>Room View</strong> to inspect grids room-by-room.</p>
+        <button type="button" class="btn btn-switch-room-matrix" id="btn-switch-to-room-matrix">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <span>Switch to Room View</span>
+        </button>
+      </div>
+    `;
+
+    document.getElementById('btn-switch-to-room-matrix')?.addEventListener('click', () => {
+      if (appState.layoutMode === 'ge') {
+        appState.geSubLayout = 'room';
+      } else if (appState.layoutMode === 'evening') {
+        appState.eveningSubLayout = 'room';
+      } else if (appState.layoutMode === 'fasttrack') {
+        appState.fasttrackSubLayout = 'room';
+      } else {
+        appState.layoutMode = 'room';
+        const layoutGroup = document.getElementById('btn-group-layout');
+        if (layoutGroup) {
+          layoutGroup.querySelectorAll('.btn-toggle').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-layout') === 'room');
+          });
+        }
+      }
+      dispatchViewRender();
+    });
+
+    return;
+  }
 
   let displayDays = [1, 2, 3, 4, 5];
   if (appState.daySpan === 6) displayDays = [1, 2, 3, 4, 5, 6];
@@ -2571,7 +2822,7 @@ function getGeAreaBadgeClass(areaStr) {
  * REQUIREMENT 3: GENERAL EDUCATION (GE) COVERAGE AUDIT VIEW
  * Audits GE Pattern & Area offerings for the selected campus,
  * displaying coverage status, missing areas, interactive course chips,
- * and swappable calendar grid (Day View vs Room Matrix).
+ * and swappable calendar grid (Day View vs Room View).
  * Valid Patterns: CalGETC (11 areas) and Chaffey Local (7 areas).
  */
 function renderGeCoverageDashboard() {
@@ -2662,7 +2913,7 @@ function renderGeCoverageDashboard() {
         <span class="sub-layout-label">Grid View:</span>
         <div class="btn-sub-toggle-group">
           <button type="button" class="btn-sub-layout-toggle ${appState.geSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.geSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room Matrix</button>
+          <button type="button" class="btn-sub-layout-toggle ${appState.geSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
         </div>
       </div>
     </div>
@@ -2678,7 +2929,7 @@ function renderGeCoverageDashboard() {
     });
   });
 
-  // Sub-layout switcher listener (Day View vs Room Matrix)
+  // Sub-layout switcher listener (Day View vs Room View)
   headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
       appState.geSubLayout = btn.getAttribute('data-sublayout');
@@ -2888,7 +3139,7 @@ function renderEveningCoverageDashboard() {
         <span class="sub-layout-label">Grid View:</span>
         <div class="btn-sub-toggle-group">
           <button type="button" class="btn-sub-layout-toggle ${appState.eveningSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.eveningSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room Matrix</button>
+          <button type="button" class="btn-sub-layout-toggle ${appState.eveningSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
         </div>
       </div>
     </div>
@@ -3021,6 +3272,461 @@ function renderEveningCoverageDashboard() {
 }
 
 /**
+ * ==============================================================================================
+ * REQUIREMENT 10: FAST-TRACK SEQUENTIAL OFFERING & PAIRING AUDIT VIEW
+ * ==============================================================================================
+ * Analyzes Fast-Track 1 (first 8 weeks) and Fast-Track 2 (second 8 weeks) offerings:
+ * 1. Matching Pairs: FT1 and FT2 scheduled in the same room on the same day/timeslot.
+ * 2. Optimized Pairings:
+ *    - Cross-GE Spanning: FT1 satisfies one GE Area and FT2 satisfies a different GE Area.
+ *    - Sequential Department Cohorts: Consecutive courses in same program (e.g. CISGAME-1 -> CISGAME-2).
+ *    - Mixed GE + Major: Combines a GE requirement with a degree major prerequisite.
+ * 3. Unoptimized Pairings:
+ *    - Redundant GE Area: Both FT1 and FT2 satisfy the identical GE Area (already fulfilled in FT1).
+ *    - Same Course Repeated: Both FT1 and FT2 offer identical course (e.g. KINLEC-16 -> KINLEC-16).
+ * 4. Unpaired Fast-Track Offerings:
+ *    - FT1 offered without a complementary FT2 in that room/timeslot (student has empty second 8 weeks).
+ *    - FT2 offered without a complementary FT1 in that room/timeslot (student has empty first 8 weeks).
+ */
+function analyzeFastTrackOfferings(baseSections, activeBlocks) {
+  function getSectionGeAreaSet(sec) {
+    const areas = new Set();
+    if (sec && sec.geAssociations) {
+      sec.geAssociations.forEach(pair => {
+        if (pair.area) areas.add(pair.area);
+      });
+    }
+    return areas;
+  }
+
+  // REQUIREMENT: For Fast-Track Coverage, ignore Scheduled Meeting Components or Parts that do not list days,
+  // times, locations, or hours (etc). Also ignore components/parts listed as Online Lec; Canvas CANVAS (Online).
+  function getRelevantBlocks(sec) {
+    return (sec.scheduleBlocks || []).filter(b => {
+      if (!isPhysicalMeetingBlock(b)) return false;
+      if (appState.filters.building && b.building.toLowerCase() !== appState.filters.building.toLowerCase()) return false;
+      if (appState.filters.room && b.room.toLowerCase() !== appState.filters.room.toLowerCase()) return false;
+      return true;
+    });
+  }
+
+  // Only consider Fast-Track sections that have valid scheduled physical classroom meetings
+  const ftSections = baseSections.filter(s => isFastTrackSection(s) && getRelevantBlocks(s).length > 0);
+  const ft1Sections = ftSections.filter(s => getFastTrackSessionType(s) === 'FT1');
+  const ft2Sections = ftSections.filter(s => getFastTrackSessionType(s) === 'FT2');
+
+  const pairs = [];
+  const matchedMeetingKeySet = new Set();
+
+  ft1Sections.forEach(s1 => {
+    const blocks1 = getRelevantBlocks(s1);
+    blocks1.forEach(b1 => {
+      if (!b1.building || !b1.room || b1.startMinutes === null || b1.endMinutes === null) return;
+      const b1Days = b1.days || [];
+      if (b1Days.length === 0) return;
+
+      ft2Sections.forEach(s2 => {
+        const blocks2 = getRelevantBlocks(s2);
+        blocks2.forEach(b2 => {
+          if (!b2.building || !b2.room || b2.startMinutes === null || b2.endMinutes === null) return;
+          if (b1.building.toLowerCase() !== b2.building.toLowerCase()) return;
+          if (b1.room.toLowerCase() !== b2.room.toLowerCase()) return;
+
+          const b2Days = b2.days || [];
+          const commonDays = b1Days.filter(d => b2Days.includes(d));
+          if (commonDays.length === 0) return;
+
+          // Check for overlapping schedule timeslot
+          if (b1.startMinutes < b2.endMinutes && b2.startMinutes < b1.endMinutes) {
+            const pairKey = `${s1.sectionUniqueId}_${b1.rowId}__${s2.sectionUniqueId}_${b2.rowId}`;
+            if (matchedMeetingKeySet.has(pairKey)) return;
+            matchedMeetingKeySet.add(pairKey);
+
+            const ge1 = getSectionGeAreaSet(s1);
+            const ge2 = getSectionGeAreaSet(s2);
+            const isSameCourse = s1.course.toUpperCase() === s2.course.toUpperCase();
+
+            let status = 'OPTIMIZED';
+            let reasonType = '';
+            let reasonText = '';
+
+            if (ge1.size > 0 && ge2.size > 0) {
+              const commonGe = [...ge1].filter(a => ge2.has(a));
+              if (commonGe.length > 0 && commonGe.length === ge1.size && commonGe.length === ge2.size) {
+                status = 'UNOPTIMIZED';
+                reasonType = 'ge_redundant';
+                reasonText = `Redundant GE Area: Both courses satisfy Area ${sortGeAreas(commonGe).join(', ')}. Students who satisfied Area ${sortGeAreas(commonGe).join(', ')} in Fast-Track 1 have no incentive to register in Fast-Track 2.`;
+              } else {
+                status = 'OPTIMIZED';
+                reasonType = 'ge_cross';
+                reasonText = `Cross-GE Spanning: Satisfies Area ${sortGeAreas(ge1).join(', ')} (FT1) → Area ${sortGeAreas(ge2).join(', ')} (FT2). Enables students to fulfill two distinct GE requirements in one continuous semester timeslot.`;
+              }
+            } else if (ge1.size === 0 && ge2.size === 0) {
+              if (isSameCourse) {
+                status = 'UNOPTIMIZED';
+                reasonType = 'same_course';
+                reasonText = `Same Course Repeated: Both Fast-Track sessions offer identical course ${s1.course}. Students cannot repeat the same course for duplicate degree credit.`;
+              } else {
+                status = 'OPTIMIZED';
+                reasonType = 'sequential_cohort';
+                reasonText = `Sequential Program Cohort: Progressive course pair (${s1.course} → ${s2.course}) enables program majors to accelerate through consecutive degree prerequisites in a single term.`;
+              }
+            } else {
+              status = 'OPTIMIZED';
+              reasonType = 'mixed_ge_major';
+              const geSide = ge1.size > 0 ? `Area ${sortGeAreas(ge1).join(', ')} (${s1.course})` : `Area ${sortGeAreas(ge2).join(', ')} (${s2.course})`;
+              const majorSide = ge1.size > 0 ? `Major Course (${s2.course})` : `Major Course (${s1.course})`;
+              reasonText = `Balanced GE + Major Pairing: Strategically pairs ${geSide} with ${majorSide} for an accelerated degree-applicable schedule.`;
+            }
+
+            pairs.push({
+              key: pairKey,
+              sec1: s1,
+              block1: b1,
+              sec2: s2,
+              block2: b2,
+              building: b1.building,
+              buildingDesc: b1.buildingDesc,
+              room: b1.room,
+              days: commonDays,
+              daysStr: commonDays.map(d => DAY_MAP[d]?.name || d).join(', '),
+              timeSpanStr: `${b1.startTimeStr} – ${b1.endTimeStr}`,
+              status: status,
+              reasonType: reasonType,
+              reasonText: reasonText
+            });
+          }
+        });
+      });
+    });
+  });
+
+  // Identify Unpaired Offerings
+  const unpairedList = [];
+
+  ft1Sections.forEach(s => {
+    const blocks = getRelevantBlocks(s);
+    blocks.forEach(b => {
+      const isMeetingPaired = pairs.some(p => p.sec1.sectionUniqueId === s.sectionUniqueId && p.block1.rowId === b.rowId);
+      if (!isMeetingPaired) {
+        unpairedList.push({
+          type: 'FT1',
+          sessionLabel: 'Fast-Track 1 (First 8-Weeks)',
+          missingLabel: 'Missing Fast-Track 2 Companion',
+          missingDesc: 'Scheduled in the first 8 weeks without a complementary Fast-Track 2 course in this room & timeslot. The classroom sits unutilized for the second 8 weeks.',
+          section: s,
+          block: b,
+          building: b.building,
+          buildingDesc: b.buildingDesc,
+          room: b.room,
+          days: b.days || [],
+          daysStr: (b.days || []).map(d => DAY_MAP[d]?.name || d).join(', '),
+          timeSpanStr: `${b.startTimeStr} – ${b.endTimeStr}`
+        });
+      }
+    });
+  });
+
+  ft2Sections.forEach(s => {
+    const blocks = getRelevantBlocks(s);
+    blocks.forEach(b => {
+      const isMeetingPaired = pairs.some(p => p.sec2.sectionUniqueId === s.sectionUniqueId && p.block2.rowId === b.rowId);
+      if (!isMeetingPaired) {
+        unpairedList.push({
+          type: 'FT2',
+          sessionLabel: 'Fast-Track 2 (Second 8-Weeks)',
+          missingLabel: 'Missing Fast-Track 1 Companion',
+          missingDesc: 'Scheduled in the second 8 weeks without a complementary Fast-Track 1 course in this room & timeslot. The classroom sits unutilized for the first 8 weeks.',
+          section: s,
+          block: b,
+          building: b.building,
+          buildingDesc: b.buildingDesc,
+          room: b.room,
+          days: b.days || [],
+          daysStr: (b.days || []).map(d => DAY_MAP[d]?.name || d).join(', '),
+          timeSpanStr: `${b.startTimeStr} – ${b.endTimeStr}`
+        });
+      }
+    });
+  });
+
+  const optPairs = pairs.filter(p => p.status === 'OPTIMIZED');
+  const unoptPairs = pairs.filter(p => p.status === 'UNOPTIMIZED');
+
+  return {
+    totalFtSections: ftSections.length,
+    totalFt1Sections: ft1Sections.length,
+    totalFt2Sections: ft2Sections.length,
+    pairs: pairs,
+    optPairs: optPairs,
+    unoptPairs: unoptPairs,
+    unpairedList: unpairedList
+  };
+}
+
+function renderFastTrackCoverageDashboard() {
+  const container = document.getElementById('fasttrack-coverage-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const scopeParts = [];
+  if (appState.filters.location) scopeParts.push(appState.filters.location);
+  else scopeParts.push('All Campuses');
+
+  if (appState.filters.building) scopeParts.push(`Bldg ${appState.filters.building}`);
+  if (appState.filters.room) scopeParts.push(`Room ${appState.filters.room}`);
+  if (appState.filters.subject.size > 0) scopeParts.push(`Subject: ${Array.from(appState.filters.subject).join(', ')}`);
+  if (appState.filters.course.size > 0) scopeParts.push(`Course: ${Array.from(appState.filters.course).join(', ')}`);
+  if (appState.filters.acc.size > 0) scopeParts.push(`ACC: ${Array.from(appState.filters.acc).join(', ')}`);
+  if (appState.filters.modality.size > 0) scopeParts.push(`Modality: ${Array.from(appState.filters.modality).join(', ')}`);
+  if (appState.filters.search) scopeParts.push(`"${appState.filters.search}"`);
+
+  const scopeLabel = scopeParts.join(' • ');
+
+  const ftAnalysis = appState.currentFtAnalysis || analyzeFastTrackOfferings(appState.filteredSections || appState.sections, appState.filteredBlocks);
+
+  // 1. Header Row
+  const headerRow = document.createElement('div');
+  headerRow.className = 'fasttrack-coverage-header';
+  headerRow.innerHTML = `
+    <div class="fasttrack-coverage-title">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Fast-Track Sequential Pairing Audit: <span>${scopeLabel}</span>
+      </h3>
+      <p>Auditing Fast-Track 1 & 2 strategic pairings, cross-GE coverage, cohort sequencing, and unpaired offerings.</p>
+    </div>
+    <div class="fasttrack-header-controls">
+      <div class="sub-layout-switcher" id="fasttrack-sub-layout-switcher">
+        <span class="sub-layout-label">Grid View:</span>
+        <div class="btn-sub-toggle-group">
+          <button type="button" class="btn-sub-layout-toggle ${appState.fasttrackSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
+          <button type="button" class="btn-sub-layout-toggle ${appState.fasttrackSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(headerRow);
+
+  // Sub-layout switcher listener
+  headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.fasttrackSubLayout = btn.getAttribute('data-sublayout');
+      headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      dispatchViewRender();
+    });
+  });
+
+  // 2. Summary KPI Cards
+  const summaryBar = document.createElement('div');
+  summaryBar.className = 'fasttrack-summary-bar';
+  summaryBar.innerHTML = `
+    <div class="fasttrack-stat-card highlight-card">
+      <span class="fasttrack-stat-card-title">Fast-Track Sections</span>
+      <span class="fasttrack-stat-card-value">${ftAnalysis.totalFtSections}</span>
+      <span class="fasttrack-stat-card-sub">${ftAnalysis.totalFt1Sections} FT1 &bull; ${ftAnalysis.totalFt2Sections} FT2</span>
+    </div>
+    <div class="fasttrack-stat-card">
+      <span class="fasttrack-stat-card-title">Pairings Formed</span>
+      <span class="fasttrack-stat-card-value">${ftAnalysis.pairs.length}</span>
+      <span class="fasttrack-stat-card-sub">Matching room & timeslot</span>
+    </div>
+    <div class="fasttrack-stat-card opt-card">
+      <span class="fasttrack-stat-card-title">Optimized Pairings</span>
+      <span class="fasttrack-stat-card-value">${ftAnalysis.optPairs.length}</span>
+      <span class="fasttrack-stat-card-sub">Cross-GE & sequential cohorts</span>
+    </div>
+    <div class="fasttrack-stat-card unopt-card">
+      <span class="fasttrack-stat-card-title">Unoptimized Pairings</span>
+      <span class="fasttrack-stat-card-value">${ftAnalysis.unoptPairs.length}</span>
+      <span class="fasttrack-stat-card-sub">Redundant GE or duplicate courses</span>
+    </div>
+    <div class="fasttrack-stat-card unpaired-card">
+      <span class="fasttrack-stat-card-title">Unpaired Offerings</span>
+      <span class="fasttrack-stat-card-value">${ftAnalysis.unpairedList.length}</span>
+      <span class="fasttrack-stat-card-sub">Single 8-week offerings</span>
+    </div>
+  `;
+  container.appendChild(summaryBar);
+
+  // 3. Tab Filter Bar
+  const totalItemsCount = ftAnalysis.pairs.length + ftAnalysis.unpairedList.length;
+  const activeTab = appState.fasttrackActiveTab || 'all';
+
+  const navBar = document.createElement('div');
+  navBar.className = 'fasttrack-audit-nav';
+  navBar.innerHTML = `
+    <div class="fasttrack-audit-tabs">
+      <button type="button" class="ft-tab-btn ${activeTab === 'all' ? 'active' : ''}" data-tab="all">
+        <span>All Items</span>
+        <span class="ft-tab-badge">${totalItemsCount}</span>
+      </button>
+      <button type="button" class="ft-tab-btn tab-opt ${activeTab === 'optimized' ? 'active' : ''}" data-tab="optimized">
+        <span>✓ Optimized Pairings</span>
+        <span class="ft-tab-badge">${ftAnalysis.optPairs.length}</span>
+      </button>
+      <button type="button" class="ft-tab-btn tab-unopt ${activeTab === 'unoptimized' ? 'active' : ''}" data-tab="unoptimized">
+        <span>⚠ Unoptimized Pairings</span>
+        <span class="ft-tab-badge">${ftAnalysis.unoptPairs.length}</span>
+      </button>
+      <button type="button" class="ft-tab-btn tab-unpaired ${activeTab === 'unpaired' ? 'active' : ''}" data-tab="unpaired">
+        <span>⚡ Unpaired Offerings</span>
+        <span class="ft-tab-badge">${ftAnalysis.unpairedList.length}</span>
+      </button>
+    </div>
+    <div style="font-size:11.5px; color:var(--text-muted);">
+      Click any course card to inspect full section details & meetings.
+    </div>
+  `;
+  container.appendChild(navBar);
+
+  // Tab switching listener
+  navBar.querySelectorAll('.ft-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.fasttrackActiveTab = btn.getAttribute('data-tab');
+      applyFiltersAndRender();
+    });
+  });
+
+  // 4. Cards Grid
+  const cardsGrid = document.createElement('div');
+  cardsGrid.className = 'fasttrack-cards-grid';
+
+  let itemsRenderedCount = 0;
+
+  // Render Pairings
+  if (activeTab === 'all' || activeTab === 'optimized' || activeTab === 'unoptimized') {
+    const pairsToRender = ftAnalysis.pairs.filter(p => {
+      if (activeTab === 'optimized') return p.status === 'OPTIMIZED';
+      if (activeTab === 'unoptimized') return p.status === 'UNOPTIMIZED';
+      return true;
+    });
+
+    pairsToRender.forEach(p => {
+      itemsRenderedCount++;
+      const isOpt = p.status === 'OPTIMIZED';
+      const card = document.createElement('div');
+      card.className = 'ft-pair-card';
+
+      const ge1Badges = (p.sec1.generalEdArea || []).map(a => `<span class="ge-area-badge ${getGeAreaBadgeClass(a)}">Area ${a}</span>`).join(' ');
+      const ge2Badges = (p.sec2.generalEdArea || []).map(a => `<span class="ge-area-badge ${getGeAreaBadgeClass(a)}">Area ${a}</span>`).join(' ');
+
+      card.innerHTML = `
+        <div class="ft-card-top-bar">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="ft-room-badge">${p.building} ${p.room}</span>
+            <span class="ft-days-time">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              ${p.daysStr} &bull; ${p.timeSpanStr}
+            </span>
+          </div>
+          <span class="ft-status-pill ${isOpt ? 'status-optimized' : 'status-unoptimized'}">
+            ${isOpt ? '✓ Optimized Pairing' : '⚠ Unoptimized Pairing'}
+          </span>
+        </div>
+        <div class="ft-reason-banner ${isOpt ? 'banner-optimized' : 'banner-unoptimized'}">
+          <span>${isOpt ? '✓' : '⚠'}</span>
+          <span>${p.reasonText}</span>
+        </div>
+        <div class="ft-sections-split">
+          <div class="ft-slot-card ft-slot-1" data-sec-id="${p.sec1.sectionUniqueId}" title="Click to view ${p.sec1.course} section details">
+            <span class="ft-slot-tag tag-ft1">Fast-Track 1 (1st 8 Wks)</span>
+            <div class="ft-slot-course">${p.sec1.course}</div>
+            <div class="ft-slot-title">${p.sec1.sectionName}</div>
+            <div class="ft-slot-meta">
+              <span><strong>Faculty:</strong> ${p.sec1.facultyName || 'Staff'}</span>
+              <span><strong>Time:</strong> ${p.block1.startTimeStr} – ${p.block1.endTimeStr}</span>
+            </div>
+            ${ge1Badges ? `<div class="ft-slot-badges">${ge1Badges}</div>` : ''}
+          </div>
+          <div class="ft-split-arrow">➔</div>
+          <div class="ft-slot-card ft-slot-2" data-sec-id="${p.sec2.sectionUniqueId}" title="Click to view ${p.sec2.course} section details">
+            <span class="ft-slot-tag tag-ft2">Fast-Track 2 (2nd 8 Wks)</span>
+            <div class="ft-slot-course">${p.sec2.course}</div>
+            <div class="ft-slot-title">${p.sec2.sectionName}</div>
+            <div class="ft-slot-meta">
+              <span><strong>Faculty:</strong> ${p.sec2.facultyName || 'Staff'}</span>
+              <span><strong>Time:</strong> ${p.block2.startTimeStr} – ${p.block2.endTimeStr}</span>
+            </div>
+            ${ge2Badges ? `<div class="ft-slot-badges">${ge2Badges}</div>` : ''}
+          </div>
+        </div>
+      `;
+
+      cardsGrid.appendChild(card);
+    });
+  }
+
+  // Render Unpaired Offerings
+  if (activeTab === 'all' || activeTab === 'unpaired') {
+    ftAnalysis.unpairedList.forEach(u => {
+      itemsRenderedCount++;
+      const card = document.createElement('div');
+      card.className = 'ft-unpaired-card';
+
+      const geBadges = (u.section.generalEdArea || []).map(a => `<span class="ge-area-badge ${getGeAreaBadgeClass(a)}">Area ${a}</span>`).join(' ');
+
+      card.innerHTML = `
+        <div class="ft-card-top-bar">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="ft-room-badge">${u.building} ${u.room}</span>
+            <span class="ft-days-time">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              ${u.daysStr} &bull; ${u.timeSpanStr}
+            </span>
+          </div>
+          <span class="ft-status-pill status-unpaired">⚠ ${u.missingLabel}</span>
+        </div>
+        <div class="ft-reason-banner banner-unpaired">
+          <span>⚠</span>
+          <span>${u.missingDesc}</span>
+        </div>
+        <div class="ft-unpaired-body">
+          <div class="ft-slot-card" data-sec-id="${u.section.sectionUniqueId}" title="Click to view ${u.section.course} section details">
+            <span class="ft-slot-tag ${u.type === 'FT1' ? 'tag-ft1' : 'tag-ft2'}">${u.sessionLabel}</span>
+            <div class="ft-slot-course">${u.section.course}</div>
+            <div class="ft-slot-title">${u.section.sectionName}</div>
+            <div class="ft-slot-meta">
+              <span><strong>Faculty:</strong> ${u.section.facultyName || 'Staff'}</span>
+              <span><strong>Scheduled:</strong> ${u.daysStr} &bull; ${u.timeSpanStr}</span>
+              <span><strong>Room:</strong> ${u.building} ${u.room} ${u.buildingDesc ? `(${u.buildingDesc})` : ''}</span>
+            </div>
+            ${geBadges ? `<div class="ft-slot-badges">${geBadges}</div>` : ''}
+          </div>
+        </div>
+      `;
+
+      cardsGrid.appendChild(card);
+    });
+  }
+
+  if (itemsRenderedCount === 0) {
+    cardsGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 36px 20px; text-align: center; background: var(--bg-surface); border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); font-size: 13.5px;">
+        <span style="font-size: 22px; display: block; margin-bottom: 8px;">🎉</span>
+        <strong>No Fast-Track items found for this view filter (${activeTab}) in scope: ${scopeLabel}.</strong>
+        <p style="margin-top: 6px; font-size: 12px; color: var(--text-muted);">Adjust your sidebar filters or switch to 'All Items' tab above.</p>
+      </div>
+    `;
+  }
+
+  container.appendChild(cardsGrid);
+
+  // Attach hover and click listeners to all section slots in Fast-Track Coverage
+  container.querySelectorAll('.ft-slot-card').forEach(slot => {
+    const secId = slot.getAttribute('data-sec-id');
+    const sec = appState.sections.find(s => s.sectionUniqueId === secId);
+    if (sec) {
+      slot.addEventListener('mouseenter', (e) => showPopover(e, sec));
+      slot.addEventListener('mousemove', (e) => positionPopover(e));
+      slot.addEventListener('mouseleave', hidePopover);
+      slot.addEventListener('click', () => showSectionModal(sec));
+    }
+  });
+}
+
+/**
  * Creates an individual Schedule Tile DOM Element with dedicated Course Code row
  * preventing text smashing, and support for Stacked Classes & GE Badges
  */
@@ -3082,6 +3788,15 @@ function createScheduleTileElement(block, leftPercent, widthPercent, topPx, heig
     eveningTagHtml = `<span class="tile-ge-tag ge-color-1c" style="background:#4338ca;">${eveLabel}</span>`;
   }
 
+  // Fast-track indicator tag
+  let ftTagHtml = '';
+  const ftType = getFastTrackSessionType(sec);
+  if (ftType === 'FT1') {
+    ftTagHtml = `<span class="tile-ft-tag ft1-tag" title="Fast-Track 1 (First 8-Weeks)">⚡ FT1</span>`;
+  } else if (ftType === 'FT2') {
+    ftTagHtml = `<span class="tile-ft-tag ft2-tag" title="Fast-Track 2 (Second 8-Weeks)">⚡ FT2</span>`;
+  }
+
   const stackedTagHtml = block.isStacked ? `<span class="tile-stacked-tag">🔗 Stacked</span>` : '';
   const conflictTagHtml = (appState.isConflictMode && block.isConflict) ? `<span class="tile-conflict-alert-tag">⚠ CONFLICT</span>` : '';
 
@@ -3093,6 +3808,7 @@ function createScheduleTileElement(block, leftPercent, widthPercent, topPx, heig
       <span class="tile-type-badge">${shortType}</span>
       ${appState.layoutMode === 'ge' ? geTagHtml : ''}
       ${appState.layoutMode === 'evening' ? eveningTagHtml : ''}
+      ${ftTagHtml}
       ${stackedTagHtml}
       ${conflictTagHtml}
     </div>
@@ -3137,13 +3853,20 @@ function showPopover(event, target) {
     const facB = other.parentSection.facultyName || 'Staff';
     const isSameFac = normalizeFacultyName(facA) === normalizeFacultyName(facB);
     const prog = getSectionStackSubject(sec);
-    const stackNote = isSameFac
-      ? `Same Instructor: ${facA}`
-      : `Cohort Stack: ${prog || 'Specialized Program'} (Instructors: ${facA} & ${facB})`;
+    const isFt = isSequentialFastTrackPair(block, other);
+
+    let stackNote = '';
+    if (isFt) {
+      stackNote = `Fast-Track Sequential Session (${sec.calendarSession} & ${other.parentSection.calendarSession} - Non-overlapping dates)`;
+    } else if (isSameFac) {
+      stackNote = `Same Instructor: ${facA}`;
+    } else {
+      stackNote = `Cohort Stack: ${prog || 'Specialized Program'} (Instructors: ${facA} & ${facB})`;
+    }
 
     stackedAlertHtml = `
       <div style="margin-top:8px; padding:6px 8px; background-color:var(--stacked-bg); border:1px solid var(--stacked-border); border-radius:6px; color:var(--stacked-text); font-size:11px; font-weight:600;">
-        🔗 <strong>STACKED CLASS</strong>: Cross-scheduled simultaneously with <strong>${other.parentSection.course}</strong> (${stackNote}) in ${block.building} ${block.room}.
+        🔗 <strong>STACKED ${isFt ? 'SESSION' : 'CLASS'}</strong>: Cross-scheduled in ${block.building} ${block.room} with <strong>${other.parentSection.course}</strong> (${stackNote}).
       </div>
     `;
   }
@@ -3159,9 +3882,14 @@ function showPopover(event, target) {
     `;
   }
 
-  const meetingTypeStr = block ? block.instructionType : (sec.scheduleBlocks?.map(b => b.instructionType).join(', ') || 'Class Meeting');
-  const timeDayStr = block && block.day ? `${DAY_MAP[block.day]?.name || ''}: ${block.startTimeStr} – ${block.endTimeStr}` : (sec.scheduleBlocks?.map(b => `${(b.days || []).map(d => DAY_MAP[d]?.short || d).join('/')} ${b.startTimeStr}-${b.endTimeStr}`).join('; ') || 'TBA');
-  const locationStr = block && block.building ? `${sec.location} – ${block.building} ${block.room}` : `${sec.location}`;
+  const isFtContext = appState.layoutMode === 'fasttrack' || isFastTrackSection(sec);
+  const candidateBlocks = (isFtContext && sec.scheduleBlocks)
+    ? (sec.scheduleBlocks.filter(isPhysicalMeetingBlock).length > 0 ? sec.scheduleBlocks.filter(isPhysicalMeetingBlock) : sec.scheduleBlocks)
+    : (sec.scheduleBlocks || []);
+
+  const meetingTypeStr = block ? block.instructionType : (candidateBlocks.map(b => b.instructionType).join(', ') || 'Class Meeting');
+  const timeDayStr = block && block.day ? `${DAY_MAP[block.day]?.name || ''}: ${block.startTimeStr} – ${block.endTimeStr}` : (candidateBlocks.map(b => `${(b.days || []).map(d => DAY_MAP[d]?.short || d).join('/')} ${b.startTimeStr}-${b.endTimeStr}`).join('; ') || 'TBA');
+  const locationStr = block && block.building ? `${sec.location} – ${block.building} ${block.room}` : (candidateBlocks.length > 0 && candidateBlocks[0].building ? `${sec.location} – ${candidateBlocks[0].building} ${candidateBlocks[0].room}` : `${sec.location}`);
 
   const geInfo = formatSectionGeInfo(sec);
 
@@ -3260,7 +3988,15 @@ function showSectionModal(section, activeBlock) {
   modalSecId.textContent = `SECTION UNIQUE ID: #${section.sectionUniqueId}`;
   modalSecName.textContent = `${section.course} – ${section.sectionName}`;
 
-  const blocksHtml = section.scheduleBlocks.map((blk, idx) => {
+  // For Fast-Track Coverage, ignore Scheduled Meeting Components or Parts that do not list days, times, locations, or hours,
+  // and ignore components/parts listed as Online Lec; Canvas CANVAS (Online).
+  const isFtMode = appState.layoutMode === 'fasttrack' || isFastTrackSection(section);
+  const candidateBlocks = (isFtMode && section.scheduleBlocks)
+    ? section.scheduleBlocks.filter(isPhysicalMeetingBlock)
+    : (section.scheduleBlocks || []);
+  const blocksToDisplay = (isFtMode && candidateBlocks.length > 0) ? candidateBlocks : (section.scheduleBlocks || []);
+
+  const blocksHtml = blocksToDisplay.map((blk, idx) => {
     const daysStr = blk.days.map(d => DAY_MAP[d]?.name || d).join(', ');
     return `
       <div class="block-card">
@@ -3274,7 +4010,7 @@ function showSectionModal(section, activeBlock) {
           </div>
         </div>
         <span class="badge" style="background:var(--chaffey-red); color:#fff; padding:3px 8px; border-radius:4px; font-size:11px;">
-          Part ${idx + 1} of ${section.scheduleBlocks.length}
+          Part ${idx + 1} of ${blocksToDisplay.length}
         </span>
       </div>
     `;
@@ -3828,7 +4564,7 @@ function setupEventListeners() {
     });
   }
 
-  // Layout View Button Group (Day View vs Room Matrix vs GE Coverage)
+  // Layout View Button Group (Day View vs Room View vs GE Coverage)
   const layoutGroup = document.getElementById('btn-group-layout');
   if (layoutGroup) {
     layoutGroup.querySelectorAll('.btn-toggle').forEach(btn => {
@@ -3897,6 +4633,7 @@ function resetAllFilters() {
   appState.filters.modality.clear();
   appState.filters.session.clear();
   appState.filters.traits.clear();
+  appState.fasttrackActiveTab = 'all';
 
   const searchInput = document.getElementById('filter-search');
   if (searchInput) searchInput.value = '';

@@ -320,19 +320,19 @@
           <div class="controls-right">
             <!-- Day Span Toggle (Defaulted to Active Days) -->
             <div class="button-group" id="btn-group-days">
-              <button class="btn-toggle" data-days="5" title="Monday to Friday">Mon–Fri</button>
-              <button class="btn-toggle" data-days="6" title="Monday to Saturday">Mon–Sat</button>
-              <button class="btn-toggle" data-days="7" title="Monday to Sunday">Mon–Sun</button>
-              <button class="btn-toggle" data-days="weekend" title="Friday, Saturday, and Sunday (Weekend & Late Week)">Fri–Sun</button>
+              <button class="btn-toggle" data-days="5" title="Monday to Friday">Weekdays</button>
+              <button class="btn-toggle" data-days="weekend" title="Friday, Saturday, and Sunday">Weekends</button>
+              <button class="btn-toggle" data-days="7" title="Monday to Sunday">All</button>
               <button class="btn-toggle active" data-days="active" title="Only days with scheduled classes">Active Days</button>
             </div>
 
-            <!-- View Layout Toggle (Defaulted to Room Matrix) -->
+            <!-- View Layout Toggle (Defaulted to Room View) -->
             <div class="button-group" id="btn-group-layout">
               <button class="btn-toggle" data-layout="day" title="Standard day calendar with all rooms">Day View</button>
-              <button class="btn-toggle active" data-layout="room" title="Stacked grids separated by Building & Room">Room Matrix</button>
+              <button class="btn-toggle active" data-layout="room" title="Stacked grids separated by Building & Room">Room View</button>
               <button class="btn-toggle" data-layout="ge" title="General Education coverage and audit view">GE Coverage</button>
               <button class="btn-toggle" data-layout="evening" title="Evening and Weekend class coverage audit & schedule">Evening Coverage</button>
+              <button class="btn-toggle" data-layout="fasttrack" title="Fast-Track 1 & 2 sequential pairing audit & schedule">Fast-Track Coverage</button>
             </div>
 
             <!-- Sidebar Toggle Button for small screens -->
@@ -393,7 +393,7 @@
                 <div class="welcome-feature-item">
                   <span class="feature-icon">🏢</span>
                   <div class="feature-text">
-                    <strong>Stacked Room Matrix</strong>
+                    <strong>Stacked Room View</strong>
                     <span>Dedicated weekly grids per room</span>
                   </div>
                 </div>
@@ -422,6 +422,11 @@
 
           <!-- Evening & Weekend Coverage Audit Dashboard (Shown in Evening Coverage mode) -->
           <div class="evening-coverage-container" id="evening-coverage-container" style="display:none;">
+            <!-- Dynamically populated via app.js -->
+          </div>
+
+          <!-- Fast-Track Sequential Coverage Audit Dashboard (Shown in Fast-Track Coverage mode) -->
+          <div class="fasttrack-coverage-container" id="fasttrack-coverage-container" style="display:none;">
             <!-- Dynamically populated via app.js -->
           </div>
 
