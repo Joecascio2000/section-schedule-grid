@@ -265,7 +265,7 @@ function sortAccs(accList) {
   });
 }
 
-// Built-in Dataset matching IR - Schedule Sections Building-Room Grids (JC) - Copy.xlsx
+// Built-in Dataset matching Schedule Sections Building-Room Grids.xlsx
 // Enriched with stacked classes and multi-campus GE sections for full feature demonstration
 const BUILT_IN_DATASET = [
   {
@@ -1322,6 +1322,14 @@ function processRawDataset(rawData) {
   appState.filteredSections = appState.sections;
   appState.scheduleBlocks = allMeetingBlocks;
 
+  const bldgDescMap = new Map();
+  allMeetingBlocks.forEach(b => {
+    if (b.building && b.buildingDesc && !bldgDescMap.has(b.building)) {
+      bldgDescMap.set(b.building, b.buildingDesc);
+    }
+  });
+  appState.buildingDescMap = bldgDescMap;
+
   populateFilterControls();
   applyFiltersAndRender();
 }
@@ -1498,76 +1506,261 @@ function updateConflictUI() {
 
 // --- 6. FILTERING LOGIC ---
 
-function populateFilterControls() {
-  const locations = new Set();
-  const buildings = new Set();
-  const rooms = new Set();
-  const accs = new Set();
-  const subjects = new Set();
-  const courses = new Set();
-  const modalities = new Set();
-  const sessions = new Set();
-  const dayEvenings = new Set();
-  const gePatterns = new Set();
-  const geAreas = new Set();
-  const traits = new Set();
+/**
+ * Checks if a section satisfies all active filters, optionally excluding one dimension.
+ * This leave-one-out evaluation powers faceted cross-filtering across all filter dimensions.
+ */
+function matchesOtherFilters(sec, excludeDimension = null) {
+  const {
+    search, location, building, room,
+    dayEvening, geArea, gePattern, acc, subject, course,
+    modality, session, traits
+  } = appState.filters;
 
-  appState.sections.forEach(sec => {
-    if (sec.location) locations.add(sec.location);
-    if (sec.acc) accs.add(sec.acc);
-    if (sec.subject) subjects.add(sec.subject);
-    if (sec.course) courses.add(sec.course);
-    if (sec.modality) modalities.add(sec.modality);
-    if (sec.calendarSession) sessions.add(sec.calendarSession);
-    if (sec.dayOrEvening) dayEvenings.add(sec.dayOrEvening);
-
-    sec.generalEdPattern.forEach(p => gePatterns.add(p));
-    sec.generalEdArea.forEach(a => geAreas.add(a));
-    sec.sectionTraits.forEach(t => traits.add(t));
-
-    sec.scheduleBlocks.forEach(b => {
-      if (b.building) buildings.add(b.building);
-      if (b.room) rooms.add(b.room);
-    });
-  });
-
-  const locSelect = document.getElementById('filter-location');
-  if (locSelect) {
-    const currentLoc = locSelect.value;
-    locSelect.innerHTML = '<option value="">All Locations</option>';
-    Array.from(locations).sort().forEach(loc => {
-      const opt = document.createElement('option');
-      opt.value = loc;
-      opt.textContent = loc;
-      if (loc === currentLoc) opt.selected = true;
-      locSelect.appendChild(opt);
-    });
-    document.getElementById('count-location').textContent = `(${locations.size})`;
+  if (search) {
+    const searchLower = search.toLowerCase().trim();
+    const combined = `${sec.sectionName} ${sec.course} ${sec.subject} ${sec.facultyName} ${sec.location} ${sec.scheduleBlocks.map(b => `${b.building} ${b.room}`).join(' ')}`.toLowerCase();
+    if (!combined.includes(searchLower)) return false;
   }
 
-  updateCascadingBuildingAndRoom();
+  if (excludeDimension !== 'location' && location) {
+    if (sec.location.toLowerCase() !== location.toLowerCase()) return false;
+  }
 
-  renderCheckboxList('list-ge-area', sortGeAreas(geAreas), appState.filters.geArea, 'badge-ge-area', formatGeAreaLabel);
-  renderCheckboxList('list-ge-pattern', Array.from(gePatterns).sort(), appState.filters.gePattern, 'badge-ge-pattern', formatGePatternLabel);
-  renderCheckboxList('list-acc', sortAccs(accs), appState.filters.acc, 'badge-acc');
-  renderCheckboxList('list-subject', Array.from(subjects).sort(), appState.filters.subject, 'badge-subject');
-  renderCheckboxList('list-course', Array.from(courses).sort(), appState.filters.course, 'badge-course');
-  renderCheckboxList('list-modality', Array.from(modalities).sort(), appState.filters.modality, 'badge-modality');
-  renderCheckboxList('list-session', Array.from(sessions).sort(), appState.filters.session, 'badge-session');
-  renderCheckboxList('list-day-evening', Array.from(dayEvenings).sort(), appState.filters.dayEvening, 'badge-day-evening', formatDayEveningLabel);
-  renderCheckboxList('list-traits', Array.from(traits).sort(), appState.filters.traits, 'badge-traits');
+  if (excludeDimension !== 'dayEvening' && dayEvening.size > 0) {
+    if (!dayEvening.has(sec.dayOrEvening)) return false;
+  }
+
+  if (excludeDimension !== 'acc' && acc.size > 0) {
+    if (!acc.has(sec.acc)) return false;
+  }
+
+  if (excludeDimension !== 'subject' && subject.size > 0) {
+    if (!subject.has(sec.subject)) return false;
+  }
+
+  if (excludeDimension !== 'course' && course.size > 0) {
+    if (!course.has(sec.course)) return false;
+  }
+
+  if (excludeDimension !== 'modality' && modality.size > 0) {
+    if (!modality.has(sec.modality)) return false;
+  }
+
+  if (excludeDimension !== 'session' && session.size > 0) {
+    if (!session.has(sec.calendarSession)) return false;
+  }
+
+  // Respect multivalued associated GE Pattern & GE Area pairing
+  if (excludeDimension !== 'gePattern' && excludeDimension !== 'geArea') {
+    if (gePattern.size > 0 && geArea.size > 0) {
+      const hasMatchingPair = (sec.geAssociations || []).some(pair =>
+        gePattern.has(pair.pattern) && geArea.has(pair.area)
+      );
+      if (!hasMatchingPair) return false;
+    } else if (gePattern.size > 0) {
+      const hasGePat = (sec.geAssociations || []).some(pair => gePattern.has(pair.pattern));
+      if (!hasGePat) return false;
+    } else if (geArea.size > 0) {
+      const hasGeArea = (sec.geAssociations || []).some(pair => geArea.has(pair.area));
+      if (!hasGeArea) return false;
+    }
+  } else if (excludeDimension === 'gePattern') {
+    if (geArea.size > 0) {
+      const hasGeArea = (sec.geAssociations || []).some(pair => geArea.has(pair.area));
+      if (!hasGeArea) return false;
+    }
+  } else if (excludeDimension === 'geArea') {
+    if (gePattern.size > 0) {
+      const hasGePat = (sec.geAssociations || []).some(pair => gePattern.has(pair.pattern));
+      if (!hasGePat) return false;
+    }
+  }
+
+  if (excludeDimension !== 'traits' && traits.size > 0) {
+    const hasTrait = Array.from(traits).some(t => sec.sectionTraits.includes(t));
+    if (!hasTrait) return false;
+  }
+
+  const checkBuilding = (excludeDimension !== 'building' && excludeDimension !== 'location') && Boolean(building);
+  const checkRoom = (excludeDimension !== 'room' && excludeDimension !== 'building' && excludeDimension !== 'location') && Boolean(room);
+
+  if (checkBuilding || checkRoom) {
+    const hasMatchingBlock = sec.scheduleBlocks.some(b => {
+      if (checkBuilding && b.building.toLowerCase() !== building.toLowerCase()) return false;
+      if (checkRoom && b.room.toLowerCase() !== room.toLowerCase()) return false;
+      return true;
+    });
+    if (!hasMatchingBlock) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Returns the set of valid options for a specific dimension based on sections that match
+ * all other active filters (leave-one-out).
+ */
+function getValidFacetValues(dimension) {
+  const valid = new Set();
+  const sections = appState.sections;
+  const areaFilter = appState.filters.geArea;
+  const patFilter = appState.filters.gePattern;
+
+  for (let i = 0; i < sections.length; i++) {
+    const sec = sections[i];
+    if (!matchesOtherFilters(sec, dimension)) continue;
+
+    switch (dimension) {
+      case 'location':
+        if (sec.location) valid.add(sec.location);
+        break;
+      case 'acc':
+        if (sec.acc) valid.add(sec.acc);
+        break;
+      case 'subject':
+        if (sec.subject) valid.add(sec.subject);
+        break;
+      case 'course':
+        if (sec.course) valid.add(sec.course);
+        break;
+      case 'modality':
+        if (sec.modality) valid.add(sec.modality);
+        break;
+      case 'session':
+        if (sec.calendarSession) valid.add(sec.calendarSession);
+        break;
+      case 'dayEvening':
+        if (sec.dayOrEvening) valid.add(sec.dayOrEvening);
+        break;
+      case 'traits':
+        if (sec.sectionTraits) sec.sectionTraits.forEach(t => valid.add(t));
+        break;
+      case 'gePattern':
+        if (sec.geAssociations) {
+          sec.geAssociations.forEach(pair => {
+            if (areaFilter.size === 0 || areaFilter.has(pair.area)) {
+              valid.add(pair.pattern);
+            }
+          });
+        }
+        break;
+      case 'geArea':
+        if (sec.geAssociations) {
+          sec.geAssociations.forEach(pair => {
+            if (patFilter.size === 0 || patFilter.has(pair.pattern)) {
+              valid.add(pair.area);
+            }
+          });
+        }
+        break;
+    }
+  }
+  return valid;
+}
+
+/**
+ * Prunes any values from a filter Set that are no longer valid under active cross-filters.
+ */
+function pruneInvalidSelections(filterSet, validSet) {
+  let pruned = false;
+  Array.from(filterSet).forEach(item => {
+    if (!validSet.has(item)) {
+      filterSet.delete(item);
+      pruned = true;
+    }
+  });
+  return pruned;
+}
+
+let isPopulatingFilters = false;
+
+function populateFilterControls() {
+  if (isPopulatingFilters) return;
+  isPopulatingFilters = true;
+
+  try {
+    let hadPruning = false;
+
+    const locations = getValidFacetValues('location');
+    const accs = getValidFacetValues('acc');
+    const subjects = getValidFacetValues('subject');
+    const courses = getValidFacetValues('course');
+    const modalities = getValidFacetValues('modality');
+    const sessions = getValidFacetValues('session');
+    const dayEvenings = getValidFacetValues('dayEvening');
+    const gePatterns = getValidFacetValues('gePattern');
+    const geAreas = getValidFacetValues('geArea');
+    const traits = getValidFacetValues('traits');
+
+    // Automatically prune invalid selections in multi-select dimensions
+    if (pruneInvalidSelections(appState.filters.acc, accs)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.subject, subjects)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.course, courses)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.modality, modalities)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.session, sessions)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.dayEvening, dayEvenings)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.gePattern, gePatterns)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.geArea, geAreas)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.traits, traits)) hadPruning = true;
+
+    // Location Dropdown
+    const locSelect = document.getElementById('filter-location');
+    if (locSelect) {
+      if (appState.filters.location && !locations.has(appState.filters.location)) {
+        appState.filters.location = '';
+        hadPruning = true;
+      }
+      const currentLoc = appState.filters.location;
+      const sortedLocs = Array.from(locations).sort();
+      const locKey = sortedLocs.join('|') + '::' + currentLoc;
+      if (locSelect._lastKey !== locKey) {
+        locSelect._lastKey = locKey;
+        locSelect.innerHTML = '<option value="">All Locations</option>';
+        sortedLocs.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc;
+          opt.textContent = loc;
+          if (loc === currentLoc) opt.selected = true;
+          locSelect.appendChild(opt);
+        });
+      }
+      const countLoc = document.getElementById('count-location');
+      if (countLoc) countLoc.textContent = `(${locations.size})`;
+    }
+
+    if (updateCascadingBuildingAndRoom()) {
+      hadPruning = true;
+    }
+
+    renderCheckboxList('list-ge-area', sortGeAreas(geAreas), appState.filters.geArea, 'badge-ge-area', formatGeAreaLabel);
+    renderCheckboxList('list-ge-pattern', Array.from(gePatterns).sort(), appState.filters.gePattern, 'badge-ge-pattern', formatGePatternLabel);
+    renderCheckboxList('list-acc', sortAccs(accs), appState.filters.acc, 'badge-acc');
+    renderCheckboxList('list-subject', Array.from(subjects).sort(), appState.filters.subject, 'badge-subject', null, 'filter-subject-search');
+    renderCheckboxList('list-course', Array.from(courses).sort(), appState.filters.course, 'badge-course', null, 'filter-course-search');
+    renderCheckboxList('list-modality', Array.from(modalities).sort(), appState.filters.modality, 'badge-modality');
+    renderCheckboxList('list-session', Array.from(sessions).sort(), appState.filters.session, 'badge-session');
+    renderCheckboxList('list-day-evening', Array.from(dayEvenings).sort(), appState.filters.dayEvening, 'badge-day-evening', formatDayEveningLabel);
+    renderCheckboxList('list-traits', Array.from(traits).sort(), appState.filters.traits, 'badge-traits', null, 'filter-traits-search');
+
+    if (hadPruning) {
+      applyFiltersAndRender();
+    }
+  } finally {
+    isPopulatingFilters = false;
+  }
 }
 
 function updateCascadingBuildingAndRoom() {
-  const selectedLocation = appState.filters.location;
+  let hadPruning = false;
   const selectedBuilding = appState.filters.building;
 
   const validBuildings = new Set();
-  const bldgDescMap = new Map();
+  const bldgDescMap = appState.buildingDescMap || new Map();
   const validRooms = new Set();
 
   appState.sections.forEach(sec => {
-    if (!selectedLocation || sec.location.toLowerCase() === selectedLocation.toLowerCase()) {
+    if (matchesOtherFilters(sec, 'building')) {
       sec.scheduleBlocks.forEach(b => {
         if (b.building) {
           validBuildings.add(b.building);
@@ -1575,6 +1768,11 @@ function updateCascadingBuildingAndRoom() {
             bldgDescMap.set(b.building, b.buildingDesc);
           }
         }
+      });
+    }
+
+    if (matchesOtherFilters(sec, 'room')) {
+      sec.scheduleBlocks.forEach(b => {
         if (!selectedBuilding || b.building.toLowerCase() === selectedBuilding.toLowerCase()) {
           if (b.room) validRooms.add(b.room);
         }
@@ -1586,43 +1784,71 @@ function updateCascadingBuildingAndRoom() {
 
   const bldgSelect = document.getElementById('filter-building');
   if (bldgSelect) {
-    const prevBldg = bldgSelect.value;
-    bldgSelect.innerHTML = '<option value="">All Buildings</option>';
-    Array.from(validBuildings).sort().forEach(bldg => {
-      const opt = document.createElement('option');
-      opt.value = bldg;
-      const desc = bldgDescMap.get(bldg);
-      opt.textContent = formatBuildingDropdownLabel(bldg, desc);
-      if (bldg === prevBldg && validBuildings.has(prevBldg)) opt.selected = true;
-      bldgSelect.appendChild(opt);
-    });
-    document.getElementById('count-building').textContent = `(${validBuildings.size})`;
-    if (!validBuildings.has(appState.filters.building)) {
+    if (appState.filters.building && !validBuildings.has(appState.filters.building)) {
       appState.filters.building = '';
+      hadPruning = true;
     }
+    const currentBldg = appState.filters.building;
+    const sortedBldgs = Array.from(validBuildings).sort();
+    const bldgKey = sortedBldgs.join('|') + '::' + currentBldg;
+    if (bldgSelect._lastKey !== bldgKey) {
+      bldgSelect._lastKey = bldgKey;
+      bldgSelect.innerHTML = '<option value="">All Buildings</option>';
+      sortedBldgs.forEach(bldg => {
+        const opt = document.createElement('option');
+        opt.value = bldg;
+        const desc = bldgDescMap.get(bldg);
+        opt.textContent = formatBuildingDropdownLabel(bldg, desc);
+        if (bldg === currentBldg) opt.selected = true;
+        bldgSelect.appendChild(opt);
+      });
+    }
+    const countBldg = document.getElementById('count-building');
+    if (countBldg) countBldg.textContent = `(${validBuildings.size})`;
   }
 
   const roomSelect = document.getElementById('filter-room');
   if (roomSelect) {
-    const prevRoom = roomSelect.value;
-    roomSelect.innerHTML = '<option value="">All Rooms</option>';
-    Array.from(validRooms).sort().forEach(room => {
-      const opt = document.createElement('option');
-      opt.value = room;
-      opt.textContent = room;
-      if (room === prevRoom && validRooms.has(prevRoom)) opt.selected = true;
-      roomSelect.appendChild(opt);
-    });
-    document.getElementById('count-room').textContent = `(${validRooms.size})`;
-    if (!validRooms.has(appState.filters.room)) {
+    if (appState.filters.room && !validRooms.has(appState.filters.room)) {
       appState.filters.room = '';
+      hadPruning = true;
     }
+    const currentRoom = appState.filters.room;
+    const sortedRooms = Array.from(validRooms).sort();
+    const roomKey = sortedRooms.join('|') + '::' + currentRoom;
+    if (roomSelect._lastKey !== roomKey) {
+      roomSelect._lastKey = roomKey;
+      roomSelect.innerHTML = '<option value="">All Rooms</option>';
+      sortedRooms.forEach(room => {
+        const opt = document.createElement('option');
+        opt.value = room;
+        opt.textContent = room;
+        if (room === currentRoom) opt.selected = true;
+        roomSelect.appendChild(opt);
+      });
+    }
+    const countRoom = document.getElementById('count-room');
+    if (countRoom) countRoom.textContent = `(${validRooms.size})`;
   }
+
+  return hadPruning;
 }
 
-function renderCheckboxList(containerId, items, selectedSet, badgeId, labelFormatter = null) {
+function renderCheckboxList(containerId, items, selectedSet, badgeId, labelFormatter = null, searchInputId = null) {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  const searchInput = searchInputId ? document.getElementById(searchInputId) : null;
+  const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  const renderKey = items.join('|') + '::' + Array.from(selectedSet).sort().join(',') + '::' + searchQuery;
+  if (container._renderKey === renderKey) {
+    updateBadge(badgeId, selectedSet.size);
+    return;
+  }
+  container._renderKey = renderKey;
+
+  const prevScrollTop = container.scrollTop;
   container.innerHTML = '';
 
   items.forEach(item => {
@@ -1645,13 +1871,20 @@ function renderCheckboxList(containerId, items, selectedSet, badgeId, labelForma
     });
 
     const span = document.createElement('span');
-    span.textContent = labelFormatter ? labelFormatter(item) : item;
+    const labelText = labelFormatter ? labelFormatter(item) : item;
+    span.textContent = labelText;
 
     label.appendChild(checkbox);
     label.appendChild(span);
+
+    if (searchQuery && !labelText.toLowerCase().includes(searchQuery)) {
+      label.style.display = 'none';
+    }
+
     container.appendChild(label);
   });
 
+  container.scrollTop = prevScrollTop;
   updateBadge(badgeId, selectedSet.size);
 }
 
@@ -1665,61 +1898,10 @@ function updateBadge(badgeId, count) {
 }
 
 function applyFiltersAndRender() {
-  const {
-    search, location, building, room,
-    dayEvening, geArea, gePattern, acc, subject, course,
-    modality, session, traits
-  } = appState.filters;
+  const { building, room } = appState.filters;
 
-  const searchLower = search.toLowerCase().trim();
-
-  // Filter Parent Sections
-  const matchedSections = appState.sections.filter(sec => {
-    if (searchLower) {
-      const combined = `${sec.sectionName} ${sec.course} ${sec.subject} ${sec.facultyName} ${sec.location} ${sec.scheduleBlocks.map(b => `${b.building} ${b.room}`).join(' ')}`.toLowerCase();
-      if (!combined.includes(searchLower)) return false;
-    }
-
-    if (location && sec.location.toLowerCase() !== location.toLowerCase()) return false;
-
-    if (dayEvening.size > 0 && !dayEvening.has(sec.dayOrEvening)) return false;
-    if (acc.size > 0 && !acc.has(sec.acc)) return false;
-    if (subject.size > 0 && !subject.has(sec.subject)) return false;
-    if (course.size > 0 && !course.has(sec.course)) return false;
-    if (modality.size > 0 && !modality.has(sec.modality)) return false;
-    if (session.size > 0 && !session.has(sec.calendarSession)) return false;
-
-    // Respect multivalued associated GE Pattern & GE Area pairing
-    if (gePattern.size > 0 && geArea.size > 0) {
-      // Both selected: section must have at least one association matching both
-      const hasMatchingPair = (sec.geAssociations || []).some(pair =>
-        gePattern.has(pair.pattern) && geArea.has(pair.area)
-      );
-      if (!hasMatchingPair) return false;
-    } else if (gePattern.size > 0) {
-      const hasGePat = (sec.geAssociations || []).some(pair => gePattern.has(pair.pattern));
-      if (!hasGePat) return false;
-    } else if (geArea.size > 0) {
-      const hasGeArea = (sec.geAssociations || []).some(pair => geArea.has(pair.area));
-      if (!hasGeArea) return false;
-    }
-
-    if (traits.size > 0) {
-      const hasTrait = Array.from(traits).some(t => sec.sectionTraits.includes(t));
-      if (!hasTrait) return false;
-    }
-
-    if (building || room) {
-      const hasMatchingBlock = sec.scheduleBlocks.some(b => {
-        if (building && b.building.toLowerCase() !== building.toLowerCase()) return false;
-        if (room && b.room.toLowerCase() !== room.toLowerCase()) return false;
-        return true;
-      });
-      if (!hasMatchingBlock) return false;
-    }
-
-    return true;
-  });
+  // Filter Parent Sections using matchesOtherFilters with no excluded dimension
+  const matchedSections = appState.sections.filter(sec => matchesOtherFilters(sec, null));
 
   const matchedSectionIds = new Set(matchedSections.map(s => s.sectionUniqueId));
 
@@ -1763,6 +1945,9 @@ function applyFiltersAndRender() {
 
   renderActiveFilterPills();
   dispatchViewRender();
+
+  // Dynamically update cascading filter controls
+  populateFilterControls();
 }
 
 function renderActiveFilterPills() {
@@ -3606,18 +3791,10 @@ function setupEventListeners() {
     });
   }
 
-  // Traits Search inside Accordion
-  const traitsSearch = document.getElementById('filter-traits-search');
-  if (traitsSearch) {
-    traitsSearch.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      const list = document.querySelectorAll('#list-traits .checkbox-label');
-      list.forEach(label => {
-        const text = label.textContent.toLowerCase();
-        label.style.display = text.includes(q) ? 'flex' : 'none';
-      });
-    });
-  }
+  // Checkbox Search Inputs inside Accordions (Traits, Subject, Course)
+  wireCheckboxSearch('filter-traits-search', 'list-traits');
+  wireCheckboxSearch('filter-subject-search', 'list-subject');
+  wireCheckboxSearch('filter-course-search', 'list-course');
 
   // Accordion Header Toggles
   document.querySelectorAll('.accordion-header').forEach(header => {
@@ -3688,6 +3865,24 @@ function setupEventListeners() {
   });
 }
 
+function wireCheckboxSearch(inputId, listContainerId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const container = document.getElementById(listContainerId);
+    if (container) {
+      const labels = container.querySelectorAll('.checkbox-label');
+      labels.forEach(label => {
+        const text = label.textContent.toLowerCase();
+        label.style.display = (!q || text.includes(q)) ? 'flex' : 'none';
+      });
+      // Invalidate render cache so future populateFilterControls calls reflect the query
+      container._renderKey = null;
+    }
+  });
+}
+
 function resetAllFilters() {
   appState.filters.search = '';
   appState.filters.location = '';
@@ -3708,6 +3903,30 @@ function resetAllFilters() {
 
   const locSelect = document.getElementById('filter-location');
   if (locSelect) locSelect.value = '';
+
+  const bldgSelect = document.getElementById('filter-building');
+  if (bldgSelect) bldgSelect.value = '';
+
+  const roomSelect = document.getElementById('filter-room');
+  if (roomSelect) roomSelect.value = '';
+
+  const subjectSearch = document.getElementById('filter-subject-search');
+  if (subjectSearch) subjectSearch.value = '';
+
+  const courseSearch = document.getElementById('filter-course-search');
+  if (courseSearch) courseSearch.value = '';
+
+  const traitsSearch = document.getElementById('filter-traits-search');
+  if (traitsSearch) traitsSearch.value = '';
+
+  // Invalidate render keys so all lists re-render freshly
+  [
+    'list-ge-area', 'list-ge-pattern', 'list-acc', 'list-subject',
+    'list-course', 'list-modality', 'list-session', 'list-day-evening', 'list-traits'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el._renderKey = null;
+  });
 
   populateFilterControls();
   applyFiltersAndRender();

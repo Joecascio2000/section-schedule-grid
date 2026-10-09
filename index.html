@@ -211,6 +211,9 @@
               <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="accordion-body">
+              <div class="checkbox-search-wrapper">
+                <input type="text" id="filter-subject-search" placeholder="Search subjects..." class="form-input-sm" />
+              </div>
               <div class="checkbox-list" id="list-subject"></div>
             </div>
           </div>
@@ -223,6 +226,9 @@
               <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="accordion-body">
+              <div class="checkbox-search-wrapper">
+                <input type="text" id="filter-course-search" placeholder="Search courses..." class="form-input-sm" />
+              </div>
               <div class="checkbox-list" id="list-course"></div>
             </div>
           </div>
@@ -370,8 +376,12 @@
               </div>
               <h2 class="welcome-title">Upload Academic Schedule Spreadsheet</h2>
               <p class="welcome-desc">
-                Upload your course schedule export (e.g., <code>IR - Schedule Sections Building-Room Grids (JC) - Copy.xlsx</code> or any <code>.xlsx</code> / <code>.csv</code>) to generate interactive calendar grids and analyze room conflicts.
+                Upload your course schedule export (e.g., <code>Schedule Sections Building-Room Grids.xlsx</code> or any <code>.xlsx</code> / <code>.csv</code>) to generate interactive calendar grids and analyze room conflicts.
               </p>
+              <div class="welcome-informer-note">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>The file can be downloaded from <a href="https://informer.chaffey.edu/datasets/jc0600724:ir-schedule-sections-building-room-grids-jc" target="_blank" rel="noopener noreferrer">Informer</a>.</span>
+              </div>
               
               <label class="btn btn-hero-upload" for="file-upload-input">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -435,7 +445,7 @@
       <div class="drag-drop-modal">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#990000" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <h3>Drop Excel or CSV File Here</h3>
-        <p>Drop <code>IR - Schedule Sections Building-Room Grids (JC) - Copy.xlsx</code> to visualize immediately.</p>
+        <p>Drop <code>Schedule Sections Building-Room Grids.xlsx</code> to visualize immediately.</p>
       </div>
     </div>
 
