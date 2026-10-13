@@ -970,6 +970,9 @@ const appState = {
   eveningSubLayout: 'room',// Default Evening Coverage grid view to Room View
   fasttrackSubLayout: 'room', // Default Fast-Track Coverage grid view to Room View
   fasttrackActiveTab: 'all',  // Default to showing all Fast-Track audit items (pairs and unpaired)
+  efficiencySubLayout: 'room', // Default Efficiency grid view to Room View
+  efficiencyActiveTab: 'all',  // Default to showing all Efficiency audit items
+  currentEfficiencyAnalysis: null,
   geActivePattern: 'CALGETC', // Active pattern for GE Coverage audit
   geShowMissingOnly: false,
   filters: {
@@ -1142,6 +1145,45 @@ function isPhysicalMeetingBlock(blk) {
   return true;
 }
 
+/**
+ * ==============================================================================================
+ * ENROLLMENT EFFICIENCY & LOW ENROLLED LOGIC:
+ * Evaluates whether a section is Low Enrolled according to institutional criteria:
+ * - If Capacity >= 30: Low enrolled if Active Students < 20.
+ * - If Capacity between 17 and 29: Low enrolled if Active Students < 17.
+ * - If Capacity > 0 and < 17: Low enrolled if Fill Rate (Active / Capacity) < 70%.
+ * - Otherwise: Not low enrolled.
+ * ==============================================================================================
+ */
+function isLowEnrolledSection(sec) {
+  if (!sec) return false;
+  const cap = Number(sec.capacity) || 0;
+  const active = Number(sec.activeStudents) || 0;
+  if (cap >= 30 && active < 20) return true;
+  if (cap >= 17 && cap <= 29 && active < 17) return true;
+  if (cap > 0 && cap < 17 && (active / cap) < 0.70) return true;
+  return false;
+}
+
+function getLowEnrolledReason(sec) {
+  if (!sec) return '';
+  const cap = Number(sec.capacity) || 0;
+  const active = Number(sec.activeStudents) || 0;
+  const fillPct = cap > 0 ? Math.round((active / cap) * 100) : 0;
+
+  if (cap >= 30 && active < 20) {
+    return `Capacity ${cap} (≥30) with only ${active} students enrolled (threshold: 20 students, currently ${fillPct}% fill).`;
+  }
+  if (cap >= 17 && cap <= 29 && active < 17) {
+    return `Capacity ${cap} (17–29) with only ${active} students enrolled (threshold: 17 students, currently ${fillPct}% fill).`;
+  }
+  if (cap > 0 && cap < 17 && (active / cap) < 0.70) {
+    const requiredStudents = Math.ceil(cap * 0.70);
+    return `Small-capacity class (${cap} seats) at ${fillPct}% fill rate (threshold: 70%, requires at least ${requiredStudents} students).`;
+  }
+  return '';
+}
+
 // --- 4. DATA NORMALIZATION & GROUPING LOGIC ---
 
 /**
@@ -1273,9 +1315,30 @@ function processRawDataset(rawData) {
         }
       });
 
+      const rowTitle = String(row['Title'] || row['Course Title'] || '').trim();
+      const rowCap = parseFloat(row['Capacity']);
+      const rowCapacity = !isNaN(rowCap) ? rowCap : 0;
+      const rowAct = parseFloat(row['Active Students']);
+      const rowActive = !isNaN(rowAct) ? rowAct : 0;
+      const rowHrs = parseFloat(row['Total Hours']);
+      const rowHours = !isNaN(rowHrs) ? rowHrs : 0;
+      const rowFtesRaw = parseFloat(row['Estimated FTES']);
+      const rowFtes = !isNaN(rowFtesRaw) ? rowFtesRaw : (rowHours > 0 ? (rowActive * rowHours) / 525 : 0);
+
       sectionMap.set(groupKey, {
         sectionUniqueId: sectionUniqueId,
         sectionName: sectionName,
+        title: rowTitle,
+        capacity: rowCapacity,
+        activeStudents: rowActive,
+        totalHours: rowHours,
+        estimatedFtes: rowFtes,
+        unfilledSeats: Math.max(0, rowCapacity - rowActive),
+        fillRate: rowCapacity > 0 ? (rowActive / rowCapacity) : 0,
+        lostFtes: rowHours > 0
+          ? (Math.max(0, rowCapacity - rowActive) * rowHours) / 525
+          : (rowActive > 0 ? (Math.max(0, rowCapacity - rowActive) * rowFtes / rowActive) : 0),
+        isLowEnrolled: isLowEnrolledSection({ capacity: rowCapacity, activeStudents: rowActive }),
         sectionNumber: String(row['Section Number'] || '').trim(),
         term: String(row['Term'] || '').trim(),
         acc: normalizeAcc(row['ACC']),
@@ -1300,6 +1363,25 @@ function processRawDataset(rawData) {
     }
 
     const parentSection = sectionMap.get(groupKey);
+
+    // Merge or update enrollment fields if present on subsequent rows
+    const rowTitle = String(row['Title'] || row['Course Title'] || '').trim();
+    if (rowTitle && !parentSection.title) parentSection.title = rowTitle;
+    const rowCap = parseFloat(row['Capacity']);
+    if (!isNaN(rowCap) && rowCap > 0 && parentSection.capacity === 0) parentSection.capacity = rowCap;
+    const rowAct = parseFloat(row['Active Students']);
+    if (!isNaN(rowAct) && rowAct > 0 && parentSection.activeStudents === 0) parentSection.activeStudents = rowAct;
+    const rowHrs = parseFloat(row['Total Hours']);
+    if (!isNaN(rowHrs) && rowHrs > 0 && parentSection.totalHours === 0) parentSection.totalHours = rowHrs;
+    const rowFtes = parseFloat(row['Estimated FTES']);
+    if (!isNaN(rowFtes) && rowFtes > 0 && parentSection.estimatedFtes === 0) parentSection.estimatedFtes = rowFtes;
+
+    parentSection.unfilledSeats = Math.max(0, parentSection.capacity - parentSection.activeStudents);
+    parentSection.fillRate = parentSection.capacity > 0 ? (parentSection.activeStudents / parentSection.capacity) : 0;
+    parentSection.lostFtes = parentSection.totalHours > 0
+      ? (parentSection.unfilledSeats * parentSection.totalHours) / 525
+      : (parentSection.activeStudents > 0 && parentSection.estimatedFtes > 0 ? (parentSection.unfilledSeats * parentSection.estimatedFtes / parentSection.activeStudents) : 0);
+    parentSection.isLowEnrolled = isLowEnrolledSection(parentSection);
 
     // Merge any additional GE associations across multiple rows of the same section if present
     if (row['General Ed Pattern'] && row['General Ed Area']) {
@@ -2112,6 +2194,30 @@ function applyFiltersAndRender() {
     }
   }
 
+  // If in Efficiency Audit view, analyze enrollment efficiency and slice by active tab
+  if (appState.layoutMode === 'efficiency') {
+    const effAnalysis = analyzeEnrollmentEfficiency(matchedSections, filteredBlocks);
+    appState.currentEfficiencyAnalysis = effAnalysis;
+
+    const activeTab = appState.efficiencyActiveTab || 'all';
+    let tabSecs = matchedSections;
+    if (activeTab === 'low_enrolled') {
+      tabSecs = effAnalysis.lowEnrolledSections;
+    } else if (activeTab === 'healthy') {
+      tabSecs = effAnalysis.healthySections;
+    } else if (activeTab === 'critical') {
+      tabSecs = effAnalysis.criticalSections;
+    } else if (activeTab === 'high_lost_ftes') {
+      tabSecs = effAnalysis.highLostFtesSections;
+    }
+
+    if (activeTab !== 'all') {
+      const tabSecIdSet = new Set(tabSecs.map(s => s.sectionUniqueId));
+      filteredBlocks = filteredBlocks.filter(b => tabSecIdSet.has(b.parentSection.sectionUniqueId));
+      matchedSections = tabSecs;
+    }
+  }
+
   // REQUIREMENT 1: If Conflict Mode is active and "Isolate Conflicts Only" is on, isolate conflicts!
   if (appState.isConflictMode && appState.conflictsOnly) {
     filteredBlocks = filteredBlocks.filter(b => b.isConflict);
@@ -2278,6 +2384,7 @@ function dispatchViewRender() {
   const geContainer = document.getElementById('ge-coverage-container');
   const eveningContainer = document.getElementById('evening-coverage-container');
   const fasttrackContainer = document.getElementById('fasttrack-coverage-container');
+  const efficiencyContainer = document.getElementById('efficiency-container');
 
   // If no sections are loaded yet, display prominent Step 1 upload hero
   if (appState.sections.length === 0) {
@@ -2287,6 +2394,7 @@ function dispatchViewRender() {
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     return;
   }
 
@@ -2298,6 +2406,7 @@ function dispatchViewRender() {
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (stackedContainer) {
       stackedContainer.style.display = 'flex';
       renderStackedRoomMatrix();
@@ -2305,6 +2414,7 @@ function dispatchViewRender() {
   } else if (appState.layoutMode === 'ge') {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (geContainer) {
       geContainer.style.display = 'flex';
       renderGeCoverageDashboard();
@@ -2326,6 +2436,7 @@ function dispatchViewRender() {
   } else if (appState.layoutMode === 'evening') {
     if (geContainer) geContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (eveningContainer) {
       eveningContainer.style.display = 'flex';
       renderEveningCoverageDashboard();
@@ -2347,6 +2458,7 @@ function dispatchViewRender() {
   } else if (appState.layoutMode === 'fasttrack') {
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (fasttrackContainer) {
       fasttrackContainer.style.display = 'flex';
       renderFastTrackCoverageDashboard();
@@ -2365,11 +2477,34 @@ function dispatchViewRender() {
         renderScheduleGrid();
       }
     }
+  } else if (appState.layoutMode === 'efficiency') {
+    if (geContainer) geContainer.style.display = 'none';
+    if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) {
+      efficiencyContainer.style.display = 'flex';
+      renderEfficiencyDashboard();
+    }
+    // Swap grid below coverage audit to either Day View or Room View
+    if (appState.efficiencySubLayout === 'room') {
+      if (standardGrid) standardGrid.style.display = 'none';
+      if (stackedContainer) {
+        stackedContainer.style.display = 'flex';
+        renderStackedRoomMatrix();
+      }
+    } else {
+      if (stackedContainer) stackedContainer.style.display = 'none';
+      if (standardGrid) {
+        standardGrid.style.display = 'grid';
+        renderScheduleGrid();
+      }
+    }
   } else {
     // Default 'day' view
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (stackedContainer) stackedContainer.style.display = 'none';
     if (standardGrid) {
       standardGrid.style.display = 'grid';
@@ -2481,6 +2616,8 @@ function renderScheduleGrid() {
         appState.eveningSubLayout = 'room';
       } else if (appState.layoutMode === 'fasttrack') {
         appState.fasttrackSubLayout = 'room';
+      } else if (appState.layoutMode === 'efficiency') {
+        appState.efficiencySubLayout = 'room';
       } else {
         appState.layoutMode = 'room';
         const layoutGroup = document.getElementById('btn-group-layout');
@@ -3726,6 +3863,455 @@ function renderFastTrackCoverageDashboard() {
   });
 }
 
+// --- 8B. ENROLLMENT EFFICIENCY & PRODUCTIVITY AUDIT DASHBOARD ---
+
+/**
+ * Analyzes enrollment efficiency metrics across the current filtered set of sections:
+ * - Institutional Low Enrolled evaluations
+ * - Aggregate capacity, active students, and overall fill rate
+ * - Generated vs. Lost FTES calculations
+ * - Fill Rate Tier distributions
+ * - Academic Community (ACC) efficiency breakdowns
+ */
+function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
+  const sections = baseSections || [];
+  const totalSections = sections.length;
+
+  let totalCapacity = 0;
+  let totalActive = 0;
+  let totalEstimatedFtes = 0;
+  let totalLostFtes = 0;
+
+  const lowEnrolledSections = [];
+  const healthySections = [];
+  const criticalSections = [];
+  const highLostFtesSections = [];
+
+  let tierOptCount = 0;
+  let tierHighCount = 0;
+  let tierMedCount = 0;
+  let tierLowCount = 0;
+
+  const accMap = new Map();
+
+  sections.forEach(sec => {
+    const cap = Number(sec.capacity) || 0;
+    const act = Number(sec.activeStudents) || 0;
+    const ftes = Number(sec.estimatedFtes) || 0;
+    const lost = Number(sec.lostFtes) || 0;
+    const fillRate = cap > 0 ? (act / cap) : 0;
+
+    totalCapacity += cap;
+    totalActive += act;
+    totalEstimatedFtes += ftes;
+    totalLostFtes += lost;
+
+    if (sec.isLowEnrolled) {
+      lowEnrolledSections.push(sec);
+    }
+    if (cap > 0 && fillRate >= 0.80) {
+      healthySections.push(sec);
+      tierOptCount++;
+    } else if (cap > 0 && fillRate >= 0.65) {
+      tierHighCount++;
+    } else if (cap > 0 && fillRate >= 0.50) {
+      tierMedCount++;
+    } else {
+      tierLowCount++;
+    }
+
+    if (cap > 0 && fillRate < 0.50) {
+      criticalSections.push(sec);
+    }
+
+    if (lost >= 2.0) {
+      highLostFtesSections.push(sec);
+    }
+
+    const accKey = sec.acc || 'Unassigned';
+    if (!accMap.has(accKey)) {
+      accMap.set(accKey, {
+        acc: accKey,
+        sectionsCount: 0,
+        capacity: 0,
+        active: 0,
+        estimatedFtes: 0,
+        lostFtes: 0,
+        lowEnrolledCount: 0
+      });
+    }
+    const accItem = accMap.get(accKey);
+    accItem.sectionsCount++;
+    accItem.capacity += cap;
+    accItem.active += act;
+    accItem.estimatedFtes += ftes;
+    accItem.lostFtes += lost;
+    if (sec.isLowEnrolled) {
+      accItem.lowEnrolledCount++;
+    }
+  });
+
+  const overallFillRate = totalCapacity > 0 ? (totalActive / totalCapacity) * 100 : 0;
+  const totalPotentialFtes = totalEstimatedFtes + totalLostFtes;
+  const ftesRealizationRate = totalPotentialFtes > 0 ? (totalEstimatedFtes / totalPotentialFtes) * 100 : 0;
+
+  const accBreakdown = Array.from(accMap.values()).map(item => {
+    item.fillRate = item.capacity > 0 ? (item.active / item.capacity) * 100 : 0;
+    return item;
+  }).sort((a, b) => b.sectionsCount - a.sectionsCount);
+
+  return {
+    totalSections,
+    totalCapacity,
+    totalActive,
+    overallFillRate,
+    totalEstimatedFtes,
+    totalLostFtes,
+    totalPotentialFtes,
+    ftesRealizationRate,
+    lowEnrolledSections,
+    healthySections,
+    criticalSections,
+    highLostFtesSections,
+    tiers: {
+      optimal: { count: tierOptCount, pct: totalSections > 0 ? (tierOptCount / totalSections) * 100 : 0 },
+      high: { count: tierHighCount, pct: totalSections > 0 ? (tierHighCount / totalSections) * 100 : 0 },
+      moderate: { count: tierMedCount, pct: totalSections > 0 ? (tierMedCount / totalSections) * 100 : 0 },
+      low: { count: tierLowCount, pct: totalSections > 0 ? (tierLowCount / totalSections) * 100 : 0 }
+    },
+    accBreakdown
+  };
+}
+
+/**
+ * Renders the Enrollment Efficiency & Productivity Audit Dashboard:
+ * - Executive KPI bar (Low Enrolled count, Fill Rate %, FTES, Lost FTES, Potential FTES)
+ * - Fill Rate Tier progress bars and ACC efficiency breakdown table
+ * - Filter tabs (All, Low Enrolled, Healthy, Critical, High Lost FTES)
+ * - Section cards with fill gauges, FTES metrics, and low-enrolled reason banners
+ * - Synchronizes directly with the underlying Room View and Day View grids
+ */
+function renderEfficiencyDashboard() {
+  const container = document.getElementById('efficiency-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const effAnalysis = appState.currentEfficiencyAnalysis || analyzeEnrollmentEfficiency(appState.sections, appState.scheduleBlocks);
+
+  // Scope label for current filters
+  const scopeParts = [];
+  if (appState.filters.location) scopeParts.push(appState.filters.location);
+  else scopeParts.push('All Campuses');
+
+  if (appState.filters.building) scopeParts.push(`Bldg ${appState.filters.building}`);
+  if (appState.filters.room) scopeParts.push(`Room ${appState.filters.room}`);
+  if (appState.filters.acc.size > 0) scopeParts.push(`ACC: ${Array.from(appState.filters.acc).join(', ')}`);
+  if (appState.filters.subject.size > 0) scopeParts.push(`Subject: ${Array.from(appState.filters.subject).join(', ')}`);
+  if (appState.filters.course.size > 0) scopeParts.push(`Course: ${Array.from(appState.filters.course).join(', ')}`);
+  if (appState.filters.dayEvening.size > 0) scopeParts.push(`Type: ${Array.from(appState.filters.dayEvening).map(formatDayEveningLabel).join(', ')}`);
+  if (appState.filters.modality.size > 0) scopeParts.push(`Modality: ${Array.from(appState.filters.modality).join(', ')}`);
+  if (appState.filters.session.size > 0) scopeParts.push(`Session: ${Array.from(appState.filters.session).join(', ')}`);
+  if (appState.filters.search) scopeParts.push(`"${appState.filters.search}"`);
+
+  const scopeLabel = scopeParts.join(' • ');
+
+  // 1. Header Row
+  const headerRow = document.createElement('div');
+  headerRow.className = 'efficiency-header';
+  headerRow.innerHTML = `
+    <div class="efficiency-title">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Enrollment Efficiency & Productivity Audit: <span>${scopeLabel}</span>
+      </h3>
+      <p>Analyze institutional low-enrolled thresholds, fill rates, generated vs. lost FTES, and academic community productivity.</p>
+    </div>
+    <div class="efficiency-header-controls">
+      <div class="sub-layout-switcher" id="efficiency-sub-layout-switcher">
+        <span class="sub-layout-label">Grid View:</span>
+        <div class="btn-sub-toggle-group">
+          <button type="button" class="btn-sub-layout-toggle ${appState.efficiencySubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
+          <button type="button" class="btn-sub-layout-toggle ${appState.efficiencySubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(headerRow);
+
+  // Sub-layout switcher listener
+  headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.efficiencySubLayout = btn.getAttribute('data-sublayout');
+      headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      dispatchViewRender();
+    });
+  });
+
+  // 2. Summary KPI Cards
+  const lowEnrolledPct = effAnalysis.totalSections > 0
+    ? ((effAnalysis.lowEnrolledSections.length / effAnalysis.totalSections) * 100).toFixed(1)
+    : '0.0';
+  const unfilledSeats = Math.max(0, effAnalysis.totalCapacity - effAnalysis.totalActive);
+
+  const summaryBar = document.createElement('div');
+  summaryBar.className = 'efficiency-summary-bar';
+  summaryBar.innerHTML = `
+    <div class="eff-stat-card alert-card">
+      <span class="eff-stat-card-title">Low Enrolled Alert</span>
+      <span class="eff-stat-card-value">${effAnalysis.lowEnrolledSections.length}</span>
+      <span class="eff-stat-card-sub">${lowEnrolledPct}% of offerings &bull; Institutional criteria</span>
+    </div>
+    <div class="eff-stat-card fill-card">
+      <span class="eff-stat-card-title">Average Fill Rate</span>
+      <span class="eff-stat-card-value">${effAnalysis.overallFillRate.toFixed(1)}%</span>
+      <span class="eff-stat-card-sub">${effAnalysis.totalActive.toLocaleString()} enrolled / ${effAnalysis.totalCapacity.toLocaleString()} seats</span>
+    </div>
+    <div class="eff-stat-card ftes-card">
+      <span class="eff-stat-card-title">Estimated FTES</span>
+      <span class="eff-stat-card-value">${effAnalysis.totalEstimatedFtes.toFixed(1)}</span>
+      <span class="eff-stat-card-sub">Active census productivity</span>
+    </div>
+    <div class="eff-stat-card lost-card">
+      <span class="eff-stat-card-title">Lost / Missing FTES</span>
+      <span class="eff-stat-card-value">${effAnalysis.totalLostFtes.toFixed(1)}</span>
+      <span class="eff-stat-card-sub">${unfilledSeats.toLocaleString()} unfilled seats across sections</span>
+    </div>
+    <div class="eff-stat-card potential-card">
+      <span class="eff-stat-card-title">Potential FTES</span>
+      <span class="eff-stat-card-value">${effAnalysis.totalPotentialFtes.toFixed(1)}</span>
+      <span class="eff-stat-card-sub">${effAnalysis.ftesRealizationRate.toFixed(1)}% realization rate</span>
+    </div>
+  `;
+  container.appendChild(summaryBar);
+
+  // 3. Analytics Row (Tiers & ACC Breakdown)
+  const analyticsRow = document.createElement('div');
+  analyticsRow.className = 'efficiency-analytics-row';
+
+  // Tier progress panel
+  const tierPanel = document.createElement('div');
+  tierPanel.className = 'efficiency-panel';
+  tierPanel.innerHTML = `
+    <div class="efficiency-panel-title">
+      <span>Fill Rate Distribution</span>
+      <span style="font-size:11px; font-weight:600; color:var(--text-muted);">${effAnalysis.totalSections} Total Sections</span>
+    </div>
+    <div class="tier-bar-row">
+      <span class="tier-label">Full / Optimal (≥80%)</span>
+      <div class="tier-bar-track">
+        <div class="tier-bar-fill fill-opt" style="width: ${effAnalysis.tiers.optimal.pct.toFixed(1)}%;"></div>
+      </div>
+      <span class="tier-stats">${effAnalysis.tiers.optimal.count} (${effAnalysis.tiers.optimal.pct.toFixed(0)}%)</span>
+    </div>
+    <div class="tier-bar-row">
+      <span class="tier-label">High Demand (65–79%)</span>
+      <div class="tier-bar-track">
+        <div class="tier-bar-fill fill-high" style="width: ${effAnalysis.tiers.high.pct.toFixed(1)}%;"></div>
+      </div>
+      <span class="tier-stats">${effAnalysis.tiers.high.count} (${effAnalysis.tiers.high.pct.toFixed(0)}%)</span>
+    </div>
+    <div class="tier-bar-row">
+      <span class="tier-label">Moderate (50–64%)</span>
+      <div class="tier-bar-track">
+        <div class="tier-bar-fill fill-med" style="width: ${effAnalysis.tiers.moderate.pct.toFixed(1)}%;"></div>
+      </div>
+      <span class="tier-stats">${effAnalysis.tiers.moderate.count} (${effAnalysis.tiers.moderate.pct.toFixed(0)}%)</span>
+    </div>
+    <div class="tier-bar-row">
+      <span class="tier-label">Critical / Underfilled (&lt;50%)</span>
+      <div class="tier-bar-track">
+        <div class="tier-bar-fill fill-low" style="width: ${effAnalysis.tiers.low.pct.toFixed(1)}%;"></div>
+      </div>
+      <span class="tier-stats">${effAnalysis.tiers.low.count} (${effAnalysis.tiers.low.pct.toFixed(0)}%)</span>
+    </div>
+  `;
+
+  // ACC Breakdown Panel
+  const accPanel = document.createElement('div');
+  accPanel.className = 'efficiency-panel';
+  const accRowsHtml = effAnalysis.accBreakdown.map(item => `
+    <tr>
+      <td style="font-weight:700; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.acc}">${item.acc}</td>
+      <td style="text-align:right;">${item.sectionsCount}</td>
+      <td style="text-align:right;"><strong>${item.fillRate.toFixed(1)}%</strong></td>
+      <td style="text-align:right;">${item.estimatedFtes.toFixed(1)}</td>
+      <td style="text-align:right; color:#d97706; font-weight:600;">${item.lostFtes.toFixed(1)}</td>
+      <td style="text-align:right;">
+        ${item.lowEnrolledCount > 0 ? `<span style="color:#dc2626; font-weight:700;">⚠ ${item.lowEnrolledCount}</span>` : `<span style="color:#059669;">0</span>`}
+      </td>
+    </tr>
+  `).join('');
+
+  accPanel.innerHTML = `
+    <div class="efficiency-panel-title">
+      <span>Academic Community (ACC) Breakdown</span>
+      <span style="font-size:11px; font-weight:600; color:var(--text-muted);">${effAnalysis.accBreakdown.length} Communities</span>
+    </div>
+    <div class="efficiency-table-container">
+      <table class="efficiency-table">
+        <thead>
+          <tr>
+            <th>ACC</th>
+            <th style="text-align:right;">Secs</th>
+            <th style="text-align:right;">Fill %</th>
+            <th style="text-align:right;">Est FTES</th>
+            <th style="text-align:right;">Lost FTES</th>
+            <th style="text-align:right;">Low Enr</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${accRowsHtml || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No ACC data</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  analyticsRow.appendChild(tierPanel);
+  analyticsRow.appendChild(accPanel);
+  container.appendChild(analyticsRow);
+
+  // 4. Tab Navigation Bar
+  const activeTab = appState.efficiencyActiveTab || 'all';
+  const navBar = document.createElement('div');
+  navBar.className = 'efficiency-audit-nav';
+  navBar.innerHTML = `
+    <div class="efficiency-audit-tabs">
+      <button type="button" class="eff-tab-btn ${activeTab === 'all' ? 'active' : ''}" data-tab="all">
+        <span>All Sections</span>
+        <span class="eff-tab-badge">${effAnalysis.totalSections}</span>
+      </button>
+      <button type="button" class="eff-tab-btn tab-low ${activeTab === 'low_enrolled' ? 'active' : ''}" data-tab="low_enrolled">
+        <span>⚠ Low Enrolled Alert</span>
+        <span class="eff-tab-badge">${effAnalysis.lowEnrolledSections.length}</span>
+      </button>
+      <button type="button" class="eff-tab-btn tab-healthy ${activeTab === 'healthy' ? 'active' : ''}" data-tab="healthy">
+        <span>✓ Healthy Fill (≥80%)</span>
+        <span class="eff-tab-badge">${effAnalysis.healthySections.length}</span>
+      </button>
+      <button type="button" class="eff-tab-btn tab-critical ${activeTab === 'critical' ? 'active' : ''}" data-tab="critical">
+        <span>⚡ Critical (&lt;50%)</span>
+        <span class="eff-tab-badge">${effAnalysis.criticalSections.length}</span>
+      </button>
+      <button type="button" class="eff-tab-btn tab-lost ${activeTab === 'high_lost_ftes' ? 'active' : ''}" data-tab="high_lost_ftes">
+        <span>📉 High Lost FTES (≥2.0)</span>
+        <span class="eff-tab-badge">${effAnalysis.highLostFtesSections.length}</span>
+      </button>
+    </div>
+    <div style="font-size:11.5px; color:var(--text-muted);">
+      Click any course card to inspect details. Grid below synchronizes to filtered sections.
+    </div>
+  `;
+  container.appendChild(navBar);
+
+  // Tab switching listener
+  navBar.querySelectorAll('.eff-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.efficiencyActiveTab = btn.getAttribute('data-tab');
+      applyFiltersAndRender();
+    });
+  });
+
+  // 5. Section Cards Grid
+  const cardsGrid = document.createElement('div');
+  cardsGrid.className = 'efficiency-cards-grid';
+
+  const sectionsToRender = appState.filteredSections || [];
+
+  if (sectionsToRender.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.style.cssText = 'grid-column: 1 / -1; padding: 36px 20px; text-align: center; color: var(--text-secondary); background: var(--bg-surface); border: 1px dashed var(--border-color); border-radius: 10px;';
+    emptyState.innerHTML = `
+      <div style="font-size: 24px; margin-bottom: 8px;">✓</div>
+      <div style="font-weight: 700; font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">No Sections in Selected Category</div>
+      <div style="font-size: 12px; color: var(--text-muted);">There are no sections matching the "${activeTab.replace(/_/g, ' ')}" criteria under current filters.</div>
+    `;
+    cardsGrid.appendChild(emptyState);
+  } else {
+    const displayLimit = 120;
+    const limitedSections = sectionsToRender.slice(0, displayLimit);
+
+    limitedSections.forEach(sec => {
+      const card = document.createElement('div');
+      const isLow = sec.isLowEnrolled;
+      const isHealthy = sec.fillRate >= 0.80;
+      const isCrit = sec.fillRate < 0.50;
+
+      card.className = `eff-section-card ${isLow ? 'is-low-enrolled' : (isHealthy ? 'is-healthy' : '')}`;
+
+      const fillPct = Math.round(sec.fillRate * 100);
+      let barColor = '#3b82f6';
+      if (isLow || isCrit) barColor = '#ef4444';
+      else if (isHealthy) barColor = '#10b981';
+      else if (fillPct >= 65) barColor = '#3b82f6';
+      else barColor = '#f59e0b';
+
+      let statusBadge = '';
+      if (isLow) {
+        statusBadge = `<span class="eff-status-pill status-low">⚠ Low Enrolled</span>`;
+      } else if (isHealthy) {
+        statusBadge = `<span class="eff-status-pill status-healthy">✓ ${fillPct}% Full</span>`;
+      } else if (isCrit) {
+        statusBadge = `<span class="eff-status-pill status-low">⚡ ${fillPct}% Fill</span>`;
+      } else {
+        statusBadge = `<span class="eff-status-pill status-normal">● ${fillPct}% Fill</span>`;
+      }
+
+      card.innerHTML = `
+        <div class="eff-card-top-bar">
+          <div>
+            <div class="eff-card-course">${sec.course}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${sec.sectionName} (ID: ${sec.sectionUniqueId})</div>
+            ${sec.title ? `<div class="eff-card-title">${sec.title}</div>` : ''}
+          </div>
+          <div>${statusBadge}</div>
+        </div>
+
+        ${isLow ? `
+          <div class="eff-reason-banner">
+            <span>⚠</span>
+            <span>${getLowEnrolledReason(sec)}</span>
+          </div>
+        ` : ''}
+
+        <div class="eff-fill-gauge-container">
+          <div class="eff-fill-gauge-meta">
+            <span>Enrolled / Capacity</span>
+            <span><strong>${sec.activeStudents}</strong> / ${sec.capacity} (${fillPct}%)</span>
+          </div>
+          <div class="eff-fill-track">
+            <div class="eff-fill-bar" style="width: ${Math.min(100, fillPct)}%; background-color: ${barColor};"></div>
+          </div>
+        </div>
+
+        <div class="eff-metrics-row">
+          <span class="eff-metric-tag"><strong>Faculty:</strong> ${sec.facultyName || 'Staff'}</span>
+          <span class="eff-metric-tag"><strong>Location:</strong> ${sec.location}</span>
+          <span class="eff-metric-tag"><strong>Est FTES:</strong> ${sec.estimatedFtes.toFixed(2)}</span>
+          <span class="eff-metric-tag" style="color: ${sec.lostFtes >= 2.0 ? '#d97706' : 'var(--text-secondary)'};"><strong>Lost FTES:</strong> ${sec.lostFtes.toFixed(2)}</span>
+          ${sec.acc ? `<span class="eff-metric-tag"><strong>ACC:</strong> ${sec.acc}</span>` : ''}
+        </div>
+      `;
+
+      card.addEventListener('mouseenter', (e) => showPopover(e, sec));
+      card.addEventListener('mousemove', (e) => positionPopover(e));
+      card.addEventListener('mouseleave', hidePopover);
+      card.addEventListener('click', () => showSectionModal(sec));
+
+      cardsGrid.appendChild(card);
+    });
+
+    if (sectionsToRender.length > displayLimit) {
+      const moreNote = document.createElement('div');
+      moreNote.style.cssText = 'grid-column: 1 / -1; padding: 12px; text-align: center; font-size: 12px; color: var(--text-muted); background: var(--bg-surface-subtle); border-radius: 8px; border: 1px solid var(--border-color);';
+      moreNote.textContent = `Showing first ${displayLimit} of ${sectionsToRender.length} sections. Use the sidebar filters to refine the list or view all in Room/Day View below.`;
+      cardsGrid.appendChild(moreNote);
+    }
+  }
+
+  container.appendChild(cardsGrid);
+}
+
 /**
  * Creates an individual Schedule Tile DOM Element with dedicated Course Code row
  * preventing text smashing, and support for Stacked Classes & GE Badges
@@ -3893,12 +4479,28 @@ function showPopover(event, target) {
 
   const geInfo = formatSectionGeInfo(sec);
 
+  const lowEnrolledAlertHtml = sec.isLowEnrolled ? `
+    <div style="margin-top:8px; padding:6px 8px; background-color:#fef2f2; border:1px solid #fee2e2; border-radius:6px; color:#991b1b; font-size:11px; font-weight:600; display:flex; align-items:flex-start; gap:6px;">
+      <span>⚠</span>
+      <span><strong>LOW ENROLLED:</strong> ${getLowEnrolledReason(sec)}</span>
+    </div>
+  ` : '';
+
+  const enrollmentRowsHtml = (sec.capacity > 0 || sec.activeStudents > 0) ? `
+    <span class="popover-field-label">Enrollment:</span>
+    <span class="popover-field-value"><strong>${sec.activeStudents}</strong> / ${sec.capacity} (${Math.round(sec.fillRate * 100)}% Fill)</span>
+
+    <span class="popover-field-label">Est. FTES:</span>
+    <span class="popover-field-value">${sec.estimatedFtes.toFixed(2)} FTES ${sec.lostFtes > 0 ? `<span style="color:#d97706; font-size:10.5px;">(Lost: ${sec.lostFtes.toFixed(2)})</span>` : ''}</span>
+  ` : '';
+
   popoverEl.innerHTML = `
     <div class="popover-header">
       <div class="popover-title-row">
         <span class="popover-course">${sec.course}</span>
         <span class="popover-id-pill">ID: ${sec.sectionUniqueId}</span>
       </div>
+      ${sec.title ? `<div style="font-size:12px; font-weight:600; color:var(--chaffey-blue); margin-top:2px; line-height:1.25;">${sec.title}</div>` : ''}
       <div class="popover-sec-name">${sec.sectionName}</div>
     </div>
     <div class="popover-grid">
@@ -3912,6 +4514,8 @@ function showPopover(event, target) {
 
       <span class="popover-field-label">Faculty:</span>
       <span class="popover-field-value">${sec.facultyName || 'Staff'}</span>
+
+      ${enrollmentRowsHtml}
 
       <span class="popover-field-label">Meeting:</span>
       <span class="popover-field-value">${meetingTypeStr}</span>
@@ -3943,6 +4547,7 @@ function showPopover(event, target) {
       <div class="popover-traits-list">${traitsHtml}</div>
     ` : ''}
 
+    ${lowEnrolledAlertHtml}
     ${stackedAlertHtml}
     ${conflictAlertHtml}
   `;
@@ -3986,7 +4591,9 @@ function showSectionModal(section, activeBlock) {
   if (!modal || !modalBody) return;
 
   modalSecId.textContent = `SECTION UNIQUE ID: #${section.sectionUniqueId}`;
-  modalSecName.textContent = `${section.course} – ${section.sectionName}`;
+  modalSecName.textContent = section.title
+    ? `${section.course} – ${section.title} (${section.sectionName})`
+    : `${section.course} – ${section.sectionName}`;
 
   // For Fast-Track Coverage, ignore Scheduled Meeting Components or Parts that do not list days, times, locations, or hours,
   // and ignore components/parts listed as Online Lec; Canvas CANVAS (Online).
@@ -4020,12 +4627,29 @@ function showSectionModal(section, activeBlock) {
 
   const geInfo = formatSectionGeInfo(section);
 
+  const lowEnrolledModalBanner = section.isLowEnrolled ? `
+    <div style="margin-bottom:16px; padding:10px 14px; background-color:#fef2f2; border:1px solid #fecaca; border-left:4px solid #dc2626; border-radius:8px; color:#991b1b; font-size:12.5px; font-weight:600; display:flex; align-items:flex-start; gap:8px;">
+      <span style="font-size:16px; line-height:1;">⚠</span>
+      <div>
+        <div style="font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:0.5px; color:#b91c1c;">Institutional Low Enrolled Alert</div>
+        <div style="margin-top:2px;">${getLowEnrolledReason(section)}</div>
+      </div>
+    </div>
+  ` : '';
+
   modalBody.innerHTML = `
+    ${lowEnrolledModalBanner}
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">SUBJECT & COURSE</div>
         <div style="font-size:13px; font-weight:600;">${section.subject} (${section.course})</div>
       </div>
+      ${section.title ? `
+        <div>
+          <div style="font-size:11px; color:var(--text-muted); font-weight:600;">COURSE TITLE</div>
+          <div style="font-size:13px; font-weight:600; color:var(--chaffey-blue);">${section.title}</div>
+        </div>
+      ` : ''}
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">INSTRUCTOR</div>
         <div style="font-size:13px; font-weight:600;">${section.facultyName || 'Staff'}</div>
@@ -4045,6 +4669,24 @@ function showSectionModal(section, activeBlock) {
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">MODALITY</div>
         <div style="font-size:13px; font-weight:600;">${section.modality}</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">ENROLLMENT & CAPACITY</div>
+        <div style="font-size:13px; font-weight:600;">
+          <strong>${section.activeStudents}</strong> / ${section.capacity} Seats (${Math.round(section.fillRate * 100)}% Fill)
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">ESTIMATED FTES</div>
+        <div style="font-size:13px; font-weight:600; color:#059669;">
+          ${section.estimatedFtes.toFixed(2)} FTES
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">LOST / UNFILLED FTES</div>
+        <div style="font-size:13px; font-weight:600; color:${section.lostFtes >= 2.0 ? '#dc2626' : (section.lostFtes > 0 ? '#d97706' : 'var(--text-primary)')};">
+          ${section.lostFtes.toFixed(2)} FTES (${section.unfilledSeats} unfilled seats)
+        </div>
       </div>
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">GENERAL ED PATTERN</div>
@@ -4296,8 +4938,9 @@ function exportAsCsv() {
   }
 
   const headers = [
-    'Section Unique ID', 'Course', 'Section Name', 'Subject', 'Faculty Name',
+    'Section Unique ID', 'Course', 'Course Title', 'Section Name', 'Subject', 'ACC', 'Faculty Name',
     'Location', 'Building', 'Room', 'Day', 'Start Time', 'End Time',
+    'Capacity', 'Active Students', 'Fill Rate %', 'Estimated FTES', 'Lost FTES', 'Low Enrolled Alert',
     'Instruction Type', 'General Ed Pattern', 'General Ed Area', 'Section Traits',
     'Is Stacked', 'Is Conflict'
   ];
@@ -4305,11 +4948,14 @@ function exportAsCsv() {
   const rows = appState.filteredBlocks.map(b => {
     const sec = b.parentSection;
     const geInfo = formatSectionGeInfo(sec);
+    const fillPct = sec.capacity > 0 ? (sec.fillRate * 100).toFixed(1) + '%' : '0.0%';
     return [
       `"${sec.sectionUniqueId}"`,
       `"${sec.course}"`,
+      `"${sec.title || ''}"`,
       `"${sec.sectionName}"`,
       `"${sec.subject}"`,
+      `"${sec.acc || ''}"`,
       `"${sec.facultyName}"`,
       `"${sec.location}"`,
       `"${b.building}"`,
@@ -4317,6 +4963,12 @@ function exportAsCsv() {
       `"${DAY_MAP[b.day].name}"`,
       `"${b.startTimeStr}"`,
       `"${b.endTimeStr}"`,
+      sec.capacity,
+      sec.activeStudents,
+      `"${fillPct}"`,
+      sec.estimatedFtes.toFixed(2),
+      sec.lostFtes.toFixed(2),
+      `"${sec.isLowEnrolled ? 'YES' : 'NO'}"`,
       `"${b.instructionType}"`,
       `"${geInfo.patternsFormatted}"`,
       `"${geInfo.combinedFormatted !== 'None' ? geInfo.combinedFormatted : 'None'}"`,
@@ -4634,6 +5286,7 @@ function resetAllFilters() {
   appState.filters.session.clear();
   appState.filters.traits.clear();
   appState.fasttrackActiveTab = 'all';
+  appState.efficiencyActiveTab = 'all';
 
   const searchInput = document.getElementById('filter-search');
   if (searchInput) searchInput.value = '';
