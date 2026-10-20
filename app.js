@@ -983,14 +983,155 @@ const appState = {
     dayEvening: new Set(),
     geArea: new Set(),
     gePattern: new Set(),
+    program: new Set(),
     acc: new Set(),
     subject: new Set(),
     course: new Set(),
     modality: new Set(),
     session: new Set(),
     traits: new Set()
-  }
+  },
+  programs: new Map(),           // Map of programId -> { id, code, title, isAssociate, courses: Set() }
+  courseToProgramsMap: new Map() // Map of courseName -> Set of programIds
 };
+
+// --- 2.5 PROGRAM OF STUDY DATA & MAPPING ---
+
+/**
+ * Applies a list of program objects to appState.programs and appState.courseToProgramsMap.
+ * Program object structure: { id, code, title, isAssociate, courses: string[] }
+ */
+function applyProgramData(programData) {
+  if (!programData) return;
+  const programArray = Array.isArray(programData) ? programData : Object.values(programData);
+  if (!Array.isArray(programArray) || programArray.length === 0) return;
+
+  const progMap = new Map();
+  const courseMap = new Map();
+
+  programArray.forEach(p => {
+    const code = String(p.code || '').trim();
+    const title = String(p.title || '').trim();
+    const pId = p.id || `${code} - ${title}`;
+    const isAssociate = p.isAssociate !== undefined
+      ? Boolean(p.isAssociate)
+      : (code.toUpperCase().startsWith('A') || code.toUpperCase().startsWith('S'));
+
+    const coursesSet = new Set();
+    (p.courses || []).forEach(c => {
+      const cNorm = String(c).trim().toUpperCase();
+      if (cNorm) coursesSet.add(cNorm);
+    });
+
+    progMap.set(pId, {
+      id: pId,
+      code: code,
+      title: title,
+      isAssociate: isAssociate,
+      courses: coursesSet
+    });
+
+    coursesSet.forEach(c => {
+      if (!courseMap.has(c)) {
+        courseMap.set(c, new Set());
+      }
+      courseMap.get(c).add(pId);
+    });
+  });
+
+  appState.programs = progMap;
+  appState.courseToProgramsMap = courseMap;
+  populateFilterControls();
+}
+
+/**
+ * Parses raw JSON rows from a Program Summary CSV or XLSX file.
+ * Rows must match active programs and combine Local Code + Program Entity Title.
+ */
+function parseProgramSummaryRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const programMap = new Map();
+
+  rows.forEach(row => {
+    const status = String(row['Program Status'] || '').trim();
+    if (status.toLowerCase() !== 'active') return;
+
+    const code = String(row['Local Code'] || '').trim();
+    const title = String(row['Program Entity Title'] || '').trim();
+    if (!code || !title) return;
+
+    const progId = `${code} - ${title}`;
+    const codeUpper = code.toUpperCase();
+    const isAssociate = codeUpper.startsWith('A') || codeUpper.startsWith('S');
+
+    if (!programMap.has(progId)) {
+      programMap.set(progId, {
+        id: progId,
+        code: code,
+        title: title,
+        isAssociate: isAssociate,
+        courses: []
+      });
+    }
+
+    const subj = String(row['Program_Course Block_Course Block Item Course Subject Code'] || '').trim().toUpperCase();
+    const num = String(row['Program_Course Block_Course Block Item Course Number'] || '').trim().toUpperCase();
+
+    if (subj && num) {
+      const crse = `${subj}-${num}`;
+      const progObj = programMap.get(progId);
+      if (!progObj.courses.includes(crse)) {
+        progObj.courses.push(crse);
+      }
+    }
+  });
+
+  return Array.from(programMap.values());
+}
+
+/**
+ * Auto-loads program data on startup:
+ * 1. Immediately checks window.CHAFFEY_PROGRAM_DATA (from program-data.js) for zero-latency offline loading.
+ * 2. Attempts dynamic fetch of Program Summary CSV if hosted on a web server or GitHub Pages.
+ */
+function loadProgramSummaryData() {
+  if (window.CHAFFEY_PROGRAM_DATA) {
+    applyProgramData(window.CHAFFEY_PROGRAM_DATA);
+  }
+
+  // Fallback / dynamic update if served over HTTP/HTTPS
+  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    const candidateUrls = ['Program Summary.csv', 'program-summary.csv', 'Program Summary 2026-10-19_112619.csv'];
+
+    async function tryFetchNext(idx) {
+      if (idx >= candidateUrls.length) return;
+      try {
+        const resp = await fetch(candidateUrls[idx]);
+        if (resp.ok) {
+          const csvText = await resp.text();
+          if (typeof XLSX !== 'undefined') {
+            const wb = XLSX.read(csvText, { type: 'string' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            if (jsonRows.length > 0) {
+              const parsed = parseProgramSummaryRows(jsonRows);
+              if (parsed.length > 0) {
+                applyProgramData(parsed);
+                return;
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Silently catch and try next candidate
+      }
+      tryFetchNext(idx + 1);
+    }
+
+    tryFetchNext(0);
+  }
+}
 
 /**
  * Formats Day or Evening codes (e.g. 'D' -> 'Day (D)', 'E' -> 'Evening (E)')
@@ -1715,7 +1856,7 @@ function updateConflictUI() {
 function matchesOtherFilters(sec, excludeDimension = null) {
   const {
     search, location, building, room,
-    dayEvening, geArea, gePattern, acc, subject, course,
+    dayEvening, geArea, gePattern, program, acc, subject, course,
     modality, session, traits
   } = appState.filters;
 
@@ -1751,6 +1892,30 @@ function matchesOtherFilters(sec, excludeDimension = null) {
 
   if (excludeDimension !== 'session' && session.size > 0) {
     if (!session.has(sec.calendarSession)) return false;
+  }
+
+  if (excludeDimension !== 'program' && program.size > 0) {
+    let matchesProgram = false;
+    for (const progId of program) {
+      const prog = appState.programs.get(progId);
+      if (!prog) continue;
+
+      if (prog.courses && prog.courses.has(sec.course)) {
+        matchesProgram = true;
+        break;
+      }
+
+      if (prog.isAssociate) {
+        const isGe = (sec.geAssociations && sec.geAssociations.length > 0) ||
+                     (sec.generalEdArea && sec.generalEdArea.length > 0) ||
+                     (sec.generalEdPattern && sec.generalEdPattern.length > 0);
+        if (isGe) {
+          matchesProgram = true;
+          break;
+        }
+      }
+    }
+    if (!matchesProgram) return false;
   }
 
   // Respect multivalued associated GE Pattern & GE Area pairing
@@ -1799,6 +1964,25 @@ function matchesOtherFilters(sec, excludeDimension = null) {
   return true;
 }
 
+function hasAnyActiveFiltersExcept(dim) {
+  const f = appState.filters;
+  if (f.search) return true;
+  if (dim !== 'location' && f.location) return true;
+  if (dim !== 'building' && f.building) return true;
+  if (dim !== 'room' && f.room) return true;
+  if (dim !== 'dayEvening' && f.dayEvening.size > 0) return true;
+  if (dim !== 'geArea' && f.geArea.size > 0) return true;
+  if (dim !== 'gePattern' && f.gePattern.size > 0) return true;
+  if (dim !== 'program' && f.program.size > 0) return true;
+  if (dim !== 'acc' && f.acc.size > 0) return true;
+  if (dim !== 'subject' && f.subject.size > 0) return true;
+  if (dim !== 'course' && f.course.size > 0) return true;
+  if (dim !== 'modality' && f.modality.size > 0) return true;
+  if (dim !== 'session' && f.session.size > 0) return true;
+  if (dim !== 'traits' && f.traits.size > 0) return true;
+  return false;
+}
+
 /**
  * Returns the set of valid options for a specific dimension based on sections that match
  * all other active filters (leave-one-out).
@@ -1819,6 +2003,12 @@ function getValidFacetValues(dimension) {
         break;
       case 'acc':
         if (sec.acc) valid.add(sec.acc);
+        break;
+      case 'program':
+        if (sec.course && appState.courseToProgramsMap.has(sec.course)) {
+          const progIds = appState.courseToProgramsMap.get(sec.course);
+          progIds.forEach(pId => valid.add(pId));
+        }
         break;
       case 'subject':
         if (sec.subject) valid.add(sec.subject);
@@ -1858,6 +2048,11 @@ function getValidFacetValues(dimension) {
         break;
     }
   }
+
+  if (dimension === 'program' && !hasAnyActiveFiltersExcept('program')) {
+    appState.programs.forEach((_, pId) => valid.add(pId));
+  }
+
   return valid;
 }
 
@@ -1886,6 +2081,7 @@ function populateFilterControls() {
 
     const locations = getValidFacetValues('location');
     const accs = getValidFacetValues('acc');
+    const programs = getValidFacetValues('program');
     const subjects = getValidFacetValues('subject');
     const courses = getValidFacetValues('course');
     const modalities = getValidFacetValues('modality');
@@ -1897,6 +2093,7 @@ function populateFilterControls() {
 
     // Automatically prune invalid selections in multi-select dimensions
     if (pruneInvalidSelections(appState.filters.acc, accs)) hadPruning = true;
+    if (pruneInvalidSelections(appState.filters.program, programs)) hadPruning = true;
     if (pruneInvalidSelections(appState.filters.subject, subjects)) hadPruning = true;
     if (pruneInvalidSelections(appState.filters.course, courses)) hadPruning = true;
     if (pruneInvalidSelections(appState.filters.modality, modalities)) hadPruning = true;
@@ -1938,6 +2135,7 @@ function populateFilterControls() {
     renderCheckboxList('list-ge-area', sortGeAreas(geAreas), appState.filters.geArea, 'badge-ge-area', formatGeAreaLabel);
     renderCheckboxList('list-ge-pattern', Array.from(gePatterns).sort(), appState.filters.gePattern, 'badge-ge-pattern', formatGePatternLabel);
     renderCheckboxList('list-acc', sortAccs(accs), appState.filters.acc, 'badge-acc');
+    renderCheckboxList('list-program', Array.from(programs).sort(), appState.filters.program, 'badge-program', null, 'filter-program-search');
     renderCheckboxList('list-subject', Array.from(subjects).sort(), appState.filters.subject, 'badge-subject', null, 'filter-subject-search');
     renderCheckboxList('list-course', Array.from(courses).sort(), appState.filters.course, 'badge-course', null, 'filter-course-search');
     renderCheckboxList('list-modality', Array.from(modalities).sort(), appState.filters.modality, 'badge-modality');
@@ -2319,6 +2517,14 @@ function renderActiveFilterPills() {
   appState.filters.acc.forEach(val => {
     addPill('ACC', val, () => {
       appState.filters.acc.delete(val);
+      populateFilterControls();
+      applyFiltersAndRender();
+    });
+  });
+
+  appState.filters.program.forEach(val => {
+    addPill('Program', val, () => {
+      appState.filters.program.delete(val);
       populateFilterControls();
       applyFiltersAndRender();
     });
@@ -4711,6 +4917,22 @@ function showSectionModal(section, activeBlock) {
       </div>
     </div>
 
+    ${(() => {
+      const applicableProgs = appState.courseToProgramsMap?.get(section.course);
+      const progList = applicableProgs ? Array.from(applicableProgs).sort() : [];
+      if (progList.length === 0) return '';
+      return `
+        <div style="margin-top:12px; border-top:1px solid var(--border-color); padding-top:12px;">
+          <h4 style="font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px;">
+            Applicable Programs of Study (${progList.length})
+          </h4>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; max-height:110px; overflow-y:auto; padding-right:4px;">
+            ${progList.map(p => `<span class="pill-chip" style="font-size:11px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:4px; padding:3px 8px; color:var(--text-primary);">${p}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    })()}
+
     ${traitsHtml ? `
       <div style="margin-top:12px; border-top:1px solid var(--border-color); padding-top:12px;">
         <h4 style="font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px;">
@@ -4791,6 +5013,9 @@ function closeConflictCenterModal() {
 function handleFileSelect(file) {
   if (!file) return;
 
+  const fileNameLower = file.name.toLowerCase();
+  const isProgramSummary = fileNameLower.includes('program') && (fileNameLower.endsWith('.csv') || fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls'));
+
   showToast(`Parsing ${file.name}...`);
 
   const reader = new FileReader();
@@ -4808,14 +5033,25 @@ function handleFileSelect(file) {
         return;
       }
 
+      if (isProgramSummary || (jsonRows[0] && ('Program Entity Title' in jsonRows[0] || 'Local Code' in jsonRows[0]))) {
+        const progs = parseProgramSummaryRows(jsonRows);
+        if (progs.length > 0) {
+          applyProgramData(progs);
+          showToast(`Successfully loaded ${progs.length} Programs of Study from ${file.name}`);
+          setTimeout(hideToast, 2500);
+          applyFiltersAndRender();
+          return;
+        }
+      }
+
       processRawDataset(jsonRows);
       const uploadText = document.getElementById('btn-upload-text');
       if (uploadText) uploadText.textContent = 'Upload New File';
       showToast(`Successfully loaded ${jsonRows.length} rows from ${file.name}`);
       setTimeout(hideToast, 2500);
     } catch (err) {
-      console.error('Error parsing spreadsheet:', err);
-      alert(`Failed to parse spreadsheet file: ${err.message}`);
+      console.error('Error parsing file:', err);
+      alert(`Failed to parse file: ${err.message}`);
       hideToast();
     }
   };
@@ -4941,7 +5177,7 @@ function exportAsCsv() {
     'Section Unique ID', 'Course', 'Course Title', 'Section Name', 'Subject', 'ACC', 'Faculty Name',
     'Location', 'Building', 'Room', 'Day', 'Start Time', 'End Time',
     'Capacity', 'Active Students', 'Fill Rate %', 'Estimated FTES', 'Lost FTES', 'Low Enrolled Alert',
-    'Instruction Type', 'General Ed Pattern', 'General Ed Area', 'Section Traits',
+    'Instruction Type', 'General Ed Pattern', 'General Ed Area', 'Applicable Programs', 'Section Traits',
     'Is Stacked', 'Is Conflict'
   ];
 
@@ -4949,6 +5185,8 @@ function exportAsCsv() {
     const sec = b.parentSection;
     const geInfo = formatSectionGeInfo(sec);
     const fillPct = sec.capacity > 0 ? (sec.fillRate * 100).toFixed(1) + '%' : '0.0%';
+    const progs = appState.courseToProgramsMap?.get(sec.course);
+    const progsStr = progs && progs.size > 0 ? Array.from(progs).sort().join('; ') : 'None';
     return [
       `"${sec.sectionUniqueId}"`,
       `"${sec.course}"`,
@@ -4972,6 +5210,7 @@ function exportAsCsv() {
       `"${b.instructionType}"`,
       `"${geInfo.patternsFormatted}"`,
       `"${geInfo.combinedFormatted !== 'None' ? geInfo.combinedFormatted : 'None'}"`,
+      `"${progsStr}"`,
       `"${sec.sectionTraitsRaw}"`,
       `"${b.isStacked ? 'YES' : 'NO'}"`,
       `"${b.isConflict ? 'YES' : 'NO'}"`
@@ -5179,10 +5418,11 @@ function setupEventListeners() {
     });
   }
 
-  // Checkbox Search Inputs inside Accordions (Traits, Subject, Course)
+  // Checkbox Search Inputs inside Accordions (Traits, Subject, Course, Program)
   wireCheckboxSearch('filter-traits-search', 'list-traits');
   wireCheckboxSearch('filter-subject-search', 'list-subject');
   wireCheckboxSearch('filter-course-search', 'list-course');
+  wireCheckboxSearch('filter-program-search', 'list-program');
 
   // Accordion Header Toggles
   document.querySelectorAll('.accordion-header').forEach(header => {
@@ -5279,6 +5519,7 @@ function resetAllFilters() {
   appState.filters.dayEvening.clear();
   appState.filters.geArea.clear();
   appState.filters.gePattern.clear();
+  appState.filters.program.clear();
   appState.filters.acc.clear();
   appState.filters.subject.clear();
   appState.filters.course.clear();
@@ -5300,6 +5541,9 @@ function resetAllFilters() {
   const roomSelect = document.getElementById('filter-room');
   if (roomSelect) roomSelect.value = '';
 
+  const programSearch = document.getElementById('filter-program-search');
+  if (programSearch) programSearch.value = '';
+
   const subjectSearch = document.getElementById('filter-subject-search');
   if (subjectSearch) subjectSearch.value = '';
 
@@ -5311,7 +5555,7 @@ function resetAllFilters() {
 
   // Invalidate render keys so all lists re-render freshly
   [
-    'list-ge-area', 'list-ge-pattern', 'list-acc', 'list-subject',
+    'list-ge-area', 'list-ge-pattern', 'list-acc', 'list-program', 'list-subject',
     'list-course', 'list-modality', 'list-session', 'list-day-evening', 'list-traits'
   ].forEach(id => {
     const el = document.getElementById(id);
@@ -5325,5 +5569,6 @@ function resetAllFilters() {
 // --- 14. BOOTSTRAP APPLICATION ---
 window.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
+  loadProgramSummaryData();
   processRawDataset([]);
 });

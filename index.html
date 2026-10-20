@@ -19,6 +19,9 @@
   
   <!-- Application Stylesheet -->
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- Pre-parsed Program Summary Data (Auto-loaded) -->
+  <script src="program-data.js"></script>
 </head>
 <body data-theme="light">
   <div class="app-container">
@@ -200,6 +203,21 @@
             </button>
             <div class="accordion-body">
               <div class="checkbox-list" id="list-acc"></div>
+            </div>
+          </div>
+
+          <!-- Program of Study (Multi-Select with Search) -->
+          <div class="accordion-item" id="acc-program">
+            <button class="accordion-header" type="button">
+              <span>Program of Study</span>
+              <span class="badge" id="badge-program">0</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body">
+              <div class="checkbox-search-wrapper">
+                <input type="text" id="filter-program-search" placeholder="Search programs..." class="form-input-sm" />
+              </div>
+              <div class="checkbox-list" id="list-program"></div>
             </div>
           </div>
 
