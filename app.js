@@ -57,7 +57,7 @@ const DAY_MAP = {
 };
 
 // Standard California General Education Areas for Academic Auditing
-// Valid Patterns: CalGETC (11 audited areas; 5C hidden) and Chaffey Local (7 audited areas)
+// Valid Patterns: CalGETC (12 audited areas; 5C hidden) and Chaffey Local (7 audited areas)
 const GE_STANDARD_AREAS = {
   'CALGETC': [
     { code: '1A', name: 'English Composition', desc: 'Written Communication', matchAreas: ['1A'] },
@@ -70,7 +70,8 @@ const GE_STANDARD_AREAS = {
     { code: '5A', name: 'Physical Sciences', desc: 'Chemistry, Physics, Astronomy, Geology', matchAreas: ['5A'] },
     { code: '5B', name: 'Biological Sciences', desc: 'Biology, Anatomy, Microbiology, Ecology', matchAreas: ['5B'] },
     { code: '6',  name: 'Ethnic Studies', desc: 'Ethnic Studies', matchAreas: ['6'] },
-    { code: 'US1', name: 'American Institutions', desc: 'U.S. History, Constitution & American Ideals', matchAreas: ['US1'] }
+    { code: 'US-1', name: 'American Institutions: US-1', desc: 'Historical Development of American Institutions & Ideals', matchAreas: ['US-1', 'US1'] },
+    { code: 'US-2', name: 'American Institutions: US-2 & US-3', desc: 'US Constitution & Government and CA State & Local Government', matchAreas: ['US-2', 'US2', 'US-3', 'US3'] }
   ],
   'CHAFFEY': [
     { code: '1A', name: 'English Composition', desc: 'Language & Rationality - English Composition', matchAreas: ['1A'] },
@@ -84,7 +85,62 @@ const GE_STANDARD_AREAS = {
 };
 
 // Canonical sorting order for General Education areas
-const GE_AREA_ORDER = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5', '5A', '5B', '6', 'US1'];
+const GE_AREA_ORDER = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5', '5A', '5B', '6', 'US-1', 'US1', 'US-2', 'US2', 'US-3', 'US3'];
+
+/**
+ * Hardcoded General Education overrides for CSU American Institutions graduation requirements under Cal-GETC:
+ * CSU requires: One course from US-1 and one course from US-2 (satisfied by POLS-C1000 which covers both US-2 and US-3).
+ * NOTE: These courses are CSU transfer graduation requirements rather than local associate degree requirements,
+ * and are untagged in the college SIS. This override attaches them strictly to Cal-GETC.
+ * Courses:
+ * US-1 (Historical Development of American Institutions and Ideals):
+ *   - HIST C1001 (HIST-C1001): United States History to 1877 (3)
+ *   - HIST C1002 (HIST-C1002): United States History since 1865 (3)
+ *   - HIST 50 (HIST-50): African-American History I (3)
+ *   - HIST 51 (HIST-51): African-American History II (3)
+ * US-2 (US Constitution and Government) & US-3 (CA State and Local Government):
+ *   - POLS C1000 (POLS-C1000): American Government and Politics (3)
+ */
+const CALGETC_COURSE_OVERRIDES = {
+  'HISTC1001': ['US-1'],
+  'HISTC1002': ['US-1'],
+  'HIST50':    ['US-1'],
+  'HIST51':    ['US-1'],
+  'POLSC1000': ['US-2', 'US-3']
+};
+
+function getCalGetcCourseOverrides(courseStr) {
+  if (!courseStr) return null;
+  const key = String(courseStr).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return CALGETC_COURSE_OVERRIDES[key] || null;
+}
+
+function applyCalGetcOverridesToSection(sec) {
+  if (!sec || !sec.course) return;
+  const overrideAreas = getCalGetcCourseOverrides(sec.course);
+  if (!overrideAreas || overrideAreas.length === 0) return;
+
+  if (!sec.geAssociations) sec.geAssociations = [];
+  if (!sec.gePatternAreaMap) sec.gePatternAreaMap = { 'CALGETC': new Set(), 'CHAFFEY': new Set() };
+  if (!sec.gePatternAreaMap['CALGETC']) sec.gePatternAreaMap['CALGETC'] = new Set();
+  if (!sec.generalEdPattern) sec.generalEdPattern = [];
+  if (!sec.generalEdArea) sec.generalEdArea = [];
+
+  if (!sec.generalEdPattern.includes('CALGETC')) {
+    sec.generalEdPattern.push('CALGETC');
+  }
+
+  overrideAreas.forEach(areaCode => {
+    const exists = sec.geAssociations.some(p => p.pattern === 'CALGETC' && p.area === areaCode);
+    if (!exists) {
+      sec.geAssociations.push({ pattern: 'CALGETC', area: areaCode });
+    }
+    sec.gePatternAreaMap['CALGETC'].add(areaCode);
+    if (!sec.generalEdArea.includes(areaCode)) {
+      sec.generalEdArea.push(areaCode);
+    }
+  });
+}
 
 function sortGeAreas(areas) {
   return Array.from(areas).sort((a, b) => {
@@ -1560,12 +1616,17 @@ function parseGeAssociations(patternRaw, areaRaw) {
     if (!normPattern) continue;
 
     if (normPattern === 'CALGETC') {
-      const validCalGetc = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5A', '5B', '6', 'US1'];
-      if (validCalGetc.includes(rawA)) {
-        const key = `${normPattern}:${rawA}`;
+      let normArea = rawA;
+      if (rawA === 'US1' || rawA === 'US-1') normArea = 'US-1';
+      else if (rawA === 'US2' || rawA === 'US-2') normArea = 'US-2';
+      else if (rawA === 'US3' || rawA === 'US-3') normArea = 'US-3';
+
+      const validCalGetc = ['1A', '1B', '1C', '2', '3A', '3B', '4', '5A', '5B', '6', 'US-1', 'US-2', 'US-3'];
+      if (validCalGetc.includes(normArea)) {
+        const key = `${normPattern}:${normArea}`;
         if (!seen.has(key)) {
           seen.add(key);
-          associations.push({ pattern: normPattern, area: rawA });
+          associations.push({ pattern: normPattern, area: normArea });
         }
       }
     } else if (normPattern === 'CHAFFEY') {
@@ -1756,6 +1817,11 @@ function processRawDataset(rawData) {
         });
       });
     }
+  });
+
+  // Apply hardcoded Cal-GETC tagging overrides for American Institutions (US-1, US-2, US-3)
+  sectionMap.forEach(sec => {
+    applyCalGetcOverridesToSection(sec);
   });
 
   appState.sections = Array.from(sectionMap.values());
@@ -3469,7 +3535,10 @@ function getGeAreaBadgeClass(areaStr) {
   if (s === '5B') return 'ge-color-5b';
   if (s === '5') return 'ge-color-5a';
   if (s === '6') return 'ge-color-6';
-  if (s === 'US1' || s.includes('US1')) return 'ge-color-us1';
+  if (s === 'US-1' || s === 'US1' || s.includes('US1') || s.includes('US-1')) return 'ge-color-us1';
+  if (s === 'US-2' || s === 'US2' || s.includes('US2') || s.includes('US-2')) return 'ge-color-us2';
+  if (s === 'US-3' || s === 'US3' || s.includes('US3') || s.includes('US-3')) return 'ge-color-us2';
+  if (s.startsWith('US')) return 'ge-color-us1';
 
   // Fallbacks
   if (s.startsWith('1A')) return 'ge-color-1a';
@@ -4996,9 +5065,11 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
 
       calGetcAreas.forEach(areaDef => {
         const areaCode = areaDef.code;
+        const matchTargets = areaDef.matchAreas || [areaCode];
         const matchingSecs = campusSections.filter(sec => {
-          if (sec.geAssociations && sec.geAssociations.some(p => p.area === areaCode)) return true;
-          if (sec.generalEdArea && sec.generalEdArea.includes(areaCode)) return true;
+          if (sec.geAssociations && sec.geAssociations.some(p => p.pattern === 'CALGETC' && matchTargets.includes(p.area))) return true;
+          if (sec.gePatternAreaMap && sec.gePatternAreaMap['CALGETC'] && matchTargets.some(t => sec.gePatternAreaMap['CALGETC'].has(t))) return true;
+          if (sec.generalEdArea && matchTargets.some(t => sec.generalEdArea.includes(t))) return true;
           return false;
         });
 
