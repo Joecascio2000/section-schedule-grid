@@ -129,8 +129,19 @@
 
         <!-- Primary Cascading Filters -->
         <div class="filter-section">
-          <span class="filter-badge">Primary Location Filters</span>
+          <span class="filter-badge">Primary Scope & Location</span>
           
+          <!-- Academic Term Main Filter -->
+          <div class="form-group">
+            <label for="filter-term" class="form-label">
+              <span>Academic Term</span>
+              <span class="filter-count" id="count-term"></span>
+            </label>
+            <select id="filter-term" class="form-select">
+              <option value="">All Terms</option>
+            </select>
+          </div>
+
           <!-- Location Dropdown -->
           <div class="form-group">
             <label for="filter-location" class="form-label">

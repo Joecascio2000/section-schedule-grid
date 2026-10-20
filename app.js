@@ -150,7 +150,7 @@ function formatSectionGeInfo(sec) {
  */
 
 // 1. Location (Campus) Normalization:
-// "Chino" -> "Chino Campus", "Fontana Center" -> "Fontana Campus", "Rancho Campus" -> "Rancho Campus"
+// "Chino" -> "Chino Campus", "Fontana Center" -> "Fontana Campus", "Rancho Campus" -> "Rancho Campus", "Online" -> "Online Class"
 function normalizeLocation(rawLoc) {
   if (!rawLoc) return '';
   const s = String(rawLoc).trim();
@@ -158,7 +158,50 @@ function normalizeLocation(rawLoc) {
   if (lower === 'chino' || lower === 'chino campus') return 'Chino Campus';
   if (lower === 'fontana center' || lower === 'fontana' || lower === 'fontana campus') return 'Fontana Campus';
   if (lower === 'rancho' || lower === 'rancho campus') return 'Rancho Campus';
+  if (lower === 'online' || lower === 'online class' || lower === 'online classes') return 'Online Class';
   return s;
+}
+
+/**
+ * Computes a numeric sort key for academic terms to ensure proper chronological order:
+ * e.g., 2026/SU (Summer 2026) -> 2026/FA (Fall 2026) -> 2027/SP (Spring 2027).
+ * Winter/Intercession (WI: 1), Spring (SP: 2), Summer (SU: 3), Fall (FA: 4).
+ */
+function getTermSortKey(termStr) {
+  if (!termStr) return 999999;
+  const s = String(termStr).trim().toUpperCase();
+  const m = s.match(/(\d{4})[/-]?([A-Z]+)/) || s.match(/([A-Z]+)[/-]?(\d{4})/);
+  if (m) {
+    let year = 0;
+    let sem = '';
+    if (/^\d{4}$/.test(m[1])) {
+      year = parseInt(m[1], 10);
+      sem = m[2];
+    } else {
+      year = parseInt(m[2], 10);
+      sem = m[1];
+    }
+    const semWeights = {
+      'WI': 1, 'W': 1, 'WINTER': 1,
+      'SP': 2, 'SPRING': 2,
+      'SU': 3, 'SUMMER': 3, 'SUM': 3,
+      'FA': 4, 'FALL': 4
+    };
+    const semWeight = semWeights[sem] || 5;
+    return year * 10 + semWeight;
+  }
+  return s;
+}
+
+function sortTerms(termsList) {
+  return Array.from(termsList).sort((a, b) => {
+    const keyA = getTermSortKey(a);
+    const keyB = getTermSortKey(b);
+    if (typeof keyA === 'number' && typeof keyB === 'number') {
+      return keyA - keyB;
+    }
+    return String(a).localeCompare(String(b));
+  });
 }
 
 // 2. Schedule - Building Normalization:
@@ -947,6 +990,70 @@ const BUILT_IN_DATASET = [
     "Schedule - Days": "2",
     "Schedule - Start Date": "Aug 18, 2026",
     "Schedule - End Date": "Dec 18, 2026"
+  },
+  {
+    "Section Unique ID": "226001",
+    "Term": "2027/SP",
+    "ACC": "BTH: Business, Technology, and Hospitality",
+    "Subject": "Business",
+    "Course": "BUS-10",
+    "Title": "Introduction to Business",
+    "Section Name": "BUS-10-61001",
+    "Section Number": "61001",
+    "Location": "Online Class",
+    "Day or Evening": "D",
+    "Calendar Session": "Full-Term",
+    "Modality": "Online",
+    "Number of Weeks": 18,
+    "Capacity": 40,
+    "Active Students": 38,
+    "Total Hours": 54,
+    "Estimated FTES": 3.9,
+    "Section Traits": "Online,Zero Textbook Cost ($0)",
+    "General Ed Pattern": "CHAFFEY,CALGETC",
+    "General Ed Area": "4,4",
+    "Faculty Name": "Casillas, Marcus",
+    "Schedule - Instruction Type": "Online Lec; Canvas",
+    "Schedule - Building": "Canvas",
+    "Schedule - Building Description": "Online",
+    "Schedule - Room": "ONLINE",
+    "Schedule - Start Time": "",
+    "Schedule - End Time": "",
+    "Schedule - Days": "",
+    "Schedule - Start Date": "Jan 12, 2027",
+    "Schedule - End Date": "May 15, 2027"
+  },
+  {
+    "Section Unique ID": "226002",
+    "Term": "2027/SP",
+    "ACC": "BTH: Business, Technology, and Hospitality",
+    "Subject": "Business",
+    "Course": "BUS-10",
+    "Title": "Introduction to Business",
+    "Section Name": "BUS-10-61002",
+    "Section Number": "61002",
+    "Location": "Chino Campus",
+    "Day or Evening": "D",
+    "Calendar Session": "Full-Term",
+    "Modality": "In-Person",
+    "Number of Weeks": 18,
+    "Capacity": 35,
+    "Active Students": 32,
+    "Total Hours": 54,
+    "Estimated FTES": 3.3,
+    "Section Traits": "In-Person",
+    "General Ed Pattern": "CHAFFEY,CALGETC",
+    "General Ed Area": "4,4",
+    "Faculty Name": "Casillas, Marcus",
+    "Schedule - Instruction Type": "Lec; Required In-Person Mtgs",
+    "Schedule - Building": "CHMB",
+    "Schedule - Building Description": "Chino Main Instructional Bldg",
+    "Schedule - Room": "102",
+    "Schedule - Start Time": "9:30:00 AM",
+    "Schedule - End Time": "10:50:00 AM",
+    "Schedule - Days": "2,4",
+    "Schedule - Start Date": "Jan 12, 2027",
+    "Schedule - End Date": "May 15, 2027"
   }
 ];
 
@@ -982,6 +1089,7 @@ const appState = {
   geActivePattern: 'CALGETC', // Active pattern for GE Coverage audit
   geShowMissingOnly: false,
   filters: {
+    term: '',
     search: '',
     location: '',
     building: '',
@@ -1654,6 +1762,15 @@ function processRawDataset(rawData) {
   appState.filteredSections = appState.sections;
   appState.scheduleBlocks = allMeetingBlocks;
 
+  // Determine available terms and default to earliest term (e.g. 2026/SU < 2026/FA < 2027/SP)
+  const uniqueTerms = Array.from(new Set(appState.sections.map(s => s.term).filter(Boolean)));
+  const sortedTerms = sortTerms(uniqueTerms);
+  if (sortedTerms.length > 0) {
+    if (!appState.filters.term || !uniqueTerms.includes(appState.filters.term)) {
+      appState.filters.term = sortedTerms[0];
+    }
+  }
+
   const bldgDescMap = new Map();
   allMeetingBlocks.forEach(b => {
     if (b.building && b.buildingDesc && !bldgDescMap.has(b.building)) {
@@ -1908,10 +2025,14 @@ function updateConflictUI() {
  */
 function matchesOtherFilters(sec, excludeDimension = null) {
   const {
-    search, location, building, room,
+    term, search, location, building, room,
     dayEvening, geArea, gePattern, program, acc, subject, course,
     modality, session, traits
   } = appState.filters;
+
+  if (excludeDimension !== 'term' && term) {
+    if ((sec.term || '').trim().toLowerCase() !== term.toLowerCase()) return false;
+  }
 
   if (search) {
     const searchLower = search.toLowerCase().trim();
@@ -2020,6 +2141,7 @@ function matchesOtherFilters(sec, excludeDimension = null) {
 function hasAnyActiveFiltersExcept(dim) {
   const f = appState.filters;
   if (f.search) return true;
+  if (dim !== 'term' && f.term) return true;
   if (dim !== 'location' && f.location) return true;
   if (dim !== 'building' && f.building) return true;
   if (dim !== 'room' && f.room) return true;
@@ -2051,6 +2173,9 @@ function getValidFacetValues(dimension) {
     if (!matchesOtherFilters(sec, dimension)) continue;
 
     switch (dimension) {
+      case 'term':
+        if (sec.term) valid.add(sec.term);
+        break;
       case 'location':
         if (sec.location) valid.add(sec.location);
         break;
@@ -2132,6 +2257,7 @@ function populateFilterControls() {
   try {
     let hadPruning = false;
 
+    const terms = getValidFacetValues('term');
     const locations = getValidFacetValues('location');
     const accs = getValidFacetValues('acc');
     const programs = getValidFacetValues('program');
@@ -2155,6 +2281,35 @@ function populateFilterControls() {
     if (pruneInvalidSelections(appState.filters.gePattern, gePatterns)) hadPruning = true;
     if (pruneInvalidSelections(appState.filters.geArea, geAreas)) hadPruning = true;
     if (pruneInvalidSelections(appState.filters.traits, traits)) hadPruning = true;
+
+    // Academic Term Dropdown (Main Filter)
+    const termSelect = document.getElementById('filter-term');
+    if (termSelect) {
+      if (appState.filters.term && !terms.has(appState.filters.term)) {
+        const allDatasetTerms = new Set(appState.sections.map(s => s.term).filter(Boolean));
+        if (!allDatasetTerms.has(appState.filters.term)) {
+          const sortedAll = sortTerms(Array.from(allDatasetTerms));
+          appState.filters.term = sortedAll[0] || '';
+          hadPruning = true;
+        }
+      }
+      const currentTerm = appState.filters.term;
+      const sortedTerms = sortTerms(terms);
+      const termKey = sortedTerms.join('|') + '::' + currentTerm;
+      if (termSelect._lastKey !== termKey) {
+        termSelect._lastKey = termKey;
+        termSelect.innerHTML = '<option value="">All Terms</option>';
+        sortedTerms.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          if (t === currentTerm) opt.selected = true;
+          termSelect.appendChild(opt);
+        });
+      }
+      const countTerm = document.getElementById('count-term');
+      if (countTerm) countTerm.textContent = `(${terms.size})`;
+    }
 
     // Location Dropdown
     const locSelect = document.getElementById('filter-location');
@@ -2500,7 +2655,10 @@ function applyFiltersAndRender() {
       appState.programCoverageSelectedProgram = activeProgId;
     }
 
-    const progAnalysis = analyzeProgramCoverage(activeProgId, appState.filters.location, appState.sections);
+    const termSections = appState.filters.term
+      ? appState.sections.filter(s => s.term === appState.filters.term)
+      : appState.sections;
+    const progAnalysis = analyzeProgramCoverage(activeProgId, appState.filters.location, termSections);
     appState.currentProgramCoverageAnalysis = progAnalysis;
 
     // If Day View or Room View is toggled beneath the coverage audit
@@ -2570,6 +2728,16 @@ function renderActiveFilterPills() {
     pill.innerHTML = `<span>${label}: <strong>${value}</strong></span><span class="pill-remove">&times;</span>`;
     pill.querySelector('.pill-remove').addEventListener('click', onRemove);
     container.appendChild(pill);
+  }
+
+  if (appState.filters.term) {
+    addPill('Term', appState.filters.term, () => {
+      appState.filters.term = '';
+      const termSelect = document.getElementById('filter-term');
+      if (termSelect) termSelect.value = '';
+      populateFilterControls();
+      applyFiltersAndRender();
+    });
   }
 
   if (appState.filters.search) {
@@ -4734,11 +4902,15 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
       const otherSecs = districtCourseSecMap.get(crse) || [];
       const otherCampusOfferings = [];
 
-      if (secs.length === 0 && otherSecs.length > 0) {
+      if (!isDistrictWide && otherSecs.length > 0) {
         const locMap = new Map();
         otherSecs.forEach(s => {
-          const l = s.location || 'Other';
-          locMap.set(l, (locMap.get(l) || 0) + 1);
+          const sLoc = (s.location || '').toLowerCase();
+          const isCurrentCampus = sLoc === locFilter || sLoc.includes(locFilter.replace(' campus', ''));
+          if (!isCurrentCampus) {
+            const l = s.location || 'Other';
+            locMap.set(l, (locMap.get(l) || 0) + 1);
+          }
         });
         locMap.forEach((cnt, l) => {
           otherCampusOfferings.push({ location: l, count: cnt });
@@ -4949,7 +5121,10 @@ function renderProgramCoverageDashboard() {
     appState.programCoverageSelectedProgram = activeProgId;
   }
 
-  const analysis = analyzeProgramCoverage(activeProgId, appState.filters.location, appState.sections);
+  const termSections = appState.filters.term
+    ? appState.sections.filter(s => s.term === appState.filters.term)
+    : appState.sections;
+  const analysis = analyzeProgramCoverage(activeProgId, appState.filters.location, termSections);
   appState.currentProgramCoverageAnalysis = analysis;
 
   const single = analysis.single;
@@ -4968,6 +5143,7 @@ function renderProgramCoverageDashboard() {
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
         </svg>
         Program Coverage & Completability Audit: <span>${locationLabel}</span>
+        ${appState.filters.term ? `<span style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-left: 8px; padding: 2px 8px; border-radius: 4px; background: var(--bg-surface-subtle); border: 1px solid var(--border-color);">${appState.filters.term}</span>` : ''}
       </h3>
       <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are completable at specific campus locations or across the district.</p>
     </div>
@@ -4995,53 +5171,28 @@ function renderProgramCoverageDashboard() {
     });
   });
 
-  // 2. PROGRAM SELECTION & SEARCH BAR
+  // 2. ACTIVE PROGRAM DISPLAY & CATALOG TOGGLE BAR
   const searchBar = document.createElement('div');
   searchBar.style.cssText = 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;';
   
-  const allProgIds = Array.from(appState.programs.keys()).sort();
+  const totalProgramsCount = appState.programs.size > 0 ? appState.programs.size : 202;
 
   searchBar.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
       <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Active Program:</span>
-      <input type="text" id="prog-audit-input" list="prog-audit-datalist" class="form-control" style="flex: 1; padding: 6px 12px; font-size: 13px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);" placeholder="Search or select from 202 active programs..." value="${activeProgId || ''}">
-      <datalist id="prog-audit-datalist">
-        ${allProgIds.map(pId => `<option value="${pId}">`).join('')}
-      </datalist>
+      <span style="font-size: 13.5px; font-weight: 700; color: var(--chaffey-red); background: var(--bg-surface); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        ${activeProgId || 'No program selected (choose from filters on left)'}
+      </span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <button type="button" id="btn-toggle-catalog-view" class="btn btn-secondary" style="font-size: 12px; font-weight: 700; padding: 6px 12px;">
-        ${isCatalogMode ? '← Back to Program Audit' : 'Browse All 202 Programs'}
+        ${isCatalogMode ? '← Back to Program Audit' : `Browse All ${totalProgramsCount} Programs`}
       </button>
     </div>
   `;
   container.appendChild(searchBar);
-
-  // Wire Program Search Input
-  const progInput = searchBar.querySelector('#prog-audit-input');
-  if (progInput) {
-    progInput.addEventListener('change', (e) => {
-      const val = e.target.value.trim();
-      if (appState.programs.has(val)) {
-        appState.programCoverageSelectedProgram = val;
-        appState.programCoverageCatalogView = false;
-        appState.filters.program.clear();
-        appState.filters.program.add(val);
-        applyFiltersAndRender();
-      } else {
-        // Find best match
-        const lower = val.toLowerCase();
-        const matchedKey = allProgIds.find(k => k.toLowerCase().includes(lower));
-        if (matchedKey) {
-          appState.programCoverageSelectedProgram = matchedKey;
-          appState.programCoverageCatalogView = false;
-          appState.filters.program.clear();
-          appState.filters.program.add(matchedKey);
-          applyFiltersAndRender();
-        }
-      }
-    });
-  }
 
   // Wire Catalog Toggle Button
   searchBar.querySelector('#btn-toggle-catalog-view')?.addEventListener('click', () => {
@@ -5327,6 +5478,12 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
                 `;
               }).join('')}
             </div>
+
+            ${item.otherOfferings && item.otherOfferings.length > 0 ? `
+              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; padding: 4px 8px; background: var(--bg-surface-subtle); border-radius: 4px; border: 1px solid var(--border-color);">
+                <strong>Also offered at other locations:</strong> ${item.otherOfferings.map(o => `${o.location} (${o.count} section${o.count > 1 ? 's' : ''})`).join(' • ')}
+              </div>
+            ` : ''}
           ` : `
             <div class="prog-action-box">
               <strong>Action Item:</strong> 0 sections of ${item.course} are scheduled ${single.isDistrictWide ? 'in the district' : `at ${locationLabel}`}. To enable students to complete the ${prog.title}${single.isDistrictWide ? '' : ' locally'}, schedule at least one section of this course.
@@ -6168,7 +6325,7 @@ function exportAsCsv() {
   }
 
   const headers = [
-    'Section Unique ID', 'Course', 'Course Title', 'Section Name', 'Subject', 'ACC', 'Faculty Name',
+    'Section Unique ID', 'Term', 'Course', 'Course Title', 'Section Name', 'Subject', 'ACC', 'Faculty Name',
     'Location', 'Building', 'Room', 'Day', 'Start Time', 'End Time',
     'Capacity', 'Active Students', 'Fill Rate %', 'Estimated FTES', 'Lost FTES', 'Low Enrolled Alert',
     'Instruction Type', 'General Ed Pattern', 'General Ed Area', 'Applicable Programs', 'Section Traits',
@@ -6183,6 +6340,7 @@ function exportAsCsv() {
     const progsStr = progs && progs.size > 0 ? Array.from(progs).sort().join('; ') : 'None';
     return [
       `"${sec.sectionUniqueId}"`,
+      `"${sec.term || ''}"`,
       `"${sec.course}"`,
       `"${sec.title || ''}"`,
       `"${sec.sectionName}"`,
@@ -6383,6 +6541,16 @@ function setupEventListeners() {
     });
   }
 
+  // Academic Term Main Dropdown
+  const termSelect = document.getElementById('filter-term');
+  if (termSelect) {
+    termSelect.addEventListener('change', (e) => {
+      appState.filters.term = e.target.value;
+      populateFilterControls();
+      applyFiltersAndRender();
+    });
+  }
+
   // Location Cascading Dropdown
   const locSelect = document.getElementById('filter-location');
   if (locSelect) {
@@ -6526,6 +6694,12 @@ function resetAllFilters() {
   appState.programCoverageSubLayout = 'audit';
   appState.programCoverageSelectedProgram = '';
   appState.programCoverageCatalogView = false;
+
+  // Reset term to earliest available term in dataset (default)
+  const allDatasetTerms = sortTerms(Array.from(new Set(appState.sections.map(s => s.term).filter(Boolean))));
+  appState.filters.term = allDatasetTerms.length > 0 ? allDatasetTerms[0] : '';
+  const termSelect = document.getElementById('filter-term');
+  if (termSelect) termSelect.value = appState.filters.term;
 
   const searchInput = document.getElementById('filter-search');
   if (searchInput) searchInput.value = '';
