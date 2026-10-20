@@ -2316,8 +2316,19 @@ function renderCheckboxList(containerId, items, selectedSet, badgeId, labelForma
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) {
         selectedSet.add(item);
+        if (containerId === 'list-program') {
+          appState.programCoverageSelectedProgram = item;
+          appState.programCoverageCatalogView = false;
+        }
       } else {
         selectedSet.delete(item);
+        if (containerId === 'list-program') {
+          if (appState.programCoverageSelectedProgram === item) {
+            appState.programCoverageSelectedProgram = selectedSet.size > 0
+              ? Array.from(selectedSet)[selectedSet.size - 1]
+              : '';
+          }
+        }
       }
       updateBadge(badgeId, selectedSet.size);
       applyFiltersAndRender();
@@ -2471,12 +2482,19 @@ function applyFiltersAndRender() {
 
   // If in Program Coverage view, analyze program completability and slice if in Day/Room grid view
   if (appState.layoutMode === 'program_coverage') {
-    let activeProgId = appState.programCoverageSelectedProgram;
-    if (!activeProgId && appState.filters.program.size === 1) {
-      activeProgId = Array.from(appState.filters.program)[0];
-      appState.programCoverageSelectedProgram = activeProgId;
+    let activeProgId = '';
+    if (appState.filters.program.size > 0) {
+      if (appState.programCoverageSelectedProgram && appState.filters.program.has(appState.programCoverageSelectedProgram)) {
+        activeProgId = appState.programCoverageSelectedProgram;
+      } else {
+        activeProgId = Array.from(appState.filters.program)[appState.filters.program.size - 1];
+        appState.programCoverageSelectedProgram = activeProgId;
+      }
+    } else {
+      activeProgId = appState.programCoverageSelectedProgram;
     }
-    if (!activeProgId && appState.programs.size > 0) {
+
+    if (!activeProgId && !appState.programCoverageCatalogView && appState.programs.size > 0) {
       const busProg = 'S078 - Business Administration 2.0 for Transfer AS-T';
       activeProgId = appState.programs.has(busProg) ? busProg : Array.from(appState.programs.keys())[0];
       appState.programCoverageSelectedProgram = activeProgId;
@@ -2626,6 +2644,11 @@ function renderActiveFilterPills() {
   appState.filters.program.forEach(val => {
     addPill('Program', val, () => {
       appState.filters.program.delete(val);
+      if (appState.programCoverageSelectedProgram === val) {
+        appState.programCoverageSelectedProgram = appState.filters.program.size > 0
+          ? Array.from(appState.filters.program)[appState.filters.program.size - 1]
+          : '';
+      }
       populateFilterControls();
       applyFiltersAndRender();
     });
@@ -4664,9 +4687,11 @@ function renderEfficiencyDashboard() {
 function analyzeProgramCoverage(programId, location, scopeSections) {
   const allSections = scopeSections || appState.sections || [];
   const locFilter = (location || '').trim().toLowerCase();
+  const isDistrictWide = !locFilter || locFilter === 'all' || locFilter.includes('all');
+  const locationLabel = isDistrictWide ? 'District-Wide' : location;
 
   // Filter sections by location if specified
-  const campusSections = locFilter
+  const campusSections = !isDistrictWide
     ? allSections.filter(sec => {
         if (!sec.location) return false;
         const secLoc = sec.location.toLowerCase();
@@ -4760,18 +4785,34 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
 
     let statusTier = 'incomplete';
     let statusLabel = '';
-    if (completeness === 100) {
-      statusTier = 'completable';
-      statusLabel = `Fully Completable at ${location || 'All Campuses'}`;
-    } else if (completeness >= 75) {
-      statusTier = 'near';
-      statusLabel = `Near Completable (Needs ${missingCount} course${missingCount > 1 ? 's' : ''})`;
-    } else if (completeness >= 50) {
-      statusTier = 'partial';
-      statusLabel = `Partially Completable (${scheduledCount}/${totalRequired} courses)`;
+    if (isDistrictWide) {
+      if (completeness === 100) {
+        statusTier = 'completable';
+        statusLabel = 'Completable across District';
+      } else if (completeness >= 75) {
+        statusTier = 'near';
+        statusLabel = `Near Completable across District (Needs ${missingCount} course${missingCount > 1 ? 's' : ''})`;
+      } else if (completeness >= 50) {
+        statusTier = 'partial';
+        statusLabel = `Partially Completable across District (${scheduledCount}/${totalRequired} courses)`;
+      } else {
+        statusTier = 'incomplete';
+        statusLabel = `Low Coverage across District (${missingCount} missing course${missingCount > 1 ? 's' : ''})`;
+      }
     } else {
-      statusTier = 'incomplete';
-      statusLabel = `Low Coverage (${missingCount} missing course${missingCount > 1 ? 's' : ''})`;
+      if (completeness === 100) {
+        statusTier = 'completable';
+        statusLabel = `Fully Completable at ${locationLabel}`;
+      } else if (completeness >= 75) {
+        statusTier = 'near';
+        statusLabel = `Near Completable at ${locationLabel} (Needs ${missingCount} course${missingCount > 1 ? 's' : ''})`;
+      } else if (completeness >= 50) {
+        statusTier = 'partial';
+        statusLabel = `Partially Completable at ${locationLabel} (${scheduledCount}/${totalRequired} courses)`;
+      } else {
+        statusTier = 'incomplete';
+        statusLabel = `Low Coverage at ${locationLabel} (${missingCount} missing course${missingCount > 1 ? 's' : ''})`;
+      }
     }
 
     // General Education Breadth Analysis for Associate Degrees
@@ -4828,7 +4869,8 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
       statusLabel: statusLabel,
       geAudit: geAudit,
       campusSectionsCount: campusSections.length,
-      locationLabel: location || 'All Campuses'
+      locationLabel: locationLabel,
+      isDistrictWide: isDistrictWide
     };
   }
 
@@ -4871,7 +4913,8 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
   return {
     single: singleAnalysis,
     catalog: catalogList,
-    location: location || 'All Campuses',
+    location: locationLabel,
+    isDistrictWide: isDistrictWide,
     campusSectionsCount: campusSections.length
   };
 }
@@ -4887,12 +4930,19 @@ function renderProgramCoverageDashboard() {
   if (!container) return;
   container.innerHTML = '';
 
-  // Determine active program and location
-  let activeProgId = appState.programCoverageSelectedProgram;
-  if (!activeProgId && appState.filters.program.size === 1) {
-    activeProgId = Array.from(appState.filters.program)[0];
-    appState.programCoverageSelectedProgram = activeProgId;
+  // Determine active program - prioritize checked programs from sidebar filter
+  let activeProgId = '';
+  if (appState.filters.program.size > 0) {
+    if (appState.programCoverageSelectedProgram && appState.filters.program.has(appState.programCoverageSelectedProgram)) {
+      activeProgId = appState.programCoverageSelectedProgram;
+    } else {
+      activeProgId = Array.from(appState.filters.program)[appState.filters.program.size - 1];
+      appState.programCoverageSelectedProgram = activeProgId;
+    }
+  } else {
+    activeProgId = appState.programCoverageSelectedProgram;
   }
+
   if (!activeProgId && appState.programs.size > 0) {
     const busProg = 'S078 - Business Administration 2.0 for Transfer AS-T';
     activeProgId = appState.programs.has(busProg) ? busProg : Array.from(appState.programs.keys())[0];
@@ -4906,19 +4956,9 @@ function renderProgramCoverageDashboard() {
   const locationLabel = analysis.location;
   const isCatalogMode = Boolean(appState.programCoverageCatalogView);
 
-  // 1. HEADER ROW: Title, Quick Campus Pills & Sub-Layout Switcher
+  // 1. HEADER ROW: Title & Sub-Layout Switcher (Campus Scope is driven directly by sidebar Location filter)
   const headerRow = document.createElement('div');
   headerRow.className = 'prog-coverage-header';
-
-  // Campus options for quick-switch pills
-  const campusPillsConfig = [
-    { label: 'All Campuses', value: '' },
-    { label: 'Chino Campus', value: 'Chino Campus' },
-    { label: 'Fontana Campus', value: 'Fontana Campus' },
-    { label: 'Rancho Campus', value: 'Rancho Campus' }
-  ];
-
-  const currentLocFilter = (appState.filters.location || '').trim();
 
   headerRow.innerHTML = `
     <div class="prog-coverage-title">
@@ -4929,20 +4969,9 @@ function renderProgramCoverageDashboard() {
         </svg>
         Program Coverage & Completability Audit: <span>${locationLabel}</span>
       </h3>
-      <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are fully completable at specific campus locations.</p>
+      <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are completable at specific campus locations or across the district.</p>
     </div>
     <div class="prog-header-controls">
-      <!-- Quick Campus Switcher Pills -->
-      <div class="sub-layout-switcher">
-        <span class="sub-layout-label">Campus Scope:</span>
-        <div class="btn-sub-toggle-group" id="prog-campus-pill-group">
-          ${campusPillsConfig.map(cp => {
-            const isActive = cp.value === '' ? !currentLocFilter : currentLocFilter.toLowerCase().includes(cp.value.toLowerCase().replace(' campus', ''));
-            return `<button type="button" class="btn-sub-layout-toggle ${isActive ? 'active' : ''}" data-campus="${cp.value}">${cp.label}</button>`;
-          }).join('')}
-        </div>
-      </div>
-
       <!-- Grid View Switcher (Audit vs Day vs Room) -->
       <div class="sub-layout-switcher">
         <span class="sub-layout-label">Grid View:</span>
@@ -4955,18 +4984,6 @@ function renderProgramCoverageDashboard() {
     </div>
   `;
   container.appendChild(headerRow);
-
-  // Wire Campus Pill Clicks
-  headerRow.querySelectorAll('#prog-campus-pill-group .btn-sub-layout-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const camp = btn.getAttribute('data-campus');
-      appState.filters.location = camp;
-      const locSelect = document.getElementById('filter-location');
-      if (locSelect) locSelect.value = camp;
-      updateCascadingBuildingAndRoom();
-      applyFiltersAndRender();
-    });
-  });
 
   // Wire Sublayout Switcher
   headerRow.querySelectorAll('#prog-sublayout-group .btn-sub-layout-toggle').forEach(btn => {
@@ -5058,10 +5075,18 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
 
   let recommendationText = '';
   if (single.missingCourses.length === 0) {
-    recommendationText = `<strong>Fully Completable at ${locationLabel}!</strong> All ${single.totalRequired} required major courses are scheduled at this campus. Students can complete all degree requirements locally without traveling.`;
+    if (single.isDistrictWide) {
+      recommendationText = `<strong>Completable across District!</strong> All ${single.totalRequired} required major courses are scheduled across the district.`;
+    } else {
+      recommendationText = `<strong>Fully Completable at ${locationLabel}!</strong> All ${single.totalRequired} required major courses are scheduled at this campus. Students can complete all degree requirements locally without traveling.`;
+    }
   } else {
     const missingCodes = single.missingCourses.map(c => c.course).join(', ');
-    recommendationText = `<strong>Action Required to Enable 100% Degree Completability:</strong> Schedule sections for the following ${single.missingCount} missing course${single.missingCount > 1 ? 's' : ''} at ${locationLabel}: <strong>${missingCodes}</strong>. Consider offering in 8-week Fast-Track sequential pairs or evening/hybrid slots to maximize room utilization.`;
+    if (single.isDistrictWide) {
+      recommendationText = `<strong>Action Required to Enable 100% Degree Completability:</strong> Schedule sections for the following ${single.missingCount} missing course${single.missingCount > 1 ? 's' : ''} in the district: <strong>${missingCodes}</strong>. Consider offering in 8-week Fast-Track sequential pairs or evening/hybrid slots to maximize room utilization.`;
+    } else {
+      recommendationText = `<strong>Action Required to Enable 100% Degree Completability:</strong> Schedule sections for the following ${single.missingCount} missing course${single.missingCount > 1 ? 's' : ''} at ${locationLabel}: <strong>${missingCodes}</strong>. Consider offering in 8-week Fast-Track sequential pairs or evening/hybrid slots to maximize room utilization.`;
+    }
   }
 
   heroCard.innerHTML = `
@@ -5140,9 +5165,9 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
     </div>
 
     <div class="prog-stat-card">
-      <span class="prog-stat-title">Campus Scope</span>
+      <span class="prog-stat-title">${single.isDistrictWide ? 'Location Scope' : 'Campus Scope'}</span>
       <span class="prog-stat-value" style="font-size: 16px;">${locationLabel}</span>
-      <span class="prog-stat-sub">${single.campusSectionsCount} total sections at campus</span>
+      <span class="prog-stat-sub">${single.isDistrictWide ? `${single.campusSectionsCount} total district sections` : `${single.campusSectionsCount} total sections at campus`}</span>
     </div>
   `;
   container.appendChild(summaryBar);
@@ -5256,7 +5281,9 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
       const emptyMsg = document.createElement('div');
       emptyMsg.style.cssText = 'grid-column: 1 / -1; padding: 30px; text-align: center; font-size: 14px; color: var(--text-muted); background: var(--bg-surface-subtle); border-radius: 8px; border: 1px dashed var(--border-color);';
       emptyMsg.textContent = currentTab === 'missing'
-        ? `No missing courses! All required major courses for ${prog.title} are scheduled at ${locationLabel}.`
+        ? (single.isDistrictWide
+            ? `No missing courses! All required major courses for ${prog.title} are scheduled across the district.`
+            : `No missing courses! All required major courses for ${prog.title} are scheduled at ${locationLabel}.`)
         : `No scheduled courses in this view.`;
       cardsGrid.appendChild(emptyMsg);
     } else {
@@ -5302,7 +5329,7 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
             </div>
           ` : `
             <div class="prog-action-box">
-              <strong>Action Item:</strong> 0 sections of ${item.course} are scheduled at ${locationLabel}. To enable students to complete the ${prog.title} locally, schedule at least one section of this course.
+              <strong>Action Item:</strong> 0 sections of ${item.course} are scheduled ${single.isDistrictWide ? 'in the district' : `at ${locationLabel}`}. To enable students to complete the ${prog.title}${single.isDistrictWide ? '' : ' locally'}, schedule at least one section of this course.
             </div>
 
             ${item.otherOfferings.length > 0 ? `
@@ -5381,7 +5408,7 @@ function renderCatalogMatrixView(container, analysis) {
           Program Completability Catalog Matrix: ${locationLabel}
         </h4>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-          Ranked by % of required curriculum scheduled at ${locationLabel}. Click "Audit Program" on any row to drill down.
+          Ranked by % of required curriculum scheduled ${analysis.isDistrictWide ? 'across the district' : `at ${locationLabel}`}. Click "Audit Program" on any row to drill down.
         </p>
       </div>
 
@@ -5403,7 +5430,7 @@ function renderCatalogMatrixView(container, analysis) {
             <th>Program Entity Title</th>
             <th>Type</th>
             <th>Required Courses</th>
-            <th>Scheduled at Campus</th>
+            <th>${analysis.isDistrictWide ? 'Scheduled District-Wide' : 'Scheduled at Campus'}</th>
             <th>Missing</th>
             <th>Completeness</th>
             <th>Status</th>
@@ -5438,7 +5465,7 @@ function renderCatalogMatrixView(container, analysis) {
                 </td>
                 <td>
                   <span class="prog-hero-status-pill status-${p.statusTier}" style="font-size: 10px; padding: 3px 8px;">
-                    ${p.completeness === 100 ? '100% Completable' : (p.completeness >= 75 ? 'Near Completable' : (p.completeness >= 50 ? 'Partial' : 'Low Coverage'))}
+                    ${p.completeness === 100 ? (analysis.isDistrictWide ? 'Completable across District' : '100% Completable') : (p.completeness >= 75 ? 'Near Completable' : (p.completeness >= 50 ? 'Partial' : 'Low Coverage'))}
                   </span>
                 </td>
                 <td>
@@ -6497,6 +6524,8 @@ function resetAllFilters() {
   appState.efficiencyActiveTab = 'all';
   appState.programCoverageActiveTab = 'all';
   appState.programCoverageSubLayout = 'audit';
+  appState.programCoverageSelectedProgram = '';
+  appState.programCoverageCatalogView = false;
 
   const searchInput = document.getElementById('filter-search');
   if (searchInput) searchInput.value = '';
