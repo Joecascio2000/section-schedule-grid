@@ -5484,6 +5484,12 @@ function renderCatalogMatrixView(container, analysis) {
     });
   });
 }
+
+/**
+ * Creates an individual Schedule Tile DOM Element with dedicated Course Code row
+ * preventing text smashing, and support for Stacked Classes & GE Badges
+ */
+function createScheduleTileElement(block, leftPercent, widthPercent, topPx, heightPx) {
   const tile = document.createElement('div');
   const typeLower = block.instructionType.toLowerCase();
 
