@@ -1,9 +1,762 @@
 /**
  * Chaffey College Academic Program & Course Mapping
- * Automatically parsed from Program Summary 2026-10-19_112619.csv
- * Contains 202 Active Programs of Study
+ * Auto-generated from Program Summary 2026-10-19_112619.csv
  */
 window.CHAFFEY_PROGRAM_DATA = {
+  "N137 - CAD Drafting Technician: Mechanical Certificate of Achievement": {
+    "id": "N137 - CAD Drafting Technician: Mechanical Certificate of Achievement",
+    "code": "N137",
+    "title": "CAD Drafting Technician: Mechanical Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "EGTECH-30",
+      "DRAFT-20",
+      "DRAFT-21",
+      "DRAFT-41",
+      "DRAFT-43",
+      "DRAFT-78",
+      "EGTECH-10",
+      "EGTECH-16"
+    ]
+  },
+  "L314 - Professional Office Skills Certificate of Achievement": {
+    "id": "L314 - Professional Office Skills Certificate of Achievement",
+    "code": "L314",
+    "title": "Professional Office Skills Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSTEC-40A",
+      "BUSTEC-60A",
+      "BUSTEC-63",
+      "BUSTEC-400",
+      "BUSTEC-455",
+      "COMSTD-74",
+      "GUID-3"
+    ]
+  },
+  "N127 - CAD Drafting Technician: Architectural Certificate of Achievement": {
+    "id": "N127 - CAD Drafting Technician: Architectural Certificate of Achievement",
+    "code": "N127",
+    "title": "CAD Drafting Technician: Architectural Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "DRAFT-20",
+      "DRAFT-21",
+      "DRAFT-50",
+      "DRAFT-51",
+      "DRAFT-53",
+      "EGTECH-10"
+    ]
+  },
+  "S137 - CAD Drafting Technician: Mechanical A.S. Degree": {
+    "id": "S137 - CAD Drafting Technician: Mechanical A.S. Degree",
+    "code": "S137",
+    "title": "CAD Drafting Technician: Mechanical A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "DRAFT-20",
+      "DRAFT-21",
+      "DRAFT-41",
+      "DRAFT-43",
+      "DRAFT-78",
+      "EGTECH-10",
+      "EGTECH-16",
+      "EGTECH-30",
+      "PHYS-5",
+      "PHYS-6"
+    ]
+  },
+  "L166 - Engineering Technology Certificate of Achievement": {
+    "id": "L166 - Engineering Technology Certificate of Achievement",
+    "code": "L166",
+    "title": "Engineering Technology Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "CHEM-10",
+      "CHEM-24A",
+      "EGTECH-10",
+      "EGTECH-12",
+      "EGTECH-30",
+      "EGTECH-16",
+      "EGTECH-14",
+      "DRAFT-41",
+      "DRAFT-78",
+      "DRAFT-20",
+      "DRAFT-21",
+      "DRAFT-43",
+      "PHYS-5",
+      "PHYS-6",
+      "PHYS-20A"
+    ]
+  },
+  "B006 - Microsoft Excel Certificate of Achievement": {
+    "id": "B006 - Microsoft Excel Certificate of Achievement",
+    "code": "B006",
+    "title": "Microsoft Excel Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSTEC-40B",
+      "BUSTEC-63",
+      "BUSTEC-452",
+      "ACCTG-1A",
+      "BUSTEC-64",
+      "BUSTEC-50",
+      "BUSTEC-60A",
+      "BUSTEC-61",
+      "BUSTEC-400"
+    ]
+  },
+  "B352 - Microsoft Word Certificate of Achievement": {
+    "id": "B352 - Microsoft Word Certificate of Achievement",
+    "code": "B352",
+    "title": "Microsoft Word Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSTEC-40B",
+      "BUSTEC-60A",
+      "BUSTEC-60B",
+      "BUSTEC-455",
+      "BUSTEC-400",
+      "BUSTEC-460"
+    ]
+  },
+  "L354 - Microsoft Office Certificate of Achievement": {
+    "id": "L354 - Microsoft Office Certificate of Achievement",
+    "code": "L354",
+    "title": "Microsoft Office Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSTEC-40B",
+      "BUSTEC-60A",
+      "BUSTEC-60B",
+      "BUSTEC-61",
+      "BUSTEC-62",
+      "BUSTEC-63",
+      "BUSTEC-400",
+      "BUSTEC-455",
+      "BUSTEC-64",
+      "BUSTEC-410"
+    ]
+  },
+  "L321 - Professional Administrative Management Certificate of Achievement": {
+    "id": "L321 - Professional Administrative Management Certificate of Achievement",
+    "code": "L321",
+    "title": "Professional Administrative Management Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSTEC-40B",
+      "BUSTEC-60A",
+      "BUSTEC-60B",
+      "BUSTEC-62",
+      "BUSTEC-63",
+      "BUSTEC-64",
+      "BUSTEC-400",
+      "BUSTEC-455",
+      "BUSTEC-471",
+      "BUS-88",
+      "BUSTEC-50",
+      "BUSTEC-410",
+      "BUSTEC-452",
+      "BUSTEC-470",
+      "BUSTEC-61",
+      "BUSTEC-460"
+    ]
+  },
+  "S321 - Professional Administrative Management A.S. Degree": {
+    "id": "S321 - Professional Administrative Management A.S. Degree",
+    "code": "S321",
+    "title": "Professional Administrative Management A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUSTEC-50",
+      "BUSTEC-60B",
+      "BUSTEC-410",
+      "BUSTEC-452",
+      "BUSTEC-470",
+      "BUSTEC-61",
+      "BUSTEC-460",
+      "BUSTEC-40B",
+      "BUSTEC-60A",
+      "BUSTEC-62",
+      "BUSTEC-63",
+      "BUSTEC-64",
+      "BUSTEC-400",
+      "BUSTEC-455",
+      "BUSTEC-471",
+      "BUS-88"
+    ]
+  },
+  "S127 - CAD Drafting Technician: Architectural A.S. Degree": {
+    "id": "S127 - CAD Drafting Technician: Architectural A.S. Degree",
+    "code": "S127",
+    "title": "CAD Drafting Technician: Architectural A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "DRAFT-20",
+      "DRAFT-21",
+      "DRAFT-50",
+      "DRAFT-51",
+      "DRAFT-53",
+      "EGTECH-10",
+      "EGTECH-30",
+      "PHYS-5",
+      "PHYS-6"
+    ]
+  },
+  "E128 - CAD/CAM Operator Certificate of Achievement": {
+    "id": "E128 - CAD/CAM Operator Certificate of Achievement",
+    "code": "E128",
+    "title": "CAD/CAM Operator Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "DRAFT-20",
+      "DRAFT-21",
+      "EGTECH-10",
+      "DRAFT-43",
+      "EGTECH-16"
+    ]
+  },
+  "S166 - Engineering Technology A.S. Degree": {
+    "id": "S166 - Engineering Technology A.S. Degree",
+    "code": "S166",
+    "title": "Engineering Technology A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CHEM-24A",
+      "EGTECH-10",
+      "EGTECH-12",
+      "EGTECH-16",
+      "PHYS-20A",
+      "EGTECH-30",
+      "EGTECH-14",
+      "DRAFT-20",
+      "DRAFT-21",
+      "DRAFT-43",
+      "DRAFT-41",
+      "DRAFT-78"
+    ]
+  },
+  "S476 - Data Science A.S. Degree": {
+    "id": "S476 - Data Science A.S. Degree",
+    "code": "S476",
+    "title": "Data Science A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ITIS-10",
+      "COMPSCI-10",
+      "ITIS-80",
+      "COMPSCI-5",
+      "STAT-C1000",
+      "MATH-65A",
+      "MATH-65B",
+      "MATH-75",
+      "COMPSCI-11",
+      "MATH-81",
+      "COMPSCI-20",
+      "COMPSCI-4",
+      "ITIS-42"
+    ]
+  },
+  "S086 - Chemistry for Transfer AS-T": {
+    "id": "S086 - Chemistry for Transfer AS-T",
+    "code": "S086",
+    "title": "Chemistry for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "CHEM-24A",
+      "CHEM-24B",
+      "PHYS-35",
+      "PHYS-36",
+      "MATH-65A",
+      "MATH-65B",
+      "CHEM-75A",
+      "CHEM-75B"
+    ]
+  },
+  "S087 - Chemistry University of California Transfer Pathway AS-T": {
+    "id": "S087 - Chemistry University of California Transfer Pathway AS-T",
+    "code": "S087",
+    "title": "Chemistry University of California Transfer Pathway AS-T",
+    "isAssociate": true,
+    "courses": [
+      "CHEM-75A",
+      "CHEM-75B",
+      "PHYS-36",
+      "PHYS-35",
+      "MATH-85",
+      "MATH-75",
+      "MATH-65B",
+      "MATH-65A",
+      "CHEM-24B",
+      "CHEM-24A"
+    ]
+  },
+  "L358 - Business Information Worker (BIW) Stage Two Certificate of Achievement Certificate of Achievement": {
+    "id": "L358 - Business Information Worker (BIW) Stage Two Certificate of Achievement Certificate of Achievement",
+    "code": "L358",
+    "title": "Business Information Worker (BIW) Stage Two Certificate of Achievement Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSTEC-40B",
+      "BUSTEC-61",
+      "BUSTEC-60B",
+      "ACCTG-460",
+      "BUSTEC-50",
+      "BUSTEC-471",
+      "BUSTEC-64"
+    ]
+  },
+  "O130 - Orthodontic Assisting Permit Noncredit Certificate of Completion": {
+    "id": "O130 - Orthodontic Assisting Permit Noncredit Certificate of Completion",
+    "code": "O130",
+    "title": "Orthodontic Assisting Permit Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "DENTAL-690",
+      "DENTAL-691",
+      "DENTAL-692"
+    ]
+  },
+  "B156 - Mechatronics Level II Certificate of Achievement": {
+    "id": "B156 - Mechatronics Level II Certificate of Achievement",
+    "code": "B156",
+    "title": "Mechatronics Level II Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "IETELMT-436",
+      "IETELMT-438",
+      "IET-411",
+      "IETMECH-401",
+      "IETMECH-402",
+      "IETMECH-403"
+    ]
+  },
+  "S156 - Mechatronics A.S. Degree": {
+    "id": "S156 - Mechatronics A.S. Degree",
+    "code": "S156",
+    "title": "Mechatronics A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "IET-401A",
+      "IET-401B",
+      "IET-407",
+      "IET-411",
+      "IET-422",
+      "IETELMT-430",
+      "IETELMT-432",
+      "IETELMT-436",
+      "IETELMT-438",
+      "IETMECH-400",
+      "IETMECH-401",
+      "IETMECH-402",
+      "IET-400",
+      "IETMECH-403"
+    ]
+  },
+  "S150 - Industrial Electrical Technology A.S. Degree": {
+    "id": "S150 - Industrial Electrical Technology A.S. Degree",
+    "code": "S150",
+    "title": "Industrial Electrical Technology A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "IET-401A",
+      "IET-401B",
+      "IET-403A",
+      "IET-403B",
+      "IET-405",
+      "IET-407",
+      "IET-411",
+      "IET-413",
+      "IET-414",
+      "IET-415",
+      "IET-417",
+      "IET-420",
+      "IET-422",
+      "IET-460",
+      "IET-400",
+      "IET-418",
+      "IET-484ABCD"
+    ]
+  },
+  "L149 - Industrial Electrical Technology Level I Certificate of Achievement": {
+    "id": "L149 - Industrial Electrical Technology Level I Certificate of Achievement",
+    "code": "L149",
+    "title": "Industrial Electrical Technology Level I Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "IET-401A",
+      "IET-401B",
+      "IET-400",
+      "IET-422",
+      "IET-405",
+      "IET-407",
+      "IET-460",
+      "IET-484ABCD"
+    ]
+  },
+  "T255 - Hospitality Management: Food Service Certificate of Achievement": {
+    "id": "T255 - Hospitality Management: Food Service Certificate of Achievement",
+    "code": "T255",
+    "title": "Hospitality Management: Food Service Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "HOTFS-482",
+      "HOTFS-10",
+      "HOTFS-14",
+      "HOTFS-21",
+      "HOTFS-32",
+      "HOTFS-428",
+      "HOTFS-431",
+      "CUL-17",
+      "CUL-15",
+      "CUL-22"
+    ]
+  },
+  "L260 - Hospitality Management: Hotel Management Certificate of Achievement": {
+    "id": "L260 - Hospitality Management: Hotel Management Certificate of Achievement",
+    "code": "L260",
+    "title": "Hospitality Management: Hotel Management Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "HOTFS-10",
+      "HOTFS-14",
+      "HOTFS-21",
+      "HOTFS-32",
+      "HOTFS-428",
+      "HOTFS-431",
+      "CUL-15",
+      "HOTFS-42",
+      "HOTFS-482"
+    ]
+  },
+  "T010 - Airframe and Powerplant Technician Certificate of Achievement": {
+    "id": "T010 - Airframe and Powerplant Technician Certificate of Achievement",
+    "code": "T010",
+    "title": "Airframe and Powerplant Technician Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "AMT-15C",
+      "AMT-15A",
+      "AMT-29A",
+      "AMT-29B",
+      "AMT-39A",
+      "AMT-39B"
+    ]
+  },
+  "T013 - Aircraft Electrical and Avionics Technician Certificate of Achievement": {
+    "id": "T013 - Aircraft Electrical and Avionics Technician Certificate of Achievement",
+    "code": "T013",
+    "title": "Aircraft Electrical and Avionics Technician Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "AMT-400",
+      "AMT-15A",
+      "AMT-15C",
+      "AMT-39B",
+      "AMT-39A"
+    ]
+  },
+  "S014 - Airframe and Powerplant A.S. Degree": {
+    "id": "S014 - Airframe and Powerplant A.S. Degree",
+    "code": "S014",
+    "title": "Airframe and Powerplant A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "AMT-39B",
+      "AMT-39A",
+      "AMT-15A",
+      "AMT-15C",
+      "AMT-29B",
+      "AMT-29A"
+    ]
+  },
+  "T009 - Airframe Certificate of Achievement": {
+    "id": "T009 - Airframe Certificate of Achievement",
+    "code": "T009",
+    "title": "Airframe Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "AMT-39B",
+      "AMT-39A",
+      "AMT-15A",
+      "AMT-15C"
+    ]
+  },
+  "S255 - Hospitality Management: Food Service A.S. Degree": {
+    "id": "S255 - Hospitality Management: Food Service A.S. Degree",
+    "code": "S255",
+    "title": "Hospitality Management: Food Service A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "HOTFS-10",
+      "HOTFS-14",
+      "HOTFS-21",
+      "HOTFS-32",
+      "HOTFS-428",
+      "HOTFS-431",
+      "CUL-17",
+      "CUL-22",
+      "CUL-15",
+      "HOTFS-482"
+    ]
+  },
+  "S260 - Hospitality Management: Hotel Management A.S. Degree": {
+    "id": "S260 - Hospitality Management: Hotel Management A.S. Degree",
+    "code": "S260",
+    "title": "Hospitality Management: Hotel Management A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "HOTFS-10",
+      "HOTFS-14",
+      "HOTFS-21",
+      "HOTFS-32",
+      "HOTFS-428",
+      "HOTFS-431",
+      "CUL-15",
+      "HOTFS-42",
+      "HOTFS-482"
+    ]
+  },
+  "L153 - Electromechanical Technology Certificate of Achievement": {
+    "id": "L153 - Electromechanical Technology Certificate of Achievement",
+    "code": "L153",
+    "title": "Electromechanical Technology Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "IET-401A",
+      "IET-401B",
+      "IET-407",
+      "IETMECH-400",
+      "IET-400",
+      "IET-411",
+      "IET-422"
+    ]
+  },
+  "S133 - Administration of Justice for Transfer AS-T": {
+    "id": "S133 - Administration of Justice for Transfer AS-T",
+    "code": "S133",
+    "title": "Administration of Justice for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "CJ-1",
+      "CJ-2",
+      "CJ-7",
+      "CJ-4",
+      "CJ-5",
+      "CJ-6",
+      "CJ-9",
+      "CJ-51",
+      "CJ-3",
+      "PSYC-C1000",
+      "SOC-10",
+      "STAT-C1000",
+      "SOC-17"
+    ]
+  },
+  "S105 - Correctional Science A.S. Degree": {
+    "id": "S105 - Correctional Science A.S. Degree",
+    "code": "S105",
+    "title": "Correctional Science A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CJ-51",
+      "CJ-53",
+      "CJ-6",
+      "CJ-56",
+      "CJ-58",
+      "CJ-1",
+      "CJ-55",
+      "CJ-3",
+      "CJ-57",
+      "CJ-10",
+      "SOC-17"
+    ]
+  },
+  "L133 - Criminal Justice Certificate of Achievement": {
+    "id": "L133 - Criminal Justice Certificate of Achievement",
+    "code": "L133",
+    "title": "Criminal Justice Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "CJ-55",
+      "CJ-7",
+      "CJ-9",
+      "SOC-17",
+      "CJ-1",
+      "CJ-2",
+      "CJ-4",
+      "CJ-5",
+      "CJ-6",
+      "CJ-51"
+    ]
+  },
+  "T151 - Industrial Electrical Technology Level II Certificate of Achievement": {
+    "id": "T151 - Industrial Electrical Technology Level II Certificate of Achievement",
+    "code": "T151",
+    "title": "Industrial Electrical Technology Level II Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "IET-411",
+      "IET-413",
+      "IET-417",
+      "IET-420",
+      "IET-403B",
+      "IET-403A",
+      "IET-484ABCD",
+      "IET-400",
+      "IET-422",
+      "IET-401A",
+      "IET-401B",
+      "IET-460",
+      "IET-407",
+      "IET-405"
+    ]
+  },
+  "T154 - Industrial Electrical Technology Level III Certificate of Achievement": {
+    "id": "T154 - Industrial Electrical Technology Level III Certificate of Achievement",
+    "code": "T154",
+    "title": "Industrial Electrical Technology Level III Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "IET-420",
+      "IET-417",
+      "IET-413",
+      "IET-411",
+      "IET-403B",
+      "IET-403A",
+      "IET-418",
+      "IET-415",
+      "IET-414",
+      "IET-401A",
+      "IET-401B",
+      "IET-405",
+      "IET-407",
+      "IET-422",
+      "IET-460",
+      "IET-400",
+      "IET-484ABCD"
+    ]
+  },
+  "L156 - Mechatronics Level I Certificate of Achievement": {
+    "id": "L156 - Mechatronics Level I Certificate of Achievement",
+    "code": "L156",
+    "title": "Mechatronics Level I Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "IET-401A",
+      "IET-401B",
+      "IET-407",
+      "IET-422",
+      "IETELMT-430",
+      "IETELMT-432",
+      "IETMECH-400",
+      "IET-400"
+    ]
+  },
+  "A206 - Geography for Transfer AA-T": {
+    "id": "A206 - Geography for Transfer AA-T",
+    "code": "A206",
+    "title": "Geography for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "GEOG-11",
+      "GEOG-4",
+      "GEOG-4L",
+      "GEOG-1",
+      "GEOG-16ABC",
+      "GEOG-17ABC",
+      "GEOG-18ABC",
+      "GEOG-2",
+      "GEOG-3",
+      "GEOG-12",
+      "GEOG-55",
+      "ANTHRO-3",
+      "GEOL-1",
+      "GEOG-6"
+    ]
+  },
+  "S300 - Physical Therapist Assistant A.S. Degree": {
+    "id": "S300 - Physical Therapist Assistant A.S. Degree",
+    "code": "S300",
+    "title": "Physical Therapist Assistant A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "PTA-24",
+      "PTA-31",
+      "PTA-32",
+      "PTA-33",
+      "PTA-23",
+      "PTA-22",
+      "PTA-21",
+      "PTA-14",
+      "PTA-13",
+      "PTA-12",
+      "PTA-11",
+      "STAT-C1000",
+      "ENGL-C1000",
+      "BIOL-22",
+      "BIOL-20",
+      "PSYCH-25",
+      "KINLEC-24",
+      "NURADN-403",
+      "PTA-1",
+      "SCSCI-10"
+    ]
+  },
+  "M293 - Community Health Worker  Certificate of Achievement": {
+    "id": "M293 - Community Health Worker  Certificate of Achievement",
+    "code": "M293",
+    "title": "Community Health Worker  Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "PH-10",
+      "PH-20",
+      "PH-5",
+      "PH-11",
+      "PH-97ABCD"
+    ]
+  },
+  "S221 - Geology for Transfer AS-T": {
+    "id": "S221 - Geology for Transfer AS-T",
+    "code": "S221",
+    "title": "Geology for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "GEOL-1",
+      "GEOL-2",
+      "MATH-65A",
+      "MATH-65B",
+      "CHEM-24A",
+      "CHEM-24B"
+    ]
+  },
+  "S165 - Engineering A.S. Degree": {
+    "id": "S165 - Engineering A.S. Degree",
+    "code": "S165",
+    "title": "Engineering A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CHEM-24B",
+      "DRAFT-43",
+      "MATH-75",
+      "MATH-81",
+      "MATH-85",
+      "STAT-C1000",
+      "PHYS-47",
+      "ENGIN-11",
+      "MATH-65A",
+      "MATH-65B",
+      "PHYS-45",
+      "PHYS-46",
+      "CHEM-24A",
+      "ENGIN-26",
+      "ENGIN-30",
+      "ENGIN-50",
+      "ENGIN-52",
+      "ENGIN-60",
+      "ENGIN-71"
+    ]
+  },
   "A016 - Anthropology for Transfer AA-T": {
     "id": "A016 - Anthropology for Transfer AA-T",
     "code": "A016",
@@ -31,56 +784,1118 @@ window.CHAFFEY_PROGRAM_DATA = {
       "GEOG-1"
     ]
   },
-  "A037 - Art History for Transfer AA-T": {
-    "id": "A037 - Art History for Transfer AA-T",
-    "code": "A037",
-    "title": "Art History for Transfer AA-T",
+  "S315 - Nursing: Vocational A.S. Degree": {
+    "id": "S315 - Nursing: Vocational A.S. Degree",
+    "code": "S315",
+    "title": "Nursing: Vocational A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "ARTH-C1100",
-      "ARTH-C1200",
-      "ART-14",
-      "ARTH-9",
-      "ARTH-7",
-      "ARTH-11",
-      "ART-10",
-      "ARTH-19",
-      "ART-12",
-      "ART-18",
-      "ART-20",
-      "ART-30",
-      "PHOTO-7",
-      "PHOTO-10",
-      "ART-16"
+      "NURVN-403",
+      "NURVN-403L",
+      "NURVN-405",
+      "NURVN-405L",
+      "NURVN-409",
+      "NURVN-409L",
+      "NURVN-411",
+      "NURVN-411L",
+      "NURVN-413",
+      "NURVN-413L",
+      "NURVN-415A",
+      "NURVN-415B",
+      "NURVN-417A",
+      "NURVN-417B",
+      "NURVN-421",
+      "NURVN-421L",
+      "NURVN-407A",
+      "NURVN-407B",
+      "NURVN-407C",
+      "BIOL-424"
     ]
   },
-  "A038 - Studio Arts for Transfer AA-T": {
-    "id": "A038 - Studio Arts for Transfer AA-T",
-    "code": "A038",
-    "title": "Studio Arts for Transfer AA-T",
+  "T315 - Nursing: Vocational Certificate of Achievement": {
+    "id": "T315 - Nursing: Vocational Certificate of Achievement",
+    "code": "T315",
+    "title": "Nursing: Vocational Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "NURVN-403",
+      "NURVN-403L",
+      "NURVN-405",
+      "NURVN-405L",
+      "NURVN-409",
+      "NURVN-409L",
+      "NURVN-411",
+      "NURVN-411L",
+      "NURVN-413",
+      "NURVN-413L",
+      "NURVN-415A",
+      "NURVN-415B",
+      "NURVN-417A",
+      "NURVN-417B",
+      "NURVN-421",
+      "NURVN-421L",
+      "NURVN-407A",
+      "NURVN-407B",
+      "NURVN-407C",
+      "BIOL-424"
+    ]
+  },
+  "S357 - Physics University of California Transfer Pathway AS-T": {
+    "id": "S357 - Physics University of California Transfer Pathway AS-T",
+    "code": "S357",
+    "title": "Physics University of California Transfer Pathway AS-T",
     "isAssociate": true,
     "courses": [
-      "ARTH-C1200",
-      "ART-10",
-      "ART-12",
-      "ART-14",
-      "ARTH-C1100",
-      "ARTH-7",
-      "ARTH-9",
-      "ARTH-11",
-      "ART-30",
-      "ART-50",
-      "ART-20",
-      "ARTGD-73",
-      "ARTGD-63",
-      "ART-18",
-      "ART-16",
-      "ART-15",
-      "ART-32",
-      "ART-35",
-      "ART-34",
+      "PHYS-47",
+      "PHYS-46",
+      "PHYS-45",
+      "MATH-85",
+      "MATH-81",
+      "MATH-75",
+      "MATH-65B",
+      "MATH-65A",
+      "CHEM-24B",
+      "CHEM-24A"
+    ]
+  },
+  "S090 - Child Development A.S. Degree": {
+    "id": "S090 - Child Development A.S. Degree",
+    "code": "S090",
+    "title": "Child Development A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CDE-2",
+      "CDE-4",
+      "CDE-7",
+      "CDE-8",
+      "CDE-23",
+      "CDE-415",
+      "CDE-416",
+      "CDE-430A",
+      "CDE-50",
+      "CDE-27"
+    ]
+  },
+  "S091 - Early Childhood Education for Transfer AS-T": {
+    "id": "S091 - Early Childhood Education for Transfer AS-T",
+    "code": "S091",
+    "title": "Early Childhood Education for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "CDE-2",
+      "CDE-4",
+      "CDE-1",
+      "CDE-3",
+      "CDE-5",
+      "CDE-6",
+      "CDE-27",
+      "CDE-28W",
+      "CDE-28"
+    ]
+  },
+  "A402 - Social Justice Studies, General for Transfer AA-T": {
+    "id": "A402 - Social Justice Studies, General for Transfer AA-T",
+    "code": "A402",
+    "title": "Social Justice Studies, General for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "SOC-33",
+      "SOC-15",
+      "HIST-19",
+      "SOC-30",
+      "SOC-32",
+      "SOC-25",
+      "HIST-71",
+      "HIST-70",
+      "HIST-51",
+      "HIST-50",
+      "ENGL-76",
+      "HIST-12",
+      "ENGL-74",
+      "PS-25",
+      "SCSCI-10",
+      "SOC-80",
+      "ENGL-73",
+      "ENGL-77",
+      "ENGL-79",
+      "STAT-C1000"
+    ]
+  },
+  "L449 - Engine Rebuilding Certificate of Career Preparation": {
+    "id": "L449 - Engine Rebuilding Certificate of Career Preparation",
+    "code": "L449",
+    "title": "Engine Rebuilding Certificate of Career Preparation",
+    "isAssociate": false,
+    "courses": [
+      "AUTOTEC-430",
+      "AUTOTEC-431"
+    ]
+  },
+  "O230 - Caregiving Essentials Noncredit Certificate of Completion": {
+    "id": "O230 - Caregiving Essentials Noncredit Certificate of Completion",
+    "code": "O230",
+    "title": "Caregiving Essentials Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "GERO-600",
+      "GERO-655"
+    ]
+  },
+  "B232 - Community Caregiver Certificate of Achievement": {
+    "id": "B232 - Community Caregiver Certificate of Achievement",
+    "code": "B232",
+    "title": "Community Caregiver Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "GERO-11",
+      "GERO-22",
+      "GERO-400",
+      "GERO-455"
+    ]
+  },
+  "S230 - Gerontology A.S. Degree": {
+    "id": "S230 - Gerontology A.S. Degree",
+    "code": "S230",
+    "title": "Gerontology A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "GERO-11",
+      "GERO-18",
+      "GERO-23",
+      "PH-10",
+      "GERO-22",
+      "GERO-400"
+    ]
+  },
+  "S121 - Dental Assisting A.S. Degree": {
+    "id": "S121 - Dental Assisting A.S. Degree",
+    "code": "S121",
+    "title": "Dental Assisting A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "DENTAL-405",
+      "DENTAL-415",
+      "DENTAL-425",
+      "DENTAL-435",
+      "DENTAL-445",
+      "DENTAL-455",
+      "DENTAL-460",
+      "DENTAL-465",
+      "DENTAL-475",
+      "DENTAL-480",
+      "DENTAL-490",
+      "DENTAL-415L",
+      "DENTAL-425L",
+      "DENTAL-435L",
+      "DENTAL-445L",
+      "DENTAL-455L",
+      "DENTAL-465L",
+      "DENTAL-475L",
+      "DENTAL-480L",
+      "DENTAL-490L"
+    ]
+  },
+  "T121 - Dental Assisting Certificate of Achievement": {
+    "id": "T121 - Dental Assisting Certificate of Achievement",
+    "code": "T121",
+    "title": "Dental Assisting Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "DENTAL-405",
+      "DENTAL-415",
+      "DENTAL-425",
+      "DENTAL-435",
+      "DENTAL-445",
+      "DENTAL-455",
+      "DENTAL-460",
+      "DENTAL-465",
+      "DENTAL-475",
+      "DENTAL-480",
+      "DENTAL-490",
+      "DENTAL-415L",
+      "DENTAL-425L",
+      "DENTAL-435L",
+      "DENTAL-445L",
+      "DENTAL-455L",
+      "DENTAL-465L",
+      "DENTAL-475L",
+      "DENTAL-480L",
+      "DENTAL-490L"
+    ]
+  },
+  "A336 - Philosophy for Transfer AA-T": {
+    "id": "A336 - Philosophy for Transfer AA-T",
+    "code": "A336",
+    "title": "Philosophy for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "PHIL-75",
+      "PHIL-70",
+      "PHIL-72",
+      "PHIL-77",
+      "PHIL-78",
+      "PHIL-76",
+      "HIST-5",
+      "HIST-6",
+      "PHIL-80",
+      "PHIL-73",
+      "PHIL-81",
+      "PHIL-82",
+      "PHIL-71",
+      "PHIL-79"
+    ]
+  },
+  "S056 - General Automotive Service Technician A.S. Degree": {
+    "id": "S056 - General Automotive Service Technician A.S. Degree",
+    "code": "S056",
+    "title": "General Automotive Service Technician A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "AUTOTEC-450",
+      "AUTOTEC-418",
+      "AUTOTEC-417",
+      "AUTOTEC-10",
+      "AUTOTEC-455",
+      "AUTOTEC-422",
+      "AUTOTEC-416",
+      "AUTOTEC-15"
+    ]
+  },
+  "L446 - General Automotive Service Technician Certificate of Achievement": {
+    "id": "L446 - General Automotive Service Technician Certificate of Achievement",
+    "code": "L446",
+    "title": "General Automotive Service Technician Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "AUTOTEC-450",
+      "AUTOTEC-418",
+      "AUTOTEC-417",
+      "AUTOTEC-10",
+      "AUTOTEC-455",
+      "AUTOTEC-15",
+      "AUTOTEC-422",
+      "AUTOTEC-416"
+    ]
+  },
+  "E110 - High Performance Engines Building and Blueprinting Certificate of Career Preparation": {
+    "id": "E110 - High Performance Engines Building and Blueprinting Certificate of Career Preparation",
+    "code": "E110",
+    "title": "High Performance Engines Building and Blueprinting Certificate of Career Preparation",
+    "isAssociate": false,
+    "courses": [
+      "AUTOTEC-430",
+      "AUTOTEC-431",
+      "AUTOTEC-435"
+    ]
+  },
+  "S055 - Master Automotive Technician A.S. Degree": {
+    "id": "S055 - Master Automotive Technician A.S. Degree",
+    "code": "S055",
+    "title": "Master Automotive Technician A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "AUTOTEC-10",
+      "AUTOTEC-418",
+      "AUTOTEC-417",
+      "AUTOTEC-450",
+      "AUTOTEC-455",
+      "AUTOTEC-422",
+      "AUTOTEC-416",
+      "AUTOTEC-15",
+      "AUTOTEC-432",
+      "AUTOTEC-429",
+      "AUTOTEC-427",
+      "AUTOTEC-423"
+    ]
+  },
+  "T055 - Master Automotive Technician Certificate of Achievement": {
+    "id": "T055 - Master Automotive Technician Certificate of Achievement",
+    "code": "T055",
+    "title": "Master Automotive Technician Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "AUTOTEC-432",
+      "AUTOTEC-429",
+      "AUTOTEC-427",
+      "AUTOTEC-423",
+      "AUTOTEC-450",
+      "AUTOTEC-418",
+      "AUTOTEC-417",
+      "AUTOTEC-10",
+      "AUTOTEC-455",
+      "AUTOTEC-422",
+      "AUTOTEC-416",
+      "AUTOTEC-15"
+    ]
+  },
+  "B475 - Athletic Trainer Aide Certificate of Achievement": {
+    "id": "B475 - Athletic Trainer Aide Certificate of Achievement",
+    "code": "B475",
+    "title": "Athletic Trainer Aide Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BIOL-22",
+      "BIOL-20",
+      "BIOL-1",
+      "KINLEC-22",
+      "KINLEC-21",
+      "KINLEC-19",
+      "KINLEC-2"
+    ]
+  },
+  "O025 - Heating, Ventilation, Air Conditioning and Refrigeration Level I Noncredit Certificate of Completion": {
+    "id": "O025 - Heating, Ventilation, Air Conditioning and Refrigeration Level I Noncredit Certificate of Completion",
+    "code": "O025",
+    "title": "Heating, Ventilation, Air Conditioning and Refrigeration Level I Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "HVACR-600",
+      "HVACR-601",
+      "HVACR-602",
+      "HVACR-604",
+      "HVACR-605",
+      "HVACR-606",
+      "HVACR-612"
+    ]
+  },
+  "O026 - Heating, Ventilation, Air Conditioning and Refrigeration Level II Noncredit Certificate of Completion": {
+    "id": "O026 - Heating, Ventilation, Air Conditioning and Refrigeration Level II Noncredit Certificate of Completion",
+    "code": "O026",
+    "title": "Heating, Ventilation, Air Conditioning and Refrigeration Level II Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "HVACR-607",
+      "HVACR-608",
+      "HVACR-609",
+      "HVACR-610",
+      "HVACR-611",
+      "HVACR-603"
+    ]
+  },
+  "N256 - Dietetic Service Supervisor (DSS)/Certified Dietary Manager (CDM) Certificate of Achievement": {
+    "id": "N256 - Dietetic Service Supervisor (DSS)/Certified Dietary Manager (CDM) Certificate of Achievement",
+    "code": "N256",
+    "title": "Dietetic Service Supervisor (DSS)/Certified Dietary Manager (CDM) Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "HOTFS-14",
+      "CUL-15",
+      "CUL-17",
+      "NF-11",
+      "NF-15",
+      "NF-19",
+      "NF-471",
+      "NF-471L",
+      "NF-472",
+      "NF-472L"
+    ]
+  },
+  "S242 - Nutrition and Dietetics for Transfer AS-T": {
+    "id": "S242 - Nutrition and Dietetics for Transfer AS-T",
+    "code": "S242",
+    "title": "Nutrition and Dietetics for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "NF-15",
+      "CHEM-24A",
+      "BIOL-23",
+      "BIOL-23L",
+      "PSYC-C1000",
+      "BIOL-20",
+      "BIOL-22",
+      "SCSCI-10",
+      "STAT-C1000",
+      "CHEM-75A",
+      "CUL-17"
+    ]
+  },
+  "A366 - Psychology for Transfer AA-T": {
+    "id": "A366 - Psychology for Transfer AA-T",
+    "code": "A366",
+    "title": "Psychology for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "PSYC-C1000",
+      "PSYCH-80",
+      "SCSCI-10",
+      "PSYCH-20",
+      "PSYCH-25",
+      "PSYCH-65",
+      "PSYCH-55",
+      "PSYCH-5",
+      "PSYCH-41"
+    ]
+  },
+  "A361 - Political Science for Transfer AA-T": {
+    "id": "A361 - Political Science for Transfer AA-T",
+    "code": "A361",
+    "title": "Political Science for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "PS-3",
+      "PS-21",
+      "PS-25",
+      "PS-32",
+      "SOC-80",
+      "PSYCH-80",
+      "POLS-C1000",
+      "PS-2",
+      "PS-4",
+      "PS-7",
+      "PS-10",
+      "STAT-C1000",
+      "SCSCI-10"
+    ]
+  },
+  "L143 - Fire Prevention Inspector Certificate of Achievement": {
+    "id": "L143 - Fire Prevention Inspector Certificate of Achievement",
+    "code": "L143",
+    "title": "Fire Prevention Inspector Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "FIRETEC-420",
+      "FIRETEC-421",
+      "FIRETEC-422",
+      "FIRETEC-423",
+      "FIRETEC-2",
+      "FIRETEC-3",
+      "FIRETEC-4",
+      "FIRETEC-12",
+      "FIRETEC-97ABCD"
+    ]
+  },
+  "T141 - Fire Technology: Professional Firefighter Certificate of Achievement": {
+    "id": "T141 - Fire Technology: Professional Firefighter Certificate of Achievement",
+    "code": "T141",
+    "title": "Fire Technology: Professional Firefighter Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "FIRETEC-1",
+      "FIRETEC-2",
+      "FIRETEC-3",
+      "FIRETEC-4",
+      "FIRETEC-5",
+      "FIRETEC-9",
+      "EMT-11",
+      "EMT-405",
+      "FIRETEC-6",
+      "FIRETEC-7",
+      "FIRETEC-10",
+      "FIRETEC-11",
+      "FIRETEC-12"
+    ]
+  },
+  "S141 - Fire Technology: Professional Firefighter A.S. Degree": {
+    "id": "S141 - Fire Technology: Professional Firefighter A.S. Degree",
+    "code": "S141",
+    "title": "Fire Technology: Professional Firefighter A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "FIRETEC-1",
+      "FIRETEC-2",
+      "FIRETEC-3",
+      "FIRETEC-4",
+      "FIRETEC-5",
+      "FIRETEC-9",
+      "EMT-11",
+      "EMT-405",
+      "FIRETEC-6",
+      "FIRETEC-7",
+      "FIRETEC-10",
+      "FIRETEC-11",
+      "FIRETEC-12"
+    ]
+  },
+  "L233 - Emergency Medical Provider Certificate of Achievement": {
+    "id": "L233 - Emergency Medical Provider Certificate of Achievement",
+    "code": "L233",
+    "title": "Emergency Medical Provider Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "EMT-405",
+      "BIOL-424",
+      "BIOL-424L",
+      "FIRETEC-12",
+      "EMT-11",
+      "HS-30"
+    ]
+  },
+  "S375 - Radiologic Technology A.S. Degree": {
+    "id": "S375 - Radiologic Technology A.S. Degree",
+    "code": "S375",
+    "title": "Radiologic Technology A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "RADTEC-10",
+      "RADTEC-10L",
+      "RADTEC-16",
+      "RADTEC-16L",
+      "RADTEC-20",
+      "RADTEC-20L",
+      "RADTEC-25",
+      "RADTEC-25L",
+      "RADTEC-31",
+      "RADTEC-34",
+      "RADTEC-34L",
+      "RADTEC-41",
+      "RADTEC-51",
+      "RADTEC-55",
+      "RADTEC-61",
+      "RADTEC-67",
+      "RADTEC-67L",
+      "RADTEC-71",
+      "RADTEC-77",
+      "RADTEC-85",
+      "RADTEC-472",
+      "RADTEC-472L",
+      "RADTEC-82"
+    ]
+  },
+  "S065 - Biological Sciences A.S. Degree": {
+    "id": "S065 - Biological Sciences A.S. Degree",
+    "code": "S065",
+    "title": "Biological Sciences A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "MATH-65B",
+      "CHEM-75A",
+      "BIOL-40",
+      "BIOL-42",
+      "BIOL-42L",
+      "CHEM-24A",
+      "CHEM-24B",
+      "MATH-65A",
+      "BIOL-44"
+    ]
+  },
+  "O234 - Nursing Assistant  Noncredit Certificate of Completion": {
+    "id": "O234 - Nursing Assistant  Noncredit Certificate of Completion",
+    "code": "O234",
+    "title": "Nursing Assistant  Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "NURAST-600",
+      "NURAST-600L",
+      "NURAST-605L"
+    ]
+  },
+  "O100 - Phlebotomy Technician Noncredit Certificate of Completion": {
+    "id": "O100 - Phlebotomy Technician Noncredit Certificate of Completion",
+    "code": "O100",
+    "title": "Phlebotomy Technician Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "PHLEB-605",
+      "PHLEB-600",
+      "PHLEB-600L"
+    ]
+  },
+  "A236 - History for Transfer AA-T": {
+    "id": "A236 - History for Transfer AA-T",
+    "code": "A236",
+    "title": "History for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "HIST-C1001",
+      "HIST-C1002",
+      "HIST-4",
+      "HIST-7",
+      "HIST-9",
+      "HIST-10",
+      "HIST-12",
+      "HIST-25",
+      "HIST-50",
+      "HIST-51",
+      "HIST-70",
+      "HIST-71",
+      "HIST-19",
+      "HIST-1",
+      "HIST-2",
+      "HIST-16",
+      "HIST-20",
+      "HIST-21",
+      "HIST-40",
+      "HUMAN-5",
+      "HUMAN-6",
+      "HIST-37",
+      "HIST-5",
+      "HIST-6"
+    ]
+  },
+  "A145 - Political Economics A.A. Degree": {
+    "id": "A145 - Political Economics A.A. Degree",
+    "code": "A145",
+    "title": "Political Economics A.A. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ECON-C2002",
+      "ECON-C2001",
+      "SCSCI-10",
+      "STAT-C1000",
+      "MATH-25",
+      "MATH-60",
+      "MATH-61",
+      "ACCTG-1A",
+      "JOUR-10",
+      "PS-7",
+      "PS-10",
+      "PS-21",
+      "SOC-10"
+    ]
+  },
+  "S066 - Biology for Transfer AS-T": {
+    "id": "S066 - Biology for Transfer AS-T",
+    "code": "S066",
+    "title": "Biology for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "BIOL-40",
+      "BIOL-42L",
+      "BIOL-42",
+      "BIOL-44",
+      "MATH-65A",
+      "CHEM-24B",
+      "CHEM-24A",
+      "PHYS-20B",
+      "PHYS-20A",
+      "PHYS-36",
+      "PHYS-35"
+    ]
+  },
+  "S170 - Environmental Science for Transfer AS-T": {
+    "id": "S170 - Environmental Science for Transfer AS-T",
+    "code": "S170",
+    "title": "Environmental Science for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "STAT-C1000",
+      "MATH-65A",
+      "BIOL-2",
+      "GEOL-1",
+      "GEOG-4L",
+      "GEOG-4",
+      "BIOL-40",
+      "CHEM-24A",
+      "CHEM-24B",
+      "ECON-C2001",
+      "PHYS-35",
+      "PHYS-36",
+      "PHYS-20A",
+      "PHYS-20B"
+    ]
+  },
+  "N482 - Cybersecurity Analyst Certificate of Achievement": {
+    "id": "N482 - Cybersecurity Analyst Certificate of Achievement",
+    "code": "N482",
+    "title": "Cybersecurity Analyst Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ITIS-50",
+      "ITIS-51",
+      "ITIS-60",
+      "ITIS-10",
+      "ITIS-65",
+      "ITIS-55",
+      "ITIS-40",
+      "ITIS-14"
+    ]
+  },
+  "M254 - Hospitality Management: Food and Beverage Fundamentals Certificate of Achievement": {
+    "id": "M254 - Hospitality Management: Food and Beverage Fundamentals Certificate of Achievement",
+    "code": "M254",
+    "title": "Hospitality Management: Food and Beverage Fundamentals Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "HOTFS-10",
+      "HOTFS-14",
+      "CUL-15",
+      "HOTFS-21"
+    ]
+  },
+  "M260 - Hospitality Management: Hotel Fundamentals  Certificate of Achievement": {
+    "id": "M260 - Hospitality Management: Hotel Fundamentals  Certificate of Achievement",
+    "code": "M260",
+    "title": "Hospitality Management: Hotel Fundamentals  Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "HOTFS-42",
+      "HOTFS-428",
+      "HOTFS-10",
+      "HOTFS-14"
+    ]
+  },
+  "N402 - American Sign Language (ASL) Certificate of Achievement": {
+    "id": "N402 - American Sign Language (ASL) Certificate of Achievement",
+    "code": "N402",
+    "title": "American Sign Language (ASL) Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ASL-3",
+      "ASL-2",
+      "ASL-1",
+      "ASL-4",
+      "ASL-18",
+      "ASL-22",
+      "ASL-21"
+    ]
+  },
+  "A407 - American Sign Language Studies A.A. Degree": {
+    "id": "A407 - American Sign Language Studies A.A. Degree",
+    "code": "A407",
+    "title": "American Sign Language Studies A.A. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ASL-3",
+      "ASL-4",
+      "ASL-18",
+      "ASL-2",
+      "ASL-1",
+      "ED-10W",
+      "ED-10",
+      "COMSTD-74",
+      "COMSTD-14",
+      "ANTHRO-1",
+      "ASL-21",
+      "ASL-22",
+      "PHIL-76",
+      "PHIL-72",
+      "SOC-10",
+      "PSYCH-65"
+    ]
+  },
+  "S484 - Cybersecurity Professional A.S. Degree": {
+    "id": "S484 - Cybersecurity Professional A.S. Degree",
+    "code": "S484",
+    "title": "Cybersecurity Professional A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ITIS-50",
+      "ITIS-51",
+      "ITIS-55",
+      "ITIS-14",
+      "ITIS-10",
+      "ITIS-65",
+      "ITIS-40",
+      "ITIS-60",
+      "ITIS-468",
+      "MATH-60",
+      "MATH-65A",
+      "COMPSCI-4",
+      "ITIS-30",
+      "ITIS-61",
+      "ITIS-45",
+      "COMPSCI-1",
+      "COMPSCI-5",
+      "ITIS-64",
+      "ITIS-70"
+    ]
+  },
+  "N483 - Cybersecurity Defender Certificate of Achievement": {
+    "id": "N483 - Cybersecurity Defender Certificate of Achievement",
+    "code": "N483",
+    "title": "Cybersecurity Defender Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ITIS-30",
+      "ITIS-45",
+      "ITIS-70",
+      "ITIS-61",
+      "ITIS-64",
+      "COMPSCI-5",
+      "COMPSCI-1",
+      "ITIS-14",
+      "ITIS-10",
+      "ITIS-60",
+      "ITIS-40",
+      "ITIS-55",
+      "ITIS-50",
+      "ITIS-51",
+      "ITIS-65"
+    ]
+  },
+  "S101 - Information Technology and Information Systems A.S. Degree": {
+    "id": "S101 - Information Technology and Information Systems A.S. Degree",
+    "code": "S101",
+    "title": "Information Technology and Information Systems A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ITIS-70",
+      "ITIS-82",
+      "ITIS-80",
+      "ITIS-60",
+      "COMPSCI-10",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10",
+      "COMPSCI-5",
+      "COMPSCI-1",
+      "ITIS-30",
+      "ITIS-55"
+    ]
+  },
+  "B124 - Computer Game Development Certificate of Achievement": {
+    "id": "B124 - Computer Game Development Certificate of Achievement",
+    "code": "B124",
+    "title": "Computer Game Development Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "CISGAME-2",
+      "CISGAME-403",
+      "CISGAME-420",
+      "CISGAME-1",
+      "ITIS-10"
+    ]
+  },
+  "E129 - Programming Foundations Certificate of Achievement": {
+    "id": "E129 - Programming Foundations Certificate of Achievement",
+    "code": "E129",
+    "title": "Programming Foundations Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ITIS-10",
+      "ITIS-82",
+      "ITIS-84",
+      "ITIS-30",
+      "COMPSCI-5"
+    ]
+  },
+  "T490 - Cloud Solutions Architecting  Certificate of Achievement": {
+    "id": "T490 - Cloud Solutions Architecting  Certificate of Achievement",
+    "code": "T490",
+    "title": "Cloud Solutions Architecting  Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ITIS-40",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10",
+      "ITIS-471",
+      "ITIS-70",
+      "ITIS-74",
+      "ITIS-61",
+      "ITIS-60",
+      "ITIS-55",
+      "ITIS-80",
+      "ITIS-45",
+      "ITIS-42",
+      "ITIS-30",
+      "ITIS-474"
+    ]
+  },
+  "S492 - Cloud Solutions Architecting A.S. Degree": {
+    "id": "S492 - Cloud Solutions Architecting A.S. Degree",
+    "code": "S492",
+    "title": "Cloud Solutions Architecting A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ITIS-14",
+      "ITIS-10",
+      "ITIS-50",
+      "ITIS-16",
+      "ITIS-51",
+      "ITIS-40",
+      "ITIS-74",
+      "ITIS-70",
+      "ITIS-61",
+      "ITIS-60",
+      "ITIS-55",
+      "ITIS-30",
+      "ITIS-80",
+      "ITIS-42",
+      "ITIS-474",
+      "ITIS-45",
+      "ITIS-471"
+    ]
+  },
+  "A406 - Spanish for Transfer AA-T": {
+    "id": "A406 - Spanish for Transfer AA-T",
+    "code": "A406",
+    "title": "Spanish for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "SPAN-1",
+      "SPAN-2",
+      "SPAN-3",
+      "SPAN-3SS",
+      "SPAN-4",
+      "SPAN-4SS",
+      "SPAN-13",
+      "SPAN-14",
+      "ENGL-77",
+      "SPAN-9"
+    ]
+  },
+  "S103 - Computer Science for Transfer AS-T": {
+    "id": "S103 - Computer Science for Transfer AS-T",
+    "code": "S103",
+    "title": "Computer Science for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "COMPSCI-1",
+      "COMPSCI-2",
+      "COMPSCI-3",
+      "MATH-65A",
+      "MATH-65B",
+      "PHYS-45",
+      "PHYS-46",
+      "COMPSCI-4",
+      "COMPSCI-6",
+      "COMPSCI-5"
+    ]
+  },
+  "L290 - Facilities Management Certificate of Achievement": {
+    "id": "L290 - Facilities Management Certificate of Achievement",
+    "code": "L290",
+    "title": "Facilities Management Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ENGL-C1000",
+      "ACCTG-1A",
+      "ACCTGFS-465",
+      "BUS-10",
+      "BUS-60",
+      "BUS-88",
+      "BUSL-28A",
+      "BUSMGT-40",
+      "BUSMGT-44",
+      "BUSMGT-470",
+      "BUSMGT-466"
+    ]
+  },
+  "A305 - Music for Transfer AA-T": {
+    "id": "A305 - Music for Transfer AA-T",
+    "code": "A305",
+    "title": "Music for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "MUSIC-5",
+      "MUSIC-6",
+      "MUSIC-7",
+      "MUSIC-58",
+      "MUSIC-75",
+      "MUSIC-76",
+      "MUSIC-77",
+      "MUSIC-78",
+      "MUSIC-35",
+      "MUSIC-36",
+      "MUSIC-37",
+      "MUSIC-9"
+    ]
+  },
+  "B315 - Recording Arts Technician Certificate of Achievement": {
+    "id": "B315 - Recording Arts Technician Certificate of Achievement",
+    "code": "B315",
+    "title": "Recording Arts Technician Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "MUSIC-5",
+      "MUSIC-16",
+      "MUSIC-17",
+      "COMSTD-8",
+      "MUSIC-18",
+      "MUSIC-19"
+    ]
+  },
+  "S252 - Hospitality Management for Transfer AS-T": {
+    "id": "S252 - Hospitality Management for Transfer AS-T",
+    "code": "S252",
+    "title": "Hospitality Management for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "HOTFS-10",
+      "ECON-C2001",
+      "CUL-15",
+      "HOTFS-21",
+      "HOTFS-14",
+      "HOTFS-32",
+      "CUL-17",
+      "HOTFS-42",
+      "ACCTG-1A",
+      "BUSL-28A"
+    ]
+  },
+  "T342 - Photography Certificate of Achievement": {
+    "id": "T342 - Photography Certificate of Achievement",
+    "code": "T342",
+    "title": "Photography Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "PHOTO-1",
+      "PHOTO-7",
       "PHOTO-10",
-      "PHOTO-7"
+      "PHOTO-9",
+      "PHOTO-12",
+      "PHOTO-13",
+      "PHOTO-20",
+      "PHOTO-50",
+      "PHOTO-429",
+      "PHOTO-430",
+      "PHOTO-436",
+      "PHOTO-438",
+      "PHOTO-439",
+      "PHOTO-450"
+    ]
+  },
+  "A097 - Communication Studies 2.0 for Transfer AA-T": {
+    "id": "A097 - Communication Studies 2.0 for Transfer AA-T",
+    "code": "A097",
+    "title": "Communication Studies 2.0 for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "COMM-C1000",
+      "COMSTD-4",
+      "COMSTD-14",
+      "COMSTD-12",
+      "COMSTD-8",
+      "COMSTD-72",
+      "COMSTD-74",
+      "COMSTD-6",
+      "ANTHRO-3",
+      "COMSTD-76",
+      "COMSTD-78",
+      "JOUR-10",
+      "JOUR-30",
+      "PHOTO-10",
+      "PSYC-C1000",
+      "SOC-10"
+    ]
+  },
+  "A171 - English for Transfer AA-T": {
+    "id": "A171 - English for Transfer AA-T",
+    "code": "A171",
+    "title": "English for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "ENGL-C1001",
+      "ENGL-C1002",
+      "ENGL-75A",
+      "ENGL-75B",
+      "ENGL-80A",
+      "ENGL-80B",
+      "ENGL-70A",
+      "ENGL-70B",
+      "ENGL-68",
+      "ENGL-7A",
+      "ENGL-7B",
+      "ENGL-7D",
+      "ENGL-20",
+      "ENGL-7E",
+      "ENGL-32",
+      "ENGL-33",
+      "ENGL-35",
+      "ENGL-74",
+      "ENGL-76",
+      "ENGL-77",
+      "ENGL-79",
+      "ENGL-81",
+      "JOUR-10",
+      "COMSTD-14",
+      "ENGL-73"
     ]
   },
   "A049 - Graphic Design for Digital Media A.A. Degree": {
@@ -100,6 +1915,487 @@ window.CHAFFEY_PROGRAM_DATA = {
       "ARTGD-74",
       "ARTH-19",
       "PHOTO-7"
+    ]
+  },
+  "N049 - Graphic Design for Digital Media Certificate of Achievement": {
+    "id": "N049 - Graphic Design for Digital Media Certificate of Achievement",
+    "code": "N049",
+    "title": "Graphic Design for Digital Media Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ARTGD-63",
+      "ARTGD-73",
+      "ARTGD-82",
+      "ARTGD-84",
+      "ARTGD-13",
+      "ARTGD-83",
+      "ARTGD-74"
+    ]
+  },
+  "O340 - Personal Training Noncredit Certificate of Completion": {
+    "id": "O340 - Personal Training Noncredit Certificate of Completion",
+    "code": "O340",
+    "title": "Personal Training Noncredit Certificate of Completion",
+    "isAssociate": false,
+    "courses": [
+      "KINLEC-603",
+      "KINLEC-602",
+      "KINLEC-601"
+    ]
+  },
+  "L255 - Culinary Arts Certificate of Achievement": {
+    "id": "L255 - Culinary Arts Certificate of Achievement",
+    "code": "L255",
+    "title": "Culinary Arts Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "CUL-15",
+      "CUL-17",
+      "CUL-22",
+      "CUL-440",
+      "CUL-442",
+      "CUL-444",
+      "HOTFS-10",
+      "HOTFS-21",
+      "HOTFS-482",
+      "CUL-447",
+      "CUL-438"
+    ]
+  },
+  "S111 - Culinary Arts A.S. Degree": {
+    "id": "S111 - Culinary Arts A.S. Degree",
+    "code": "S111",
+    "title": "Culinary Arts A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CUL-15",
+      "CUL-17",
+      "CUL-22",
+      "CUL-440",
+      "CUL-442",
+      "CUL-444",
+      "HOTFS-10",
+      "HOTFS-21",
+      "CUL-447",
+      "CUL-438"
+    ]
+  },
+  "S244 - Professional Baking and Patisserie A.S. Degree": {
+    "id": "S244 - Professional Baking and Patisserie A.S. Degree",
+    "code": "S244",
+    "title": "Professional Baking and Patisserie A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CUL-15",
+      "CUL-17",
+      "CUL-22",
+      "CUL-440",
+      "CUL-441",
+      "CUL-443",
+      "CUL-445",
+      "CUL-446",
+      "CUL-447",
+      "HOTFS-10"
+    ]
+  },
+  "L244 - Professional Baking and Patisserie Certificate of Achievement": {
+    "id": "L244 - Professional Baking and Patisserie Certificate of Achievement",
+    "code": "L244",
+    "title": "Professional Baking and Patisserie Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "CUL-17",
+      "CUL-440",
+      "CUL-441",
+      "CUL-443",
+      "CUL-445",
+      "CUL-15",
+      "CUL-22",
+      "CUL-446",
+      "CUL-447",
+      "HOTFS-10"
+    ]
+  },
+  "S005 - Accounting A.S. Degree": {
+    "id": "S005 - Accounting A.S. Degree",
+    "code": "S005",
+    "title": "Accounting A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ACCTG-1A",
+      "ACCTG-1B",
+      "ACCTG-70",
+      "ACCTG-430",
+      "ACCTGFS-453",
+      "BUSL-28A",
+      "BUSTEC-63",
+      "ITIS-10",
+      "STAT-C1000"
+    ]
+  },
+  "T005 - Accounting Certificate of Achievement": {
+    "id": "T005 - Accounting Certificate of Achievement",
+    "code": "T005",
+    "title": "Accounting Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ACCTG-1A",
+      "ACCTG-1B",
+      "ACCTG-70",
+      "ACCTG-430",
+      "ACCTGFS-453",
+      "BUSTEC-63",
+      "ITIS-10",
+      "STAT-C1000",
+      "BUSL-28A",
+      "ACCTG-435",
+      "ACCTG-460",
+      "ITIS-16"
+    ]
+  },
+  "L008 - Accounting for Government and Not-For-Profit Organizations Certificate of Achievement": {
+    "id": "L008 - Accounting for Government and Not-For-Profit Organizations Certificate of Achievement",
+    "code": "L008",
+    "title": "Accounting for Government and Not-For-Profit Organizations Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ACCTG-1A",
+      "ACCTG-430",
+      "ACCTG-435",
+      "ACCTG-460"
+    ]
+  },
+  "E115 - Bookkeeping Certificate of Achievement": {
+    "id": "E115 - Bookkeeping Certificate of Achievement",
+    "code": "E115",
+    "title": "Bookkeeping Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ACCTG-460",
+      "ACCTG-435",
+      "BUSTEC-63",
+      "ACCTG-485",
+      "BUSTEC-455",
+      "ACCTGFS-30",
+      "ACCTGFS-453"
+    ]
+  },
+  "E117 - Payroll and Income Tax Preparer Certificate of Achievement": {
+    "id": "E117 - Payroll and Income Tax Preparer Certificate of Achievement",
+    "code": "E117",
+    "title": "Payroll and Income Tax Preparer Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ACCTG-1A",
+      "ACCTG-435",
+      "ACCTG-460",
+      "ACCTGFS-453"
+    ]
+  },
+  "L241 - Nutrition and Food Certificate of Achievement": {
+    "id": "L241 - Nutrition and Food Certificate of Achievement",
+    "code": "L241",
+    "title": "Nutrition and Food Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "NF-15",
+      "NF-22",
+      "CUL-15",
+      "COMSTD-8",
+      "KINLEC-16",
+      "NF-27"
+    ]
+  },
+  "S180 - Fashion Design A.S. Degree": {
+    "id": "S180 - Fashion Design A.S. Degree",
+    "code": "S180",
+    "title": "Fashion Design A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "FASHD-62",
+      "FASHD-72",
+      "FASHM-10",
+      "FASHM-60",
+      "FASHD-20",
+      "FASHD-28",
+      "FASHD-40",
+      "FASHD-42",
+      "FASHD-45",
+      "FASHD-61",
+      "FASHD-65",
+      "FASHD-89",
+      "FASHD-442",
+      "FASHD-470",
+      "FASHM-20"
+    ]
+  },
+  "L180 - Fashion Design Certificate of Achievement": {
+    "id": "L180 - Fashion Design Certificate of Achievement",
+    "code": "L180",
+    "title": "Fashion Design Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "FASHM-10",
+      "FASHM-20",
+      "FASHM-60",
+      "FASHD-20",
+      "FASHD-28",
+      "FASHD-40",
+      "FASHD-42",
+      "FASHD-45",
+      "FASHD-61",
+      "FASHD-62",
+      "FASHD-65",
+      "FASHD-72",
+      "FASHD-442",
+      "FASHD-470",
+      "FASHD-89"
+    ]
+  },
+  "S185 - Fashion Merchandising A.S. Degree": {
+    "id": "S185 - Fashion Merchandising A.S. Degree",
+    "code": "S185",
+    "title": "Fashion Merchandising A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "FASHD-20",
+      "FASHD-28",
+      "FASHD-40",
+      "FASHD-45",
+      "FASHD-89",
+      "FASHM-10",
+      "FASHM-11",
+      "FASHM-12",
+      "FASHM-20",
+      "FASHM-21",
+      "PHOTO-7",
+      "BUSTEC-63",
+      "FASHM-60"
+    ]
+  },
+  "L185 - Fashion Merchandising Certificate of Achievement": {
+    "id": "L185 - Fashion Merchandising Certificate of Achievement",
+    "code": "L185",
+    "title": "Fashion Merchandising Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "FASHM-12",
+      "FASHD-20",
+      "FASHD-28",
+      "FASHD-40",
+      "FASHD-45",
+      "FASHM-10",
+      "FASHM-11",
+      "FASHM-20",
+      "FASHM-21",
+      "FASHM-60",
+      "FASHD-89",
+      "PHOTO-7",
+      "BUSTEC-63"
+    ]
+  },
+  "L182 - Industrial Sewing Certificate of Career Preparation": {
+    "id": "L182 - Industrial Sewing Certificate of Career Preparation",
+    "code": "L182",
+    "title": "Industrial Sewing Certificate of Career Preparation",
+    "isAssociate": false,
+    "courses": [
+      "FASHD-40",
+      "FASHD-42",
+      "FASHD-442"
+    ]
+  },
+  "L336 - Journalism Certificate of Achievement": {
+    "id": "L336 - Journalism Certificate of Achievement",
+    "code": "L336",
+    "title": "Journalism Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "COMSTD-12",
+      "ENGL-C1000",
+      "JOUR-10",
+      "JOUR-30",
+      "PHOTO-10",
+      "PHOTO-7",
+      "JOUR-11",
+      "JOUR-31",
+      "ARTGD-63",
+      "BRDCAST-3",
+      "ENGL-7E",
+      "ENGL-35",
+      "PHOTO-20"
+    ]
+  },
+  "A344 - Journalism for Transfer AA-T": {
+    "id": "A344 - Journalism for Transfer AA-T",
+    "code": "A344",
+    "title": "Journalism for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "COMSTD-12",
+      "JOUR-10",
+      "JOUR-30",
+      "JOUR-11",
+      "JOUR-31",
+      "STAT-C1000",
+      "SCSCI-10",
+      "COMSTD-8",
+      "ECON-C2001",
+      "ECON-C2002",
+      "POLS-C1000",
+      "PS-10",
+      "ENGL-C1001",
+      "PHIL-75",
+      "COMSTD-72",
+      "PHOTO-10"
+    ]
+  },
+  "O400 - English as a Second Language Noncredit Certificate of Competency": {
+    "id": "O400 - English as a Second Language Noncredit Certificate of Competency",
+    "code": "O400",
+    "title": "English as a Second Language Noncredit Certificate of Competency",
+    "isAssociate": false,
+    "courses": [
+      "ESL-642",
+      "ESL-652",
+      "ESL-632B",
+      "ESL-632A",
+      "ESL-632",
+      "ESL-608",
+      "ESL-607"
+    ]
+  },
+  "A404 - Chinese Studies A.A. Degree": {
+    "id": "A404 - Chinese Studies A.A. Degree",
+    "code": "A404",
+    "title": "Chinese Studies A.A. Degree",
+    "isAssociate": true,
+    "courses": [
+      "CHIN-1",
+      "CHIN-2",
+      "CHIN-3",
+      "CHIN-4",
+      "ARTH-11",
+      "ENGL-74",
+      "HIST-10",
+      "CHIN-18"
+    ]
+  },
+  "S074 - Business A.S. Degree": {
+    "id": "S074 - Business A.S. Degree",
+    "code": "S074",
+    "title": "Business A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUS-10",
+      "BUSL-28A",
+      "BUS-60",
+      "BUS-88",
+      "ACCTG-1A",
+      "ACCTGFS-465",
+      "ACCTGFS-442",
+      "BUSL-28B",
+      "BUS-61",
+      "BUSMGT-11",
+      "BUSMGT-42",
+      "BUSMGT-44",
+      "BUSMGT-436",
+      "BUSMKT-13",
+      "BUSMKT-55",
+      "BUSMGT-441",
+      "BUSMKT-410",
+      "BUSMKT-420",
+      "BUSMGT-466",
+      "BUSMGT-40",
+      "BUSMKT-40"
+    ]
+  },
+  "N074 - Business Certificate of Achievement": {
+    "id": "N074 - Business Certificate of Achievement",
+    "code": "N074",
+    "title": "Business Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUS-10",
+      "BUSMGT-40",
+      "BUSMKT-40",
+      "BUSL-28A",
+      "ACCTGFS-442",
+      "BUSL-28B",
+      "BUS-61",
+      "BUSMGT-11",
+      "BUSMGT-42",
+      "BUSMGT-44",
+      "BUSMGT-436",
+      "BUSMKT-13",
+      "BUSMKT-55",
+      "BUSMGT-441",
+      "BUSMKT-410",
+      "ACCTGFS-465",
+      "ACCTG-1A",
+      "BUSMGT-466",
+      "BUSMKT-420"
+    ]
+  },
+  "S078 - Business Administration 2.0 for Transfer AS-T": {
+    "id": "S078 - Business Administration 2.0 for Transfer AS-T",
+    "code": "S078",
+    "title": "Business Administration 2.0 for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "ACCTG-1A",
+      "ACCTG-1B",
+      "BUSL-28A",
+      "ECON-C2001",
+      "ECON-C2002",
+      "MATH-25",
+      "MATH-65A",
+      "MATH-61",
+      "MATH-60",
+      "BUS-88",
+      "BUS-10",
+      "STAT-C1000",
+      "SCSCI-10"
+    ]
+  },
+  "S082 - Global Business A.S. Degree": {
+    "id": "S082 - Global Business A.S. Degree",
+    "code": "S082",
+    "title": "Global Business A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUSMKT-405",
+      "BUSL-410",
+      "BUS-61",
+      "BUSMKT-402",
+      "BUSMKT-55",
+      "BUSMKT-410",
+      "BUSMGT-436",
+      "BUSMGT-45",
+      "BUSL-28A",
+      "BUS-88",
+      "BUS-60",
+      "BUS-10",
+      "ACCTG-1A",
+      "ACCTGFS-465"
+    ]
+  },
+  "S286 - Facilities Management A.S. Degree": {
+    "id": "S286 - Facilities Management A.S. Degree",
+    "code": "S286",
+    "title": "Facilities Management A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ACCTGFS-465",
+      "BUS-10",
+      "BUS-60",
+      "BUS-88",
+      "BUSL-28A",
+      "BUSMGT-40",
+      "BUSMGT-44",
+      "BUSMGT-470",
+      "BUSMGT-466",
+      "ACCTG-1A"
     ]
   },
   "A080 - Law, Public Policy, and Society for Transfer AA-T": {
@@ -138,503 +2434,488 @@ window.CHAFFEY_PROGRAM_DATA = {
       "SOC-70"
     ]
   },
-  "A097 - Communication Studies 2.0 for Transfer AA-T": {
-    "id": "A097 - Communication Studies 2.0 for Transfer AA-T",
-    "code": "A097",
-    "title": "Communication Studies 2.0 for Transfer AA-T",
-    "isAssociate": true,
+  "L286 - Management Certificate of Achievement": {
+    "id": "L286 - Management Certificate of Achievement",
+    "code": "L286",
+    "title": "Management Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "COMM-C1000",
-      "COMSTD-4",
-      "COMSTD-14",
-      "COMSTD-12",
-      "COMSTD-8",
-      "COMSTD-72",
-      "COMSTD-74",
-      "COMSTD-6",
-      "ANTHRO-3",
-      "COMSTD-76",
-      "COMSTD-78",
-      "JOUR-10",
-      "JOUR-30",
-      "PHOTO-10",
-      "PSYC-C1000",
-      "SOC-10"
+      "BUSMGT-40",
+      "BUSMGT-42",
+      "BUSMGT-44",
+      "BUSMGT-441",
+      "BUSL-28A",
+      "BUSL-28B",
+      "BUS-60",
+      "BUS-61",
+      "BUSMGT-11",
+      "BUSMGT-45",
+      "BUSMGT-436",
+      "BUSMGT-48",
+      "BUSMGT-480",
+      "BUSMKT-40",
+      "BUSMKT-420"
     ]
   },
-  "A121 - Elementary Teacher Education: Integrated Programs for Transfer AA-T": {
-    "id": "A121 - Elementary Teacher Education: Integrated Programs for Transfer AA-T",
-    "code": "A121",
-    "title": "Elementary Teacher Education: Integrated Programs for Transfer AA-T",
+  "S285 - Management A.S. Degree": {
+    "id": "S285 - Management A.S. Degree",
+    "code": "S285",
+    "title": "Management A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "CDE-2",
-      "COMM-C1000",
-      "ENGL-C1000",
-      "BIOL-1",
-      "ENGL-C1002",
-      "HIST-1",
-      "HIST-C1001",
-      "POLS-C1000",
-      "ED-10W",
-      "ED-10",
-      "MUSIC-4",
-      "THEATRE-1",
-      "ESC-1L",
-      "ESC-1",
-      "GEOG-1"
-    ]
-  },
-  "A145 - Political Economics A.A. Degree": {
-    "id": "A145 - Political Economics A.A. Degree",
-    "code": "A145",
-    "title": "Political Economics A.A. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ECON-C2002",
-      "ECON-C2001",
-      "SCSCI-10",
-      "STAT-C1000",
-      "MATH-25",
-      "MATH-60",
-      "MATH-61",
-      "ACCTG-1A",
-      "JOUR-10",
-      "PS-7",
-      "PS-10",
-      "PS-21",
-      "SOC-10"
-    ]
-  },
-  "A146 - Economics for Transfer AA-T": {
-    "id": "A146 - Economics for Transfer AA-T",
-    "code": "A146",
-    "title": "Economics for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "ECON-C2002",
-      "ECON-C2001",
-      "STAT-C1000",
-      "SCSCI-10",
-      "MATH-60",
-      "MATH-65A",
-      "MATH-65B",
-      "ACCTG-1A",
+      "BUSMGT-44",
+      "BUSMGT-42",
+      "BUSMGT-40",
       "ACCTG-1B",
+      "BUSL-28B",
+      "BUS-61",
+      "BUSMGT-436",
+      "BUSMGT-441",
+      "BUSMGT-48",
+      "BUSMGT-480",
+      "BUSMKT-40",
+      "BUSMKT-420",
+      "BUSMGT-45",
+      "BUSMGT-11",
+      "BUS-10",
       "BUS-88",
-      "ITIS-10",
-      "ECON-1",
-      "ECON-8",
-      "MATH-81",
-      "MATH-75"
+      "BUS-60",
+      "BUSL-28A",
+      "ACCTGFS-465",
+      "ACCTG-1A"
     ]
   },
-  "A171 - English for Transfer AA-T": {
-    "id": "A171 - English for Transfer AA-T",
-    "code": "A171",
-    "title": "English for Transfer AA-T",
+  "S081 - Marketing A.S. Degree": {
+    "id": "S081 - Marketing A.S. Degree",
+    "code": "S081",
+    "title": "Marketing A.S. Degree",
     "isAssociate": true,
     "courses": [
+      "BUSMKT-13",
+      "BUSMKT-40",
+      "BUSMKT-410",
+      "BUSL-435",
+      "BUSMKT-55",
+      "BUSMKT-405",
+      "BUSMKT-420",
+      "BUS-88",
+      "BUS-60",
+      "BUSL-28A",
+      "BUS-10",
+      "ACCTG-1A",
+      "ACCTGFS-465"
+    ]
+  },
+  "N080 - Marketing Certificate of Achievement": {
+    "id": "N080 - Marketing Certificate of Achievement",
+    "code": "N080",
+    "title": "Marketing Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSMKT-40",
+      "BUSMKT-13",
+      "BUSMKT-55",
+      "BUSMKT-420",
+      "BUSMKT-410",
+      "BUSL-435",
+      "BUSTEC-63",
+      "BUSMGT-436",
+      "BUSMKT-405"
+    ]
+  },
+  "N082 - Global Business Certificate of Achievement": {
+    "id": "N082 - Global Business Certificate of Achievement",
+    "code": "N082",
+    "title": "Global Business Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSMKT-55",
+      "BUSMKT-410",
+      "BUSMGT-436",
+      "BUSMGT-45",
+      "BUSMKT-405",
+      "BUSL-410",
+      "BUS-61",
+      "BUSMKT-402"
+    ]
+  },
+  "S077 - Paralegal Studies A.S. Degree": {
+    "id": "S077 - Paralegal Studies A.S. Degree",
+    "code": "S077",
+    "title": "Paralegal Studies A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUSL-28A",
+      "BUSL-28B",
+      "BUSL-400",
+      "BUSL-401",
+      "BUSL-402",
+      "BUSL-403",
+      "BUSL-406",
+      "BUSL-405",
+      "BUSL-10",
+      "BUSL-50",
+      "BUSL-407",
+      "BUSL-408",
+      "BUSL-409",
+      "BUSL-410",
+      "BUSL-411",
+      "BUSL-412",
+      "BUSL-413",
+      "BUSL-435",
+      "BUSL-496ABC"
+    ]
+  },
+  "L400 - Paralegal Studies Certificate of Achievement": {
+    "id": "L400 - Paralegal Studies Certificate of Achievement",
+    "code": "L400",
+    "title": "Paralegal Studies Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSL-28A",
+      "BUSL-28B",
+      "BUSL-400",
+      "BUSL-401",
+      "BUSL-402",
+      "BUSL-403",
+      "BUSL-406",
+      "BUSL-405",
+      "BUSL-10",
+      "BUSL-50",
+      "BUSL-407",
+      "BUSL-408",
+      "BUSL-409",
+      "BUSL-410",
+      "BUSL-411",
+      "BUSL-412",
+      "BUSL-413",
+      "BUSL-435",
+      "BUSL-496ABC"
+    ]
+  },
+  "L382 - Real Estate Certificate of Achievement": {
+    "id": "L382 - Real Estate Certificate of Achievement",
+    "code": "L382",
+    "title": "Real Estate Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "RE-410",
+      "RE-415",
+      "RE-460",
+      "RE-470",
+      "ACCTG-1A",
+      "BUSL-50",
+      "BUSL-28A",
+      "RE-472",
+      "RE-475",
+      "RE-486"
+    ]
+  },
+  "S381 - Real Estate A.S. Degree": {
+    "id": "S381 - Real Estate A.S. Degree",
+    "code": "S381",
+    "title": "Real Estate A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "RE-410",
+      "RE-415",
+      "RE-460",
+      "RE-470",
+      "ACCTG-1A",
+      "BUSL-50",
+      "BUSL-28A",
+      "RE-472",
+      "RE-475",
+      "RE-486"
+    ]
+  },
+  "L405 - Pathway to Law School Certificate of Achievement": {
+    "id": "L405 - Pathway to Law School Certificate of Achievement",
+    "code": "L405",
+    "title": "Pathway to Law School Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ENGL-C1000",
       "ENGL-C1001",
-      "ENGL-C1002",
-      "ENGL-75A",
-      "ENGL-75B",
-      "ENGL-80A",
-      "ENGL-80B",
-      "ENGL-70A",
-      "ENGL-70B",
-      "ENGL-68",
-      "ENGL-7A",
-      "ENGL-7B",
-      "ENGL-7D",
-      "ENGL-20",
-      "ENGL-7E",
-      "ENGL-32",
-      "ENGL-33",
-      "ENGL-35",
-      "ENGL-74",
-      "ENGL-76",
-      "ENGL-77",
-      "ENGL-79",
-      "ENGL-81",
-      "JOUR-10",
-      "COMSTD-14",
-      "ENGL-73"
-    ]
-  },
-  "A206 - Geography for Transfer AA-T": {
-    "id": "A206 - Geography for Transfer AA-T",
-    "code": "A206",
-    "title": "Geography for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "GEOG-11",
-      "GEOG-4",
-      "GEOG-4L",
-      "GEOG-1",
-      "GEOG-16ABC",
-      "GEOG-17ABC",
-      "GEOG-18ABC",
-      "GEOG-2",
-      "GEOG-3",
-      "GEOG-12",
-      "GEOG-55",
-      "ANTHRO-3",
-      "GEOL-1",
-      "GEOG-6"
-    ]
-  },
-  "A236 - History for Transfer AA-T": {
-    "id": "A236 - History for Transfer AA-T",
-    "code": "A236",
-    "title": "History for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
+      "COMSTD-72",
+      "SCSCI-10",
+      "STAT-C1000",
+      "POLS-C1000",
+      "BUSL-10",
+      "PHIL-76",
       "HIST-C1001",
       "HIST-C1002",
-      "HIST-4",
-      "HIST-7",
-      "HIST-9",
-      "HIST-10",
-      "HIST-12",
-      "HIST-25",
-      "HIST-50",
-      "HIST-51",
-      "HIST-70",
-      "HIST-71",
       "HIST-19",
-      "HIST-1",
-      "HIST-2",
-      "HIST-16",
       "HIST-20",
-      "HIST-21",
-      "HIST-40",
-      "HUMAN-5",
-      "HUMAN-6",
-      "HIST-37",
-      "HIST-5",
-      "HIST-6"
-    ]
-  },
-  "A305 - Music for Transfer AA-T": {
-    "id": "A305 - Music for Transfer AA-T",
-    "code": "A305",
-    "title": "Music for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "MUSIC-5",
-      "MUSIC-6",
-      "MUSIC-7",
-      "MUSIC-58",
-      "MUSIC-75",
-      "MUSIC-76",
-      "MUSIC-77",
-      "MUSIC-78",
-      "MUSIC-35",
-      "MUSIC-36",
-      "MUSIC-37",
-      "MUSIC-9"
-    ]
-  },
-  "A306 - Music Industry Studies AA-T": {
-    "id": "A306 - Music Industry Studies AA-T",
-    "code": "A306",
-    "title": "Music Industry Studies AA-T",
-    "isAssociate": true,
-    "courses": [
-      "MUSIC-5",
-      "MUSIC-6",
-      "MUSIC-35",
-      "MUSIC-36",
-      "MUSIC-9",
-      "MUSIC-18",
-      "MUSIC-19",
-      "MUSIC-15",
-      "MUSIC-22",
-      "MUSIC-23"
-    ]
-  },
-  "A336 - Philosophy for Transfer AA-T": {
-    "id": "A336 - Philosophy for Transfer AA-T",
-    "code": "A336",
-    "title": "Philosophy for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "PHIL-75",
-      "PHIL-70",
-      "PHIL-72",
-      "PHIL-77",
-      "PHIL-78",
-      "PHIL-76",
-      "HIST-5",
-      "HIST-6",
-      "PHIL-80",
-      "PHIL-73",
-      "PHIL-81",
-      "PHIL-82",
-      "PHIL-71",
-      "PHIL-79"
-    ]
-  },
-  "A340 - Photography A.A. Degree": {
-    "id": "A340 - Photography A.A. Degree",
-    "code": "A340",
-    "title": "Photography A.A. Degree",
-    "isAssociate": true,
-    "courses": [
-      "PHOTO-1",
-      "PHOTO-9",
-      "PHOTO-12",
-      "PHOTO-13",
-      "PHOTO-20",
-      "PHOTO-50",
-      "PHOTO-7",
-      "PHOTO-10",
-      "ARTH-19",
-      "ARTH-C1200",
-      "ART-10",
-      "ART-14",
-      "ARTGD-63"
-    ]
-  },
-  "A344 - Journalism for Transfer AA-T": {
-    "id": "A344 - Journalism for Transfer AA-T",
-    "code": "A344",
-    "title": "Journalism for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "COMSTD-12",
-      "JOUR-10",
-      "JOUR-30",
-      "JOUR-11",
-      "JOUR-31",
-      "STAT-C1000",
-      "SCSCI-10",
-      "COMSTD-8",
-      "ECON-C2001",
-      "ECON-C2002",
-      "POLS-C1000",
-      "PS-10",
-      "ENGL-C1001",
-      "PHIL-75",
-      "COMSTD-72",
-      "PHOTO-10"
-    ]
-  },
-  "A346 - Kinesiology for Transfer AA-T": {
-    "id": "A346 - Kinesiology for Transfer AA-T",
-    "code": "A346",
-    "title": "Kinesiology for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "KINLEC-18",
-      "BIOL-20",
-      "BIOL-22",
-      "KINACT-9",
-      "KINACT-31",
-      "KINACT-32A",
-      "KINACT-24",
-      "KINACT-25",
-      "KINACT-26",
-      "KINACT-28A",
-      "KINACT-29A",
-      "KINACT-35",
-      "KINACT-1",
-      "KINACT-20",
-      "KINACT-22",
-      "KINACT-3A",
-      "KINACT-5A",
-      "KINACT-6",
-      "STAT-C1000",
-      "SCSCI-10",
-      "CHEM-24A",
-      "PHYS-20A",
-      "PHYS-45",
-      "KINLEC-16"
-    ]
-  },
-  "A361 - Political Science for Transfer AA-T": {
-    "id": "A361 - Political Science for Transfer AA-T",
-    "code": "A361",
-    "title": "Political Science for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "PS-3",
-      "PS-21",
-      "PS-25",
-      "PS-32",
-      "SOC-80",
-      "PSYCH-80",
-      "POLS-C1000",
-      "PS-2",
-      "PS-4",
-      "PS-7",
-      "PS-10",
-      "STAT-C1000",
-      "SCSCI-10"
-    ]
-  },
-  "A366 - Psychology for Transfer AA-T": {
-    "id": "A366 - Psychology for Transfer AA-T",
-    "code": "A366",
-    "title": "Psychology for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "PSYC-C1000",
-      "PSYCH-80",
-      "SCSCI-10",
-      "PSYCH-20",
-      "PSYCH-25",
-      "PSYCH-65",
-      "PSYCH-55",
-      "PSYCH-5",
-      "PSYCH-41"
-    ]
-  },
-  "A401 - Sociology for Transfer AA-T": {
-    "id": "A401 - Sociology for Transfer AA-T",
-    "code": "A401",
-    "title": "Sociology for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "SOC-10",
-      "SOC-70",
-      "SCSCI-10",
-      "STAT-C1000",
-      "SOC-80",
-      "PSYCH-65",
-      "SOC-17",
-      "SOC-15",
-      "SOC-16",
-      "SOC-14",
-      "SOC-26",
-      "SOC-32",
-      "SOC-33",
-      "SOC-18",
-      "ANTHRO-3",
-      "SOC-25",
-      "SOC-30",
-      "SWHS-13"
-    ]
-  },
-  "A402 - Social Justice Studies, General for Transfer AA-T": {
-    "id": "A402 - Social Justice Studies, General for Transfer AA-T",
-    "code": "A402",
-    "title": "Social Justice Studies, General for Transfer AA-T",
-    "isAssociate": true,
-    "courses": [
-      "SOC-33",
-      "SOC-15",
-      "HIST-19",
-      "SOC-30",
-      "SOC-32",
-      "SOC-25",
-      "HIST-71",
-      "HIST-70",
-      "HIST-51",
       "HIST-50",
-      "ENGL-76",
+      "HIST-51",
+      "HIST-70",
+      "HIST-71",
       "HIST-12",
-      "ENGL-74",
-      "PS-25",
-      "SCSCI-10",
-      "SOC-80",
-      "ENGL-73",
-      "ENGL-77",
-      "ENGL-79",
-      "STAT-C1000"
+      "HIST-16",
+      "HIST-21",
+      "HIST-25"
     ]
   },
-  "A404 - Chinese Studies A.A. Degree": {
-    "id": "A404 - Chinese Studies A.A. Degree",
-    "code": "A404",
-    "title": "Chinese Studies A.A. Degree",
-    "isAssociate": true,
+  "T383 - Real Estate Property Management Certificate of Achievement": {
+    "id": "T383 - Real Estate Property Management Certificate of Achievement",
+    "code": "T383",
+    "title": "Real Estate Property Management Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "CHIN-1",
-      "CHIN-2",
-      "CHIN-3",
-      "CHIN-4",
-      "ARTH-11",
-      "ENGL-74",
-      "HIST-10",
-      "CHIN-18"
+      "RE-486",
+      "RE-415",
+      "RE-410",
+      "BUSTEC-455",
+      "BUSMKT-420",
+      "BUSMKT-40",
+      "BUSMGT-470",
+      "BUSMGT-42",
+      "BUSL-50",
+      "ACCTG-485"
     ]
   },
-  "A406 - Spanish for Transfer AA-T": {
-    "id": "A406 - Spanish for Transfer AA-T",
-    "code": "A406",
-    "title": "Spanish for Transfer AA-T",
+  "S383 - Real Estate Property Management A.S. Degree": {
+    "id": "S383 - Real Estate Property Management A.S. Degree",
+    "code": "S383",
+    "title": "Real Estate Property Management A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "SPAN-1",
-      "SPAN-2",
-      "SPAN-3",
-      "SPAN-3SS",
-      "SPAN-4",
-      "SPAN-4SS",
-      "SPAN-13",
-      "SPAN-14",
-      "ENGL-77",
-      "SPAN-9"
+      "ACCTG-485",
+      "BUSMGT-42",
+      "BUSL-50",
+      "BUSMGT-470",
+      "RE-486",
+      "RE-415",
+      "RE-410",
+      "BUSTEC-455",
+      "BUSMKT-420",
+      "BUSMKT-40"
     ]
   },
-  "A407 - American Sign Language Studies A.A. Degree": {
-    "id": "A407 - American Sign Language Studies A.A. Degree",
-    "code": "A407",
-    "title": "American Sign Language Studies A.A. Degree",
-    "isAssociate": true,
+  "M383 - Real Estate Salesperson Certificate of Achievement": {
+    "id": "M383 - Real Estate Salesperson Certificate of Achievement",
+    "code": "M383",
+    "title": "Real Estate Salesperson Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "ASL-3",
-      "ASL-4",
-      "ASL-18",
-      "ASL-2",
-      "ASL-1",
-      "ED-10W",
-      "ED-10",
-      "COMSTD-74",
-      "COMSTD-14",
-      "ANTHRO-1",
-      "ASL-21",
-      "ASL-22",
-      "PHIL-76",
-      "PHIL-72",
-      "SOC-10",
-      "PSYCH-65"
+      "RE-410",
+      "RE-415",
+      "BUSL-50",
+      "RE-460",
+      "RE-470",
+      "RE-486",
+      "RE-475",
+      "ACCTG-1A",
+      "BUSL-28A"
     ]
   },
-  "A410 - Theatre Arts for Transfer AA-T": {
-    "id": "A410 - Theatre Arts for Transfer AA-T",
-    "code": "A410",
-    "title": "Theatre Arts for Transfer AA-T",
-    "isAssociate": true,
+  "L295 - Retail Management Certificate of Achievement": {
+    "id": "L295 - Retail Management Certificate of Achievement",
+    "code": "L295",
+    "title": "Retail Management Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "THEATRE-1",
-      "THEATRE-4",
-      "THEATRE-10",
-      "THEATRE-52ABCD",
-      "THEATRE-50ABCD",
-      "THEATRE-7",
-      "THEATRE-12",
-      "THEATRE-30",
-      "THEATRE-32",
-      "THEATRE-40",
-      "THEATRE-42",
-      "THEATRE-31"
+      "BUSMGT-11",
+      "BUSMGT-40",
+      "BUSMKT-40",
+      "BUSMGT-42",
+      "ITIS-10",
+      "ACCTGFS-465",
+      "BUSMGT-44",
+      "BUS-88",
+      "ENGL-C1000"
     ]
   },
-  "A416 - Theatre: Acting Emphasis A.A. Degree": {
-    "id": "A416 - Theatre: Acting Emphasis A.A. Degree",
-    "code": "A416",
-    "title": "Theatre: Acting Emphasis A.A. Degree",
+  "S295 - Retail Management A.S. Degree": {
+    "id": "S295 - Retail Management A.S. Degree",
+    "code": "S295",
+    "title": "Retail Management A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "THEATRE-8",
-      "THEATRE-10",
-      "THEATRE-12",
-      "THEATRE-18",
-      "THEATRE-35",
-      "THEATRE-50ABCD"
+      "BUSMKT-40",
+      "BUSMGT-11",
+      "BUSMGT-40",
+      "ITIS-10",
+      "ACCTGFS-465",
+      "BUSMGT-44",
+      "BUS-88",
+      "BUSMGT-42"
+    ]
+  },
+  "S390 - Small Business Entrepreneur A.S. Degree": {
+    "id": "S390 - Small Business Entrepreneur A.S. Degree",
+    "code": "S390",
+    "title": "Small Business Entrepreneur A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUS-10",
+      "BUSL-28A",
+      "BUS-60",
+      "BUS-88",
+      "ACCTG-1A",
+      "ACCTGFS-465",
+      "BUSL-28B",
+      "BUS-61",
+      "BUSMGT-11",
+      "BUSMGT-42",
+      "BUSMGT-436",
+      "BUSMGT-48",
+      "BUSMKT-13",
+      "BUSMKT-55",
+      "ACCTG-435",
+      "ACCTGFS-30",
+      "ACCTGFS-442",
+      "BUSMKT-420",
+      "BUSMGT-441",
+      "BUSTEC-63",
+      "BUSMKT-410",
+      "BUSMGT-45",
+      "ACCTG-460"
+    ]
+  },
+  "L391 - Small Business Entrepreneur Certificate of Achievement": {
+    "id": "L391 - Small Business Entrepreneur Certificate of Achievement",
+    "code": "L391",
+    "title": "Small Business Entrepreneur Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSMGT-45",
+      "ACCTG-1A",
+      "ACCTGFS-465",
+      "ACCTG-460",
+      "BUSMKT-410",
+      "BUSL-28A",
+      "BUSTEC-455",
+      "BUS-61",
+      "BUSMGT-42",
+      "BUSMGT-11",
+      "BUSMGT-436",
+      "BUSMGT-48",
+      "BUSMKT-13",
+      "BUSMKT-55",
+      "ACCTG-435",
+      "ACCTGFS-30",
+      "ACCTGFS-442",
+      "BUSMKT-420",
+      "BUSMGT-441",
+      "BUSL-28B",
+      "BUSTEC-63"
+    ]
+  },
+  "S410 - Supervision A.S. Degree": {
+    "id": "S410 - Supervision A.S. Degree",
+    "code": "S410",
+    "title": "Supervision A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUSMGT-480",
+      "BUSMGT-441",
+      "BUSMGT-40",
+      "BUS-61",
+      "BUSMGT-44",
+      "BUSL-28B",
+      "BUSMGT-11",
+      "BUSMGT-48",
+      "BUSMGT-42",
+      "BUS-10",
+      "BUSL-28A",
+      "BUS-60",
+      "BUS-88",
+      "ACCTG-1A",
+      "ACCTGFS-465"
+    ]
+  },
+  "S288 - Supply Chain Management A.S. Degree": {
+    "id": "S288 - Supply Chain Management A.S. Degree",
+    "code": "S288",
+    "title": "Supply Chain Management A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BUS-10",
+      "BUSMGT-13",
+      "BUSMGT-14",
+      "BUSMGT-436",
+      "BUSMGT-480",
+      "BUSMGT-48",
+      "BUSMKT-402"
+    ]
+  },
+  "L288 - Supply Chain Management Certificate of Achievement": {
+    "id": "L288 - Supply Chain Management Certificate of Achievement",
+    "code": "L288",
+    "title": "Supply Chain Management Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSMGT-13",
+      "BUSMGT-14",
+      "BUSMGT-48",
+      "BUS-10",
+      "BUSMGT-480",
+      "BUSMKT-402",
+      "BUSMGT-436"
+    ]
+  },
+  "L412 - Supervision Certificate of Achievement": {
+    "id": "L412 - Supervision Certificate of Achievement",
+    "code": "L412",
+    "title": "Supervision Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BUSMGT-40",
+      "BUSMGT-480",
+      "BUSMGT-441",
+      "BUSMGT-42",
+      "BUS-61",
+      "BUS-88",
+      "BUSMGT-11",
+      "BUSL-28B",
+      "BUSMGT-48",
+      "BUSMGT-44"
+    ]
+  },
+  "S070 - Broadcasting and Cinema A.S. Degree": {
+    "id": "S070 - Broadcasting and Cinema A.S. Degree",
+    "code": "S070",
+    "title": "Broadcasting and Cinema A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "BRDCAST-3",
+      "CINEMA-25",
+      "CINEMA-80",
+      "CINEMA-22",
+      "CINEMA-20",
+      "BRDCAST-74",
+      "CINEMA-30",
+      "BRDCAST-55",
+      "BRDCAST-60",
+      "BRDCAST-70",
+      "CINEMA-26",
+      "CINEMA-96",
+      "BRDCAST-67",
+      "BRDCAST-62"
+    ]
+  },
+  "S142 - Film, Television and Electronic Media for Transfer AS-T": {
+    "id": "S142 - Film, Television and Electronic Media for Transfer AS-T",
+    "code": "S142",
+    "title": "Film, Television and Electronic Media for Transfer AS-T",
+    "isAssociate": true,
+    "courses": [
+      "BRDCAST-55",
+      "CINEMA-30",
+      "BRDCAST-62",
+      "BRDCAST-60",
+      "BRDCAST-67",
+      "CINEMA-25",
+      "CINEMA-26",
+      "ARTH-C1200",
+      "CINEMA-96",
+      "BRDCAST-70",
+      "BRDCAST-74",
+      "COMSTD-12",
+      "BRDCAST-3",
+      "CINEMA-22"
     ]
   },
   "B001 - Motion Picture Production Certificate of Achievement": {
@@ -649,6 +2930,19 @@ window.CHAFFEY_PROGRAM_DATA = {
       "CINEMA-26",
       "CINEMA-80",
       "BRDCAST-74",
+      "CINEMA-96"
+    ]
+  },
+  "B005 - On-Air Radio Production Certificate of Achievement": {
+    "id": "B005 - On-Air Radio Production Certificate of Achievement",
+    "code": "B005",
+    "title": "On-Air Radio Production Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "BRDCAST-3",
+      "CINEMA-80",
+      "BRDCAST-55",
+      "BRDCAST-67",
       "CINEMA-96"
     ]
   },
@@ -697,397 +2991,117 @@ window.CHAFFEY_PROGRAM_DATA = {
       "CINEMA-96"
     ]
   },
-  "B005 - On-Air Radio Production Certificate of Achievement": {
-    "id": "B005 - On-Air Radio Production Certificate of Achievement",
-    "code": "B005",
-    "title": "On-Air Radio Production Certificate of Achievement",
+  "L357 - Business Information Worker (BIW) Stage One Certificate of Achievement Certificate of Achievement": {
+    "id": "L357 - Business Information Worker (BIW) Stage One Certificate of Achievement Certificate of Achievement",
+    "code": "L357",
+    "title": "Business Information Worker (BIW) Stage One Certificate of Achievement Certificate of Achievement",
     "isAssociate": false,
     "courses": [
-      "BRDCAST-3",
-      "CINEMA-80",
-      "BRDCAST-55",
-      "BRDCAST-67",
-      "CINEMA-96"
-    ]
-  },
-  "B006 - Microsoft Excel Certificate of Achievement": {
-    "id": "B006 - Microsoft Excel Certificate of Achievement",
-    "code": "B006",
-    "title": "Microsoft Excel Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40B",
-      "BUSTEC-63",
-      "BUSTEC-452",
-      "ACCTG-1A",
-      "BUSTEC-64",
-      "BUSTEC-50",
+      "BUSTEC-40A",
+      "ITIS-14",
       "BUSTEC-60A",
-      "BUSTEC-61",
-      "BUSTEC-400"
-    ]
-  },
-  "B124 - Computer Game Development Certificate of Achievement": {
-    "id": "B124 - Computer Game Development Certificate of Achievement",
-    "code": "B124",
-    "title": "Computer Game Development Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "CISGAME-2",
-      "CISGAME-403",
-      "CISGAME-420",
-      "CISGAME-1",
-      "ITIS-10"
-    ]
-  },
-  "B156 - Mechatronics Level II Certificate of Achievement": {
-    "id": "B156 - Mechatronics Level II Certificate of Achievement",
-    "code": "B156",
-    "title": "Mechatronics Level II Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "IETELMT-436",
-      "IETELMT-438",
-      "IET-411",
-      "IETMECH-401",
-      "IETMECH-402",
-      "IETMECH-403"
-    ]
-  },
-  "B232 - Community Caregiver Certificate of Achievement": {
-    "id": "B232 - Community Caregiver Certificate of Achievement",
-    "code": "B232",
-    "title": "Community Caregiver Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "GERO-11",
-      "GERO-22",
-      "GERO-400",
-      "GERO-455"
-    ]
-  },
-  "B315 - Recording Arts Technician Certificate of Achievement": {
-    "id": "B315 - Recording Arts Technician Certificate of Achievement",
-    "code": "B315",
-    "title": "Recording Arts Technician Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "MUSIC-5",
-      "MUSIC-16",
-      "MUSIC-17",
-      "COMSTD-8",
-      "MUSIC-18",
-      "MUSIC-19"
-    ]
-  },
-  "B352 - Microsoft Word Certificate of Achievement": {
-    "id": "B352 - Microsoft Word Certificate of Achievement",
-    "code": "B352",
-    "title": "Microsoft Word Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40B",
-      "BUSTEC-60A",
-      "BUSTEC-60B",
-      "BUSTEC-455",
-      "BUSTEC-400",
-      "BUSTEC-460"
-    ]
-  },
-  "B475 - Athletic Trainer Aide Certificate of Achievement": {
-    "id": "B475 - Athletic Trainer Aide Certificate of Achievement",
-    "code": "B475",
-    "title": "Athletic Trainer Aide Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BIOL-22",
-      "BIOL-20",
-      "BIOL-1",
-      "KINLEC-22",
-      "KINLEC-21",
-      "KINLEC-19",
-      "KINLEC-2"
-    ]
-  },
-  "E110 - High Performance Engines Building and Blueprinting Certificate of Career Preparation": {
-    "id": "E110 - High Performance Engines Building and Blueprinting Certificate of Career Preparation",
-    "code": "E110",
-    "title": "High Performance Engines Building and Blueprinting Certificate of Career Preparation",
-    "isAssociate": false,
-    "courses": [
-      "AUTOTEC-430",
-      "AUTOTEC-431",
-      "AUTOTEC-435"
-    ]
-  },
-  "E115 - Bookkeeping Certificate of Achievement": {
-    "id": "E115 - Bookkeeping Certificate of Achievement",
-    "code": "E115",
-    "title": "Bookkeeping Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ACCTG-460",
-      "ACCTG-435",
       "BUSTEC-63",
-      "ACCTG-485",
-      "BUSTEC-455",
-      "ACCTGFS-30",
-      "ACCTGFS-453"
-    ]
-  },
-  "E117 - Payroll and Income Tax Preparer Certificate of Achievement": {
-    "id": "E117 - Payroll and Income Tax Preparer Certificate of Achievement",
-    "code": "E117",
-    "title": "Payroll and Income Tax Preparer Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ACCTG-1A",
-      "ACCTG-435",
-      "ACCTG-460",
-      "ACCTGFS-453"
-    ]
-  },
-  "E128 - CAD/CAM Operator Certificate of Achievement": {
-    "id": "E128 - CAD/CAM Operator Certificate of Achievement",
-    "code": "E128",
-    "title": "CAD/CAM Operator Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "DRAFT-20",
-      "DRAFT-21",
-      "EGTECH-10",
-      "DRAFT-43",
-      "EGTECH-16"
-    ]
-  },
-  "E129 - Programming Foundations Certificate of Achievement": {
-    "id": "E129 - Programming Foundations Certificate of Achievement",
-    "code": "E129",
-    "title": "Programming Foundations Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
+      "BUSTEC-62",
       "ITIS-10",
-      "ITIS-82",
-      "ITIS-84",
-      "ITIS-30",
-      "COMPSCI-5"
+      "BUSTEC-455",
+      "BUSTEC-470",
+      "BUSMGT-44"
     ]
   },
-  "E404 - Artificial Intelligence  Certificate of Career Preparation": {
-    "id": "E404 - Artificial Intelligence  Certificate of Career Preparation",
-    "code": "E404",
-    "title": "Artificial Intelligence  Certificate of Career Preparation",
-    "isAssociate": false,
+  "A146 - Economics for Transfer AA-T": {
+    "id": "A146 - Economics for Transfer AA-T",
+    "code": "A146",
+    "title": "Economics for Transfer AA-T",
+    "isAssociate": true,
     "courses": [
-      "AI-4",
-      "AI-3",
-      "AI-2",
-      "AI-1"
-    ]
-  },
-  "E445 - Automotive Electrical Systems Certificate of Achievement": {
-    "id": "E445 - Automotive Electrical Systems Certificate of Achievement",
-    "code": "E445",
-    "title": "Automotive Electrical Systems Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "AUTOTEC-450",
-      "AUTOTEC-10",
-      "AUTOTEC-455",
-      "AUTOTEC-15",
-      "AUTOTEC-416",
-      "AUTOTEC-429"
-    ]
-  },
-  "L008 - Accounting for Government and Not-For-Profit Organizations Certificate of Achievement": {
-    "id": "L008 - Accounting for Government and Not-For-Profit Organizations Certificate of Achievement",
-    "code": "L008",
-    "title": "Accounting for Government and Not-For-Profit Organizations Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
+      "ECON-C2002",
+      "ECON-C2001",
+      "STAT-C1000",
+      "SCSCI-10",
+      "MATH-60",
+      "MATH-65A",
+      "MATH-65B",
       "ACCTG-1A",
-      "ACCTG-430",
-      "ACCTG-435",
-      "ACCTG-460"
+      "ACCTG-1B",
+      "BUS-88",
+      "ITIS-10",
+      "ECON-1",
+      "ECON-8",
+      "MATH-81",
+      "MATH-75"
     ]
   },
-  "L105 - Correctional Science Certificate of Achievement": {
-    "id": "L105 - Correctional Science Certificate of Achievement",
-    "code": "L105",
-    "title": "Correctional Science Certificate of Achievement",
-    "isAssociate": false,
+  "A038 - Studio Arts for Transfer AA-T": {
+    "id": "A038 - Studio Arts for Transfer AA-T",
+    "code": "A038",
+    "title": "Studio Arts for Transfer AA-T",
+    "isAssociate": true,
     "courses": [
-      "CJ-51",
-      "CJ-53",
-      "CJ-6",
-      "CJ-56",
-      "CJ-58",
-      "CJ-1",
-      "CJ-3",
-      "CJ-57",
-      "CJ-10",
-      "CJ-55",
-      "SOC-17"
+      "ARTH-C1200",
+      "ART-10",
+      "ART-12",
+      "ART-14",
+      "ARTH-C1100",
+      "ARTH-7",
+      "ARTH-9",
+      "ARTH-11",
+      "ART-30",
+      "ART-50",
+      "ART-20",
+      "ARTGD-73",
+      "ARTGD-63",
+      "ART-18",
+      "ART-16",
+      "ART-15",
+      "ART-32",
+      "ART-35",
+      "ART-34",
+      "PHOTO-10",
+      "PHOTO-7"
     ]
   },
-  "L133 - Criminal Justice Certificate of Achievement": {
-    "id": "L133 - Criminal Justice Certificate of Achievement",
-    "code": "L133",
-    "title": "Criminal Justice Certificate of Achievement",
-    "isAssociate": false,
+  "S270 - Interior Design A.S. Degree": {
+    "id": "S270 - Interior Design A.S. Degree",
+    "code": "S270",
+    "title": "Interior Design A.S. Degree",
+    "isAssociate": true,
     "courses": [
-      "CJ-55",
-      "CJ-7",
-      "CJ-9",
-      "SOC-17",
-      "CJ-1",
-      "CJ-2",
-      "CJ-4",
-      "CJ-5",
-      "CJ-6",
-      "CJ-51"
+      "ID-10",
+      "ID-11",
+      "ID-12",
+      "ID-16",
+      "ID-17",
+      "ID-21",
+      "ID-22",
+      "ID-30",
+      "ID-15",
+      "ID-45",
+      "ID-14",
+      "ID-27",
+      "ID-426",
+      "ID-482ABCD"
     ]
   },
-  "L143 - Fire Prevention Inspector Certificate of Achievement": {
-    "id": "L143 - Fire Prevention Inspector Certificate of Achievement",
-    "code": "L143",
-    "title": "Fire Prevention Inspector Certificate of Achievement",
+  "T270 - Interior Design Certificate of Achievement": {
+    "id": "T270 - Interior Design Certificate of Achievement",
+    "code": "T270",
+    "title": "Interior Design Certificate of Achievement",
     "isAssociate": false,
     "courses": [
-      "FIRETEC-420",
-      "FIRETEC-421",
-      "FIRETEC-422",
-      "FIRETEC-423",
-      "FIRETEC-2",
-      "FIRETEC-3",
-      "FIRETEC-4",
-      "FIRETEC-12",
-      "FIRETEC-97ABCD"
-    ]
-  },
-  "L149 - Industrial Electrical Technology Level I Certificate of Achievement": {
-    "id": "L149 - Industrial Electrical Technology Level I Certificate of Achievement",
-    "code": "L149",
-    "title": "Industrial Electrical Technology Level I Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "IET-401A",
-      "IET-401B",
-      "IET-400",
-      "IET-422",
-      "IET-405",
-      "IET-407",
-      "IET-460",
-      "IET-484ABCD"
-    ]
-  },
-  "L153 - Electromechanical Technology Certificate of Achievement": {
-    "id": "L153 - Electromechanical Technology Certificate of Achievement",
-    "code": "L153",
-    "title": "Electromechanical Technology Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "IET-401A",
-      "IET-401B",
-      "IET-407",
-      "IETMECH-400",
-      "IET-400",
-      "IET-411",
-      "IET-422"
-    ]
-  },
-  "L156 - Mechatronics Level I Certificate of Achievement": {
-    "id": "L156 - Mechatronics Level I Certificate of Achievement",
-    "code": "L156",
-    "title": "Mechatronics Level I Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "IET-401A",
-      "IET-401B",
-      "IET-407",
-      "IET-422",
-      "IETELMT-430",
-      "IETELMT-432",
-      "IETMECH-400",
-      "IET-400"
-    ]
-  },
-  "L166 - Engineering Technology Certificate of Achievement": {
-    "id": "L166 - Engineering Technology Certificate of Achievement",
-    "code": "L166",
-    "title": "Engineering Technology Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "CHEM-10",
-      "CHEM-24A",
-      "EGTECH-10",
-      "EGTECH-12",
-      "EGTECH-30",
-      "EGTECH-16",
-      "EGTECH-14",
-      "DRAFT-41",
-      "DRAFT-78",
-      "DRAFT-20",
-      "DRAFT-21",
-      "DRAFT-43",
-      "PHYS-5",
-      "PHYS-6",
-      "PHYS-20A"
-    ]
-  },
-  "L180 - Fashion Design Certificate of Achievement": {
-    "id": "L180 - Fashion Design Certificate of Achievement",
-    "code": "L180",
-    "title": "Fashion Design Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "FASHM-10",
-      "FASHM-20",
-      "FASHM-60",
-      "FASHD-20",
-      "FASHD-28",
-      "FASHD-40",
-      "FASHD-42",
-      "FASHD-45",
-      "FASHD-61",
-      "FASHD-62",
-      "FASHD-65",
-      "FASHD-72",
-      "FASHD-442",
-      "FASHD-470",
-      "FASHD-89"
-    ]
-  },
-  "L182 - Industrial Sewing Certificate of Career Preparation": {
-    "id": "L182 - Industrial Sewing Certificate of Career Preparation",
-    "code": "L182",
-    "title": "Industrial Sewing Certificate of Career Preparation",
-    "isAssociate": false,
-    "courses": [
-      "FASHD-40",
-      "FASHD-42",
-      "FASHD-442"
-    ]
-  },
-  "L185 - Fashion Merchandising Certificate of Achievement": {
-    "id": "L185 - Fashion Merchandising Certificate of Achievement",
-    "code": "L185",
-    "title": "Fashion Merchandising Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "FASHM-12",
-      "FASHD-20",
-      "FASHD-28",
-      "FASHD-40",
-      "FASHD-45",
-      "FASHM-10",
-      "FASHM-11",
-      "FASHM-20",
-      "FASHM-21",
-      "FASHM-60",
-      "FASHD-89",
-      "PHOTO-7",
-      "BUSTEC-63"
+      "ID-426",
+      "ID-45",
+      "ID-30",
+      "ID-27",
+      "ID-22",
+      "ID-21",
+      "ID-17",
+      "ID-16",
+      "ID-15",
+      "ID-14",
+      "ID-12",
+      "ID-11",
+      "ID-10",
+      "ID-482ABCD"
     ]
   },
   "L195 - Interior Design Visual Communication Certificate of Achievement": {
@@ -1106,402 +3120,25 @@ window.CHAFFEY_PROGRAM_DATA = {
       "ID-482ABCD"
     ]
   },
-  "L230 - Gerontology Certificate of Achievement": {
-    "id": "L230 - Gerontology Certificate of Achievement",
-    "code": "L230",
-    "title": "Gerontology Certificate of Achievement",
-    "isAssociate": false,
+  "A340 - Photography A.A. Degree": {
+    "id": "A340 - Photography A.A. Degree",
+    "code": "A340",
+    "title": "Photography A.A. Degree",
+    "isAssociate": true,
     "courses": [
-      "GERO-22",
-      "GERO-97AB",
-      "GERO-24",
-      "GERO-18"
-    ]
-  },
-  "L233 - Emergency Medical Provider Certificate of Achievement": {
-    "id": "L233 - Emergency Medical Provider Certificate of Achievement",
-    "code": "L233",
-    "title": "Emergency Medical Provider Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "EMT-405",
-      "BIOL-424",
-      "BIOL-424L",
-      "FIRETEC-12",
-      "EMT-11",
-      "HS-30"
-    ]
-  },
-  "L241 - Nutrition and Food Certificate of Achievement": {
-    "id": "L241 - Nutrition and Food Certificate of Achievement",
-    "code": "L241",
-    "title": "Nutrition and Food Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "NF-15",
-      "NF-22",
-      "CUL-15",
-      "COMSTD-8",
-      "KINLEC-16",
-      "NF-27"
-    ]
-  },
-  "L244 - Professional Baking and Patisserie Certificate of Achievement": {
-    "id": "L244 - Professional Baking and Patisserie Certificate of Achievement",
-    "code": "L244",
-    "title": "Professional Baking and Patisserie Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "CUL-17",
-      "CUL-440",
-      "CUL-441",
-      "CUL-443",
-      "CUL-445",
-      "CUL-15",
-      "CUL-22",
-      "CUL-446",
-      "CUL-447",
-      "HOTFS-10"
-    ]
-  },
-  "L255 - Culinary Arts Certificate of Achievement": {
-    "id": "L255 - Culinary Arts Certificate of Achievement",
-    "code": "L255",
-    "title": "Culinary Arts Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "CUL-15",
-      "CUL-17",
-      "CUL-22",
-      "CUL-440",
-      "CUL-442",
-      "CUL-444",
-      "HOTFS-10",
-      "HOTFS-21",
-      "HOTFS-482",
-      "CUL-447",
-      "CUL-438"
-    ]
-  },
-  "L260 - Hospitality Management: Hotel Management Certificate of Achievement": {
-    "id": "L260 - Hospitality Management: Hotel Management Certificate of Achievement",
-    "code": "L260",
-    "title": "Hospitality Management: Hotel Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "HOTFS-10",
-      "HOTFS-14",
-      "HOTFS-21",
-      "HOTFS-32",
-      "HOTFS-428",
-      "HOTFS-431",
-      "CUL-15",
-      "HOTFS-42",
-      "HOTFS-482"
-    ]
-  },
-  "L286 - Management Certificate of Achievement": {
-    "id": "L286 - Management Certificate of Achievement",
-    "code": "L286",
-    "title": "Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMGT-40",
-      "BUSMGT-42",
-      "BUSMGT-44",
-      "BUSMGT-441",
-      "BUSL-28A",
-      "BUSL-28B",
-      "BUS-60",
-      "BUS-61",
-      "BUSMGT-11",
-      "BUSMGT-45",
-      "BUSMGT-436",
-      "BUSMGT-48",
-      "BUSMGT-480",
-      "BUSMKT-40",
-      "BUSMKT-420"
-    ]
-  },
-  "L288 - Supply Chain Management Certificate of Achievement": {
-    "id": "L288 - Supply Chain Management Certificate of Achievement",
-    "code": "L288",
-    "title": "Supply Chain Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMGT-13",
-      "BUSMGT-14",
-      "BUSMGT-48",
-      "BUS-10",
-      "BUSMGT-480",
-      "BUSMKT-402",
-      "BUSMGT-436"
-    ]
-  },
-  "L290 - Facilities Management Certificate of Achievement": {
-    "id": "L290 - Facilities Management Certificate of Achievement",
-    "code": "L290",
-    "title": "Facilities Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ENGL-C1000",
-      "ACCTG-1A",
-      "ACCTGFS-465",
-      "BUS-10",
-      "BUS-60",
-      "BUS-88",
-      "BUSL-28A",
-      "BUSMGT-40",
-      "BUSMGT-44",
-      "BUSMGT-470",
-      "BUSMGT-466"
-    ]
-  },
-  "L295 - Retail Management Certificate of Achievement": {
-    "id": "L295 - Retail Management Certificate of Achievement",
-    "code": "L295",
-    "title": "Retail Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMGT-11",
-      "BUSMGT-40",
-      "BUSMKT-40",
-      "BUSMGT-42",
-      "ITIS-10",
-      "ACCTGFS-465",
-      "BUSMGT-44",
-      "BUS-88",
-      "ENGL-C1000"
-    ]
-  },
-  "L314 - Professional Office Skills Certificate of Achievement": {
-    "id": "L314 - Professional Office Skills Certificate of Achievement",
-    "code": "L314",
-    "title": "Professional Office Skills Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40A",
-      "BUSTEC-60A",
-      "BUSTEC-63",
-      "BUSTEC-400",
-      "BUSTEC-455",
-      "COMSTD-74",
-      "GUID-3"
-    ]
-  },
-  "L321 - Professional Administrative Management Certificate of Achievement": {
-    "id": "L321 - Professional Administrative Management Certificate of Achievement",
-    "code": "L321",
-    "title": "Professional Administrative Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40B",
-      "BUSTEC-60A",
-      "BUSTEC-60B",
-      "BUSTEC-62",
-      "BUSTEC-63",
-      "BUSTEC-64",
-      "BUSTEC-400",
-      "BUSTEC-455",
-      "BUSTEC-471",
-      "BUS-88",
-      "BUSTEC-50",
-      "BUSTEC-410",
-      "BUSTEC-452",
-      "BUSTEC-470",
-      "BUSTEC-61",
-      "BUSTEC-460"
-    ]
-  },
-  "L336 - Journalism Certificate of Achievement": {
-    "id": "L336 - Journalism Certificate of Achievement",
-    "code": "L336",
-    "title": "Journalism Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "COMSTD-12",
-      "ENGL-C1000",
-      "JOUR-10",
-      "JOUR-30",
-      "PHOTO-10",
+      "PHOTO-1",
+      "PHOTO-9",
+      "PHOTO-12",
+      "PHOTO-13",
+      "PHOTO-20",
+      "PHOTO-50",
       "PHOTO-7",
-      "JOUR-11",
-      "JOUR-31",
-      "ARTGD-63",
-      "BRDCAST-3",
-      "ENGL-7E",
-      "ENGL-35",
-      "PHOTO-20"
-    ]
-  },
-  "L354 - Microsoft Office Certificate of Achievement": {
-    "id": "L354 - Microsoft Office Certificate of Achievement",
-    "code": "L354",
-    "title": "Microsoft Office Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40B",
-      "BUSTEC-60A",
-      "BUSTEC-60B",
-      "BUSTEC-61",
-      "BUSTEC-62",
-      "BUSTEC-63",
-      "BUSTEC-400",
-      "BUSTEC-455",
-      "BUSTEC-64",
-      "BUSTEC-410"
-    ]
-  },
-  "L357 - Business Information Worker (BIW) Stage One Certificate of Achievement Certificate of Achievement": {
-    "id": "L357 - Business Information Worker (BIW) Stage One Certificate of Achievement Certificate of Achievement",
-    "code": "L357",
-    "title": "Business Information Worker (BIW) Stage One Certificate of Achievement Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40A",
-      "ITIS-14",
-      "BUSTEC-60A",
-      "BUSTEC-63",
-      "BUSTEC-62",
-      "ITIS-10",
-      "BUSTEC-455",
-      "BUSTEC-470",
-      "BUSMGT-44"
-    ]
-  },
-  "L358 - Business Information Worker (BIW) Stage Two Certificate of Achievement Certificate of Achievement": {
-    "id": "L358 - Business Information Worker (BIW) Stage Two Certificate of Achievement Certificate of Achievement",
-    "code": "L358",
-    "title": "Business Information Worker (BIW) Stage Two Certificate of Achievement Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSTEC-40B",
-      "BUSTEC-61",
-      "BUSTEC-60B",
-      "ACCTG-460",
-      "BUSTEC-50",
-      "BUSTEC-471",
-      "BUSTEC-64"
-    ]
-  },
-  "L382 - Real Estate Certificate of Achievement": {
-    "id": "L382 - Real Estate Certificate of Achievement",
-    "code": "L382",
-    "title": "Real Estate Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "RE-410",
-      "RE-415",
-      "RE-460",
-      "RE-470",
-      "ACCTG-1A",
-      "BUSL-50",
-      "BUSL-28A",
-      "RE-472",
-      "RE-475",
-      "RE-486"
-    ]
-  },
-  "L391 - Small Business Entrepreneur Certificate of Achievement": {
-    "id": "L391 - Small Business Entrepreneur Certificate of Achievement",
-    "code": "L391",
-    "title": "Small Business Entrepreneur Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMGT-45",
-      "ACCTG-1A",
-      "ACCTGFS-465",
-      "ACCTG-460",
-      "BUSMKT-410",
-      "BUSL-28A",
-      "BUSTEC-455",
-      "BUS-61",
-      "BUSMGT-42",
-      "BUSMGT-11",
-      "BUSMGT-436",
-      "BUSMGT-48",
-      "BUSMKT-13",
-      "BUSMKT-55",
-      "ACCTG-435",
-      "ACCTGFS-30",
-      "ACCTGFS-442",
-      "BUSMKT-420",
-      "BUSMGT-441",
-      "BUSL-28B",
-      "BUSTEC-63"
-    ]
-  },
-  "L400 - Paralegal Studies Certificate of Achievement": {
-    "id": "L400 - Paralegal Studies Certificate of Achievement",
-    "code": "L400",
-    "title": "Paralegal Studies Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSL-28A",
-      "BUSL-28B",
-      "BUSL-400",
-      "BUSL-401",
-      "BUSL-402",
-      "BUSL-403",
-      "BUSL-406",
-      "BUSL-405",
-      "BUSL-10",
-      "BUSL-50",
-      "BUSL-407",
-      "BUSL-408",
-      "BUSL-409",
-      "BUSL-410",
-      "BUSL-411",
-      "BUSL-412",
-      "BUSL-413",
-      "BUSL-435",
-      "BUSL-496ABC"
-    ]
-  },
-  "L405 - Pathway to Law School Certificate of Achievement": {
-    "id": "L405 - Pathway to Law School Certificate of Achievement",
-    "code": "L405",
-    "title": "Pathway to Law School Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ENGL-C1000",
-      "ENGL-C1001",
-      "COMSTD-72",
-      "SCSCI-10",
-      "STAT-C1000",
-      "POLS-C1000",
-      "BUSL-10",
-      "PHIL-76",
-      "HIST-C1001",
-      "HIST-C1002",
-      "HIST-19",
-      "HIST-20",
-      "HIST-50",
-      "HIST-51",
-      "HIST-70",
-      "HIST-71",
-      "HIST-12",
-      "HIST-16",
-      "HIST-21",
-      "HIST-25"
-    ]
-  },
-  "L412 - Supervision Certificate of Achievement": {
-    "id": "L412 - Supervision Certificate of Achievement",
-    "code": "L412",
-    "title": "Supervision Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMGT-40",
-      "BUSMGT-480",
-      "BUSMGT-441",
-      "BUSMGT-42",
-      "BUS-61",
-      "BUS-88",
-      "BUSMGT-11",
-      "BUSL-28B",
-      "BUSMGT-48",
-      "BUSMGT-44"
+      "PHOTO-10",
+      "ARTH-19",
+      "ARTH-C1200",
+      "ART-10",
+      "ART-14",
+      "ARTGD-63"
     ]
   },
   "L415 - Technical Theatre Certificate of Achievement": {
@@ -1518,84 +3155,102 @@ window.CHAFFEY_PROGRAM_DATA = {
       "THEATRE-52ABCD"
     ]
   },
-  "L446 - General Automotive Service Technician Certificate of Achievement": {
-    "id": "L446 - General Automotive Service Technician Certificate of Achievement",
-    "code": "L446",
-    "title": "General Automotive Service Technician Certificate of Achievement",
+  "A416 - Theatre: Acting Emphasis A.A. Degree": {
+    "id": "A416 - Theatre: Acting Emphasis A.A. Degree",
+    "code": "A416",
+    "title": "Theatre: Acting Emphasis A.A. Degree",
+    "isAssociate": true,
+    "courses": [
+      "THEATRE-8",
+      "THEATRE-10",
+      "THEATRE-12",
+      "THEATRE-18",
+      "THEATRE-35",
+      "THEATRE-50ABCD"
+    ]
+  },
+  "A410 - Theatre Arts for Transfer AA-T": {
+    "id": "A410 - Theatre Arts for Transfer AA-T",
+    "code": "A410",
+    "title": "Theatre Arts for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "THEATRE-1",
+      "THEATRE-4",
+      "THEATRE-10",
+      "THEATRE-52ABCD",
+      "THEATRE-50ABCD",
+      "THEATRE-7",
+      "THEATRE-12",
+      "THEATRE-30",
+      "THEATRE-32",
+      "THEATRE-40",
+      "THEATRE-42",
+      "THEATRE-31"
+    ]
+  },
+  "S404 - Artificial Intelligence A.S. Degree": {
+    "id": "S404 - Artificial Intelligence A.S. Degree",
+    "code": "S404",
+    "title": "Artificial Intelligence A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "AI-1",
+      "AI-2",
+      "AI-5",
+      "AI-4",
+      "AI-3",
+      "COMPSCI-5",
+      "ITIS-80",
+      "ITIS-40",
+      "COMPSCI-10",
+      "COMPSCI-4",
+      "AI-7",
+      "AI-6",
+      "AI-9",
+      "AI-8",
+      "COMPSCI-20",
+      "COMPSCI-11"
+    ]
+  },
+  "A401 - Sociology for Transfer AA-T": {
+    "id": "A401 - Sociology for Transfer AA-T",
+    "code": "A401",
+    "title": "Sociology for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "SOC-10",
+      "SOC-70",
+      "SCSCI-10",
+      "STAT-C1000",
+      "SOC-80",
+      "PSYCH-65",
+      "SOC-17",
+      "SOC-15",
+      "SOC-16",
+      "SOC-14",
+      "SOC-26",
+      "SOC-32",
+      "SOC-33",
+      "SOC-18",
+      "ANTHRO-3",
+      "SOC-25",
+      "SOC-30",
+      "SWHS-13"
+    ]
+  },
+  "E445 - Automotive Electrical Systems Certificate of Achievement": {
+    "id": "E445 - Automotive Electrical Systems Certificate of Achievement",
+    "code": "E445",
+    "title": "Automotive Electrical Systems Certificate of Achievement",
     "isAssociate": false,
     "courses": [
       "AUTOTEC-450",
-      "AUTOTEC-418",
-      "AUTOTEC-417",
       "AUTOTEC-10",
       "AUTOTEC-455",
       "AUTOTEC-15",
-      "AUTOTEC-422",
-      "AUTOTEC-416"
-    ]
-  },
-  "L449 - Engine Rebuilding Certificate of Career Preparation": {
-    "id": "L449 - Engine Rebuilding Certificate of Career Preparation",
-    "code": "L449",
-    "title": "Engine Rebuilding Certificate of Career Preparation",
-    "isAssociate": false,
-    "courses": [
-      "AUTOTEC-430",
-      "AUTOTEC-431"
-    ]
-  },
-  "M254 - Hospitality Management: Food and Beverage Fundamentals Certificate of Achievement": {
-    "id": "M254 - Hospitality Management: Food and Beverage Fundamentals Certificate of Achievement",
-    "code": "M254",
-    "title": "Hospitality Management: Food and Beverage Fundamentals Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "HOTFS-10",
-      "HOTFS-14",
-      "CUL-15",
-      "HOTFS-21"
-    ]
-  },
-  "M260 - Hospitality Management: Hotel Fundamentals  Certificate of Achievement": {
-    "id": "M260 - Hospitality Management: Hotel Fundamentals  Certificate of Achievement",
-    "code": "M260",
-    "title": "Hospitality Management: Hotel Fundamentals  Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "HOTFS-42",
-      "HOTFS-428",
-      "HOTFS-10",
-      "HOTFS-14"
-    ]
-  },
-  "M293 - Community Health Worker  Certificate of Achievement": {
-    "id": "M293 - Community Health Worker  Certificate of Achievement",
-    "code": "M293",
-    "title": "Community Health Worker  Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "PH-10",
-      "PH-20",
-      "PH-5",
-      "PH-11",
-      "PH-97ABCD"
-    ]
-  },
-  "M383 - Real Estate Salesperson Certificate of Achievement": {
-    "id": "M383 - Real Estate Salesperson Certificate of Achievement",
-    "code": "M383",
-    "title": "Real Estate Salesperson Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "RE-410",
-      "RE-415",
-      "BUSL-50",
-      "RE-460",
-      "RE-470",
-      "RE-486",
-      "RE-475",
-      "ACCTG-1A",
-      "BUSL-28A"
+      "AUTOTEC-416",
+      "AUTOTEC-429"
     ]
   },
   "M440 - Electric Vehicle and Alternative Propulsion Technician Certificate of Achievement": {
@@ -1607,211 +3262,6 @@ window.CHAFFEY_PROGRAM_DATA = {
       "AUTOTEC-407",
       "AUTOTEC-408",
       "AUTOTEC-409"
-    ]
-  },
-  "N049 - Graphic Design for Digital Media Certificate of Achievement": {
-    "id": "N049 - Graphic Design for Digital Media Certificate of Achievement",
-    "code": "N049",
-    "title": "Graphic Design for Digital Media Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ARTGD-63",
-      "ARTGD-73",
-      "ARTGD-82",
-      "ARTGD-84",
-      "ARTGD-13",
-      "ARTGD-83",
-      "ARTGD-74"
-    ]
-  },
-  "N074 - Business Certificate of Achievement": {
-    "id": "N074 - Business Certificate of Achievement",
-    "code": "N074",
-    "title": "Business Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUS-10",
-      "BUSMGT-40",
-      "BUSMKT-40",
-      "BUSL-28A",
-      "ACCTGFS-442",
-      "BUSL-28B",
-      "BUS-61",
-      "BUSMGT-11",
-      "BUSMGT-42",
-      "BUSMGT-44",
-      "BUSMGT-436",
-      "BUSMKT-13",
-      "BUSMKT-55",
-      "BUSMGT-441",
-      "BUSMKT-410",
-      "ACCTGFS-465",
-      "ACCTG-1A",
-      "BUSMGT-466",
-      "BUSMKT-420"
-    ]
-  },
-  "N080 - Marketing Certificate of Achievement": {
-    "id": "N080 - Marketing Certificate of Achievement",
-    "code": "N080",
-    "title": "Marketing Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMKT-40",
-      "BUSMKT-13",
-      "BUSMKT-55",
-      "BUSMKT-420",
-      "BUSMKT-410",
-      "BUSL-435",
-      "BUSTEC-63",
-      "BUSMGT-436",
-      "BUSMKT-405"
-    ]
-  },
-  "N082 - Global Business Certificate of Achievement": {
-    "id": "N082 - Global Business Certificate of Achievement",
-    "code": "N082",
-    "title": "Global Business Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "BUSMKT-55",
-      "BUSMKT-410",
-      "BUSMGT-436",
-      "BUSMGT-45",
-      "BUSMKT-405",
-      "BUSL-410",
-      "BUS-61",
-      "BUSMKT-402"
-    ]
-  },
-  "N101 - Information Technology and Information Systems Core Certificate of Achievement": {
-    "id": "N101 - Information Technology and Information Systems Core Certificate of Achievement",
-    "code": "N101",
-    "title": "Information Technology and Information Systems Core Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "N127 - CAD Drafting Technician: Architectural Certificate of Achievement": {
-    "id": "N127 - CAD Drafting Technician: Architectural Certificate of Achievement",
-    "code": "N127",
-    "title": "CAD Drafting Technician: Architectural Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "DRAFT-20",
-      "DRAFT-21",
-      "DRAFT-50",
-      "DRAFT-51",
-      "DRAFT-53",
-      "EGTECH-10"
-    ]
-  },
-  "N137 - CAD Drafting Technician: Mechanical Certificate of Achievement": {
-    "id": "N137 - CAD Drafting Technician: Mechanical Certificate of Achievement",
-    "code": "N137",
-    "title": "CAD Drafting Technician: Mechanical Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "EGTECH-30",
-      "DRAFT-20",
-      "DRAFT-21",
-      "DRAFT-41",
-      "DRAFT-43",
-      "DRAFT-78",
-      "EGTECH-10",
-      "EGTECH-16"
-    ]
-  },
-  "N256 - Dietetic Service Supervisor (DSS)/Certified Dietary Manager (CDM) Certificate of Achievement": {
-    "id": "N256 - Dietetic Service Supervisor (DSS)/Certified Dietary Manager (CDM) Certificate of Achievement",
-    "code": "N256",
-    "title": "Dietetic Service Supervisor (DSS)/Certified Dietary Manager (CDM) Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "HOTFS-14",
-      "CUL-15",
-      "CUL-17",
-      "NF-11",
-      "NF-15",
-      "NF-19",
-      "NF-471",
-      "NF-471L",
-      "NF-472",
-      "NF-472L"
-    ]
-  },
-  "N402 - American Sign Language (ASL) Certificate of Achievement": {
-    "id": "N402 - American Sign Language (ASL) Certificate of Achievement",
-    "code": "N402",
-    "title": "American Sign Language (ASL) Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ASL-3",
-      "ASL-2",
-      "ASL-1",
-      "ASL-4",
-      "ASL-18",
-      "ASL-22",
-      "ASL-21"
-    ]
-  },
-  "N476 - Data Analytics  Certificate of Achievement": {
-    "id": "N476 - Data Analytics  Certificate of Achievement",
-    "code": "N476",
-    "title": "Data Analytics  Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "COMPSCI-10",
-      "STAT-C1000",
-      "ITIS-12",
-      "ITIS-80",
-      "COMPSCI-5",
-      "ITIS-10"
-    ]
-  },
-  "N482 - Cybersecurity Analyst Certificate of Achievement": {
-    "id": "N482 - Cybersecurity Analyst Certificate of Achievement",
-    "code": "N482",
-    "title": "Cybersecurity Analyst Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ITIS-50",
-      "ITIS-51",
-      "ITIS-60",
-      "ITIS-10",
-      "ITIS-65",
-      "ITIS-55",
-      "ITIS-40",
-      "ITIS-14"
-    ]
-  },
-  "N483 - Cybersecurity Defender Certificate of Achievement": {
-    "id": "N483 - Cybersecurity Defender Certificate of Achievement",
-    "code": "N483",
-    "title": "Cybersecurity Defender Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ITIS-30",
-      "ITIS-45",
-      "ITIS-70",
-      "ITIS-61",
-      "ITIS-64",
-      "COMPSCI-5",
-      "COMPSCI-1",
-      "ITIS-14",
-      "ITIS-10",
-      "ITIS-60",
-      "ITIS-40",
-      "ITIS-55",
-      "ITIS-50",
-      "ITIS-51",
-      "ITIS-65"
     ]
   },
   "None - Nursing VN to RN: Non-Degree Option Certificate of Career Preparation": {
@@ -1831,522 +3281,158 @@ window.CHAFFEY_PROGRAM_DATA = {
       "BIOL-23L"
     ]
   },
-  "O025 - Heating, Ventilation, Air Conditioning and Refrigeration Level I Noncredit Certificate of Completion": {
-    "id": "O025 - Heating, Ventilation, Air Conditioning and Refrigeration Level I Noncredit Certificate of Completion",
-    "code": "O025",
-    "title": "Heating, Ventilation, Air Conditioning and Refrigeration Level I Noncredit Certificate of Completion",
+  "T475 - Networking Specialist (CCNA) Certificate of Achievement": {
+    "id": "T475 - Networking Specialist (CCNA) Certificate of Achievement",
+    "code": "T475",
+    "title": "Networking Specialist (CCNA) Certificate of Achievement",
     "isAssociate": false,
     "courses": [
-      "HVACR-600",
-      "HVACR-601",
-      "HVACR-602",
-      "HVACR-604",
-      "HVACR-605",
-      "HVACR-606",
-      "HVACR-612"
-    ]
-  },
-  "O026 - Heating, Ventilation, Air Conditioning and Refrigeration Level II Noncredit Certificate of Completion": {
-    "id": "O026 - Heating, Ventilation, Air Conditioning and Refrigeration Level II Noncredit Certificate of Completion",
-    "code": "O026",
-    "title": "Heating, Ventilation, Air Conditioning and Refrigeration Level II Noncredit Certificate of Completion",
-    "isAssociate": false,
-    "courses": [
-      "HVACR-607",
-      "HVACR-608",
-      "HVACR-609",
-      "HVACR-610",
-      "HVACR-611",
-      "HVACR-603"
-    ]
-  },
-  "O100 - Phlebotomy Technician Noncredit Certificate of Completion": {
-    "id": "O100 - Phlebotomy Technician Noncredit Certificate of Completion",
-    "code": "O100",
-    "title": "Phlebotomy Technician Noncredit Certificate of Completion",
-    "isAssociate": false,
-    "courses": [
-      "PHLEB-605",
-      "PHLEB-600",
-      "PHLEB-600L"
-    ]
-  },
-  "O130 - Orthodontic Assisting Permit Noncredit Certificate of Completion": {
-    "id": "O130 - Orthodontic Assisting Permit Noncredit Certificate of Completion",
-    "code": "O130",
-    "title": "Orthodontic Assisting Permit Noncredit Certificate of Completion",
-    "isAssociate": false,
-    "courses": [
-      "DENTAL-690",
-      "DENTAL-691",
-      "DENTAL-692"
-    ]
-  },
-  "O230 - Caregiving Essentials Noncredit Certificate of Completion": {
-    "id": "O230 - Caregiving Essentials Noncredit Certificate of Completion",
-    "code": "O230",
-    "title": "Caregiving Essentials Noncredit Certificate of Completion",
-    "isAssociate": false,
-    "courses": [
-      "GERO-600",
-      "GERO-655"
-    ]
-  },
-  "O234 - Nursing Assistant  Noncredit Certificate of Completion": {
-    "id": "O234 - Nursing Assistant  Noncredit Certificate of Completion",
-    "code": "O234",
-    "title": "Nursing Assistant  Noncredit Certificate of Completion",
-    "isAssociate": false,
-    "courses": [
-      "NURAST-600",
-      "NURAST-600L",
-      "NURAST-605L"
-    ]
-  },
-  "O340 - Personal Training Noncredit Certificate of Completion": {
-    "id": "O340 - Personal Training Noncredit Certificate of Completion",
-    "code": "O340",
-    "title": "Personal Training Noncredit Certificate of Completion",
-    "isAssociate": false,
-    "courses": [
-      "KINLEC-603",
-      "KINLEC-602",
-      "KINLEC-601"
-    ]
-  },
-  "O400 - English as a Second Language Noncredit Certificate of Competency": {
-    "id": "O400 - English as a Second Language Noncredit Certificate of Competency",
-    "code": "O400",
-    "title": "English as a Second Language Noncredit Certificate of Competency",
-    "isAssociate": false,
-    "courses": [
-      "ESL-642",
-      "ESL-652",
-      "ESL-632B",
-      "ESL-632A",
-      "ESL-632",
-      "ESL-608",
-      "ESL-607"
-    ]
-  },
-  "S005 - Accounting A.S. Degree": {
-    "id": "S005 - Accounting A.S. Degree",
-    "code": "S005",
-    "title": "Accounting A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ACCTG-1A",
-      "ACCTG-1B",
-      "ACCTG-70",
-      "ACCTG-430",
-      "ACCTGFS-453",
-      "BUSL-28A",
-      "BUSTEC-63",
-      "ITIS-10",
-      "STAT-C1000"
-    ]
-  },
-  "S014 - Airframe and Powerplant A.S. Degree": {
-    "id": "S014 - Airframe and Powerplant A.S. Degree",
-    "code": "S014",
-    "title": "Airframe and Powerplant A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "AMT-39B",
-      "AMT-39A",
-      "AMT-15A",
-      "AMT-15C",
-      "AMT-29B",
-      "AMT-29A"
-    ]
-  },
-  "S055 - Master Automotive Technician A.S. Degree": {
-    "id": "S055 - Master Automotive Technician A.S. Degree",
-    "code": "S055",
-    "title": "Master Automotive Technician A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "AUTOTEC-10",
-      "AUTOTEC-418",
-      "AUTOTEC-417",
-      "AUTOTEC-450",
-      "AUTOTEC-455",
-      "AUTOTEC-422",
-      "AUTOTEC-416",
-      "AUTOTEC-15",
-      "AUTOTEC-432",
-      "AUTOTEC-429",
-      "AUTOTEC-427",
-      "AUTOTEC-423"
-    ]
-  },
-  "S056 - General Automotive Service Technician A.S. Degree": {
-    "id": "S056 - General Automotive Service Technician A.S. Degree",
-    "code": "S056",
-    "title": "General Automotive Service Technician A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "AUTOTEC-450",
-      "AUTOTEC-418",
-      "AUTOTEC-417",
-      "AUTOTEC-10",
-      "AUTOTEC-455",
-      "AUTOTEC-422",
-      "AUTOTEC-416",
-      "AUTOTEC-15"
-    ]
-  },
-  "S065 - Biological Sciences A.S. Degree": {
-    "id": "S065 - Biological Sciences A.S. Degree",
-    "code": "S065",
-    "title": "Biological Sciences A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "MATH-65B",
-      "CHEM-75A",
-      "BIOL-40",
-      "BIOL-42",
-      "BIOL-42L",
-      "CHEM-24A",
-      "CHEM-24B",
-      "MATH-65A",
-      "BIOL-44"
-    ]
-  },
-  "S066 - Biology for Transfer AS-T": {
-    "id": "S066 - Biology for Transfer AS-T",
-    "code": "S066",
-    "title": "Biology for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "BIOL-40",
-      "BIOL-42L",
-      "BIOL-42",
-      "BIOL-44",
-      "MATH-65A",
-      "CHEM-24B",
-      "CHEM-24A",
-      "PHYS-20B",
-      "PHYS-20A",
-      "PHYS-36",
-      "PHYS-35"
-    ]
-  },
-  "S070 - Broadcasting and Cinema A.S. Degree": {
-    "id": "S070 - Broadcasting and Cinema A.S. Degree",
-    "code": "S070",
-    "title": "Broadcasting and Cinema A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BRDCAST-3",
-      "CINEMA-25",
-      "CINEMA-80",
-      "CINEMA-22",
-      "CINEMA-20",
-      "BRDCAST-74",
-      "CINEMA-30",
-      "BRDCAST-55",
-      "BRDCAST-60",
-      "BRDCAST-70",
-      "CINEMA-26",
-      "CINEMA-96",
-      "BRDCAST-67",
-      "BRDCAST-62"
-    ]
-  },
-  "S074 - Business A.S. Degree": {
-    "id": "S074 - Business A.S. Degree",
-    "code": "S074",
-    "title": "Business A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUS-10",
-      "BUSL-28A",
-      "BUS-60",
-      "BUS-88",
-      "ACCTG-1A",
-      "ACCTGFS-465",
-      "ACCTGFS-442",
-      "BUSL-28B",
-      "BUS-61",
-      "BUSMGT-11",
-      "BUSMGT-42",
-      "BUSMGT-44",
-      "BUSMGT-436",
-      "BUSMKT-13",
-      "BUSMKT-55",
-      "BUSMGT-441",
-      "BUSMKT-410",
-      "BUSMKT-420",
-      "BUSMGT-466",
-      "BUSMGT-40",
-      "BUSMKT-40"
-    ]
-  },
-  "S077 - Paralegal Studies A.S. Degree": {
-    "id": "S077 - Paralegal Studies A.S. Degree",
-    "code": "S077",
-    "title": "Paralegal Studies A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUSL-28A",
-      "BUSL-28B",
-      "BUSL-400",
-      "BUSL-401",
-      "BUSL-402",
-      "BUSL-403",
-      "BUSL-406",
-      "BUSL-405",
-      "BUSL-10",
-      "BUSL-50",
-      "BUSL-407",
-      "BUSL-408",
-      "BUSL-409",
-      "BUSL-410",
-      "BUSL-411",
-      "BUSL-412",
-      "BUSL-413",
-      "BUSL-435",
-      "BUSL-496ABC"
-    ]
-  },
-  "S078 - Business Administration 2.0 for Transfer AS-T": {
-    "id": "S078 - Business Administration 2.0 for Transfer AS-T",
-    "code": "S078",
-    "title": "Business Administration 2.0 for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "ACCTG-1A",
-      "ACCTG-1B",
-      "BUSL-28A",
-      "ECON-C2001",
-      "ECON-C2002",
-      "MATH-25",
-      "MATH-65A",
-      "MATH-61",
-      "MATH-60",
-      "BUS-88",
-      "BUS-10",
-      "STAT-C1000",
-      "SCSCI-10"
-    ]
-  },
-  "S081 - Marketing A.S. Degree": {
-    "id": "S081 - Marketing A.S. Degree",
-    "code": "S081",
-    "title": "Marketing A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUSMKT-13",
-      "BUSMKT-40",
-      "BUSMKT-410",
-      "BUSL-435",
-      "BUSMKT-55",
-      "BUSMKT-405",
-      "BUSMKT-420",
-      "BUS-88",
-      "BUS-60",
-      "BUSL-28A",
-      "BUS-10",
-      "ACCTG-1A",
-      "ACCTGFS-465"
-    ]
-  },
-  "S082 - Global Business A.S. Degree": {
-    "id": "S082 - Global Business A.S. Degree",
-    "code": "S082",
-    "title": "Global Business A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUSMKT-405",
-      "BUSL-410",
-      "BUS-61",
-      "BUSMKT-402",
-      "BUSMKT-55",
-      "BUSMKT-410",
-      "BUSMGT-436",
-      "BUSMGT-45",
-      "BUSL-28A",
-      "BUS-88",
-      "BUS-60",
-      "BUS-10",
-      "ACCTG-1A",
-      "ACCTGFS-465"
-    ]
-  },
-  "S086 - Chemistry for Transfer AS-T": {
-    "id": "S086 - Chemistry for Transfer AS-T",
-    "code": "S086",
-    "title": "Chemistry for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "CHEM-24A",
-      "CHEM-24B",
-      "PHYS-35",
-      "PHYS-36",
-      "MATH-65A",
-      "MATH-65B",
-      "CHEM-75A",
-      "CHEM-75B"
-    ]
-  },
-  "S087 - Chemistry University of California Transfer Pathway AS-T": {
-    "id": "S087 - Chemistry University of California Transfer Pathway AS-T",
-    "code": "S087",
-    "title": "Chemistry University of California Transfer Pathway AS-T",
-    "isAssociate": true,
-    "courses": [
-      "CHEM-75A",
-      "CHEM-75B",
-      "PHYS-36",
-      "PHYS-35",
-      "MATH-85",
-      "MATH-75",
-      "MATH-65B",
-      "MATH-65A",
-      "CHEM-24B",
-      "CHEM-24A"
-    ]
-  },
-  "S090 - Child Development A.S. Degree": {
-    "id": "S090 - Child Development A.S. Degree",
-    "code": "S090",
-    "title": "Child Development A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "CDE-2",
-      "CDE-4",
-      "CDE-7",
-      "CDE-8",
-      "CDE-23",
-      "CDE-415",
-      "CDE-416",
-      "CDE-430A",
-      "CDE-50",
-      "CDE-27"
-    ]
-  },
-  "S091 - Early Childhood Education for Transfer AS-T": {
-    "id": "S091 - Early Childhood Education for Transfer AS-T",
-    "code": "S091",
-    "title": "Early Childhood Education for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "CDE-2",
-      "CDE-4",
-      "CDE-1",
-      "CDE-3",
-      "CDE-5",
-      "CDE-6",
-      "CDE-27",
-      "CDE-28W",
-      "CDE-28"
-    ]
-  },
-  "S101 - Information Technology and Information Systems A.S. Degree": {
-    "id": "S101 - Information Technology and Information Systems A.S. Degree",
-    "code": "S101",
-    "title": "Information Technology and Information Systems A.S. Degree",
-    "isAssociate": true,
-    "courses": [
+      "ITIS-61",
+      "ITIS-53",
+      "ITIS-52",
       "ITIS-70",
+      "ITIS-74",
+      "ITIS-65",
+      "ITIS-60",
+      "ITIS-56",
+      "ITIS-55",
+      "ITIS-51",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
+    ]
+  },
+  "T470 - Programmer Certificate of Achievement": {
+    "id": "T470 - Programmer Certificate of Achievement",
+    "code": "T470",
+    "title": "Programmer Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "COMPSCI-10",
+      "COMPSCI-6",
+      "COMPSCI-2",
+      "COMPSCI-5",
+      "COMPSCI-1",
+      "ITIS-84",
       "ITIS-82",
       "ITIS-80",
-      "ITIS-60",
-      "COMPSCI-10",
+      "ITIS-42",
+      "ITIS-30",
+      "ITIS-45",
       "ITIS-51",
       "ITIS-50",
       "ITIS-40",
       "ITIS-16",
       "ITIS-14",
-      "ITIS-10",
-      "COMPSCI-5",
-      "COMPSCI-1",
+      "ITIS-10"
+    ]
+  },
+  "N101 - Information Technology and Information Systems Core Certificate of Achievement": {
+    "id": "N101 - Information Technology and Information Systems Core Certificate of Achievement",
+    "code": "N101",
+    "title": "Information Technology and Information Systems Core Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
+    ]
+  },
+  "T474 - Technology and Innovation Certificate of Achievement": {
+    "id": "T474 - Technology and Innovation Certificate of Achievement",
+    "code": "T474",
+    "title": "Technology and Innovation Certificate of Achievement",
+    "isAssociate": false,
+    "courses": [
+      "ITIS-425",
+      "ITIS-82",
+      "ITIS-70",
+      "ITIS-55",
+      "ITIS-60",
       "ITIS-30",
-      "ITIS-55"
+      "COMPSCI-401",
+      "AI-1",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
     ]
   },
-  "S103 - Computer Science for Transfer AS-T": {
-    "id": "S103 - Computer Science for Transfer AS-T",
-    "code": "S103",
-    "title": "Computer Science for Transfer AS-T",
-    "isAssociate": true,
+  "T477 - Web Development and Social Media Certificate of Achievement": {
+    "id": "T477 - Web Development and Social Media Certificate of Achievement",
+    "code": "T477",
+    "title": "Web Development and Social Media Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "COMPSCI-1",
-      "COMPSCI-2",
-      "COMPSCI-3",
-      "MATH-65A",
-      "MATH-65B",
-      "PHYS-45",
-      "PHYS-46",
-      "COMPSCI-4",
-      "COMPSCI-6",
-      "COMPSCI-5"
+      "ITIS-82",
+      "ITIS-30",
+      "ITIS-425",
+      "COMPSCI-10",
+      "BUSMKT-55",
+      "ARTGD-82",
+      "ITIS-80",
+      "ITIS-84",
+      "AI-1",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
     ]
   },
-  "S105 - Correctional Science A.S. Degree": {
-    "id": "S105 - Correctional Science A.S. Degree",
-    "code": "S105",
-    "title": "Correctional Science A.S. Degree",
-    "isAssociate": true,
+  "T472 - Development Operations Certificate of Achievement": {
+    "id": "T472 - Development Operations Certificate of Achievement",
+    "code": "T472",
+    "title": "Development Operations Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "CJ-51",
-      "CJ-53",
-      "CJ-6",
-      "CJ-56",
-      "CJ-58",
-      "CJ-1",
-      "CJ-55",
-      "CJ-3",
-      "CJ-57",
-      "CJ-10",
-      "SOC-17"
+      "ITIS-84",
+      "ITIS-82",
+      "ITIS-80",
+      "ITIS-56",
+      "ITIS-70",
+      "ITIS-55",
+      "ITIS-30",
+      "COMPSCI-10",
+      "COMPSCI-5",
+      "ITIS-74",
+      "ITIS-60",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
     ]
   },
-  "S111 - Culinary Arts A.S. Degree": {
-    "id": "S111 - Culinary Arts A.S. Degree",
-    "code": "S111",
-    "title": "Culinary Arts A.S. Degree",
+  "A037 - Art History for Transfer AA-T": {
+    "id": "A037 - Art History for Transfer AA-T",
+    "code": "A037",
+    "title": "Art History for Transfer AA-T",
     "isAssociate": true,
     "courses": [
-      "CUL-15",
-      "CUL-17",
-      "CUL-22",
-      "CUL-440",
-      "CUL-442",
-      "CUL-444",
-      "HOTFS-10",
-      "HOTFS-21",
-      "CUL-447",
-      "CUL-438"
-    ]
-  },
-  "S121 - Dental Assisting A.S. Degree": {
-    "id": "S121 - Dental Assisting A.S. Degree",
-    "code": "S121",
-    "title": "Dental Assisting A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "DENTAL-405",
-      "DENTAL-415",
-      "DENTAL-425",
-      "DENTAL-435",
-      "DENTAL-445",
-      "DENTAL-455",
-      "DENTAL-460",
-      "DENTAL-465",
-      "DENTAL-475",
-      "DENTAL-480",
-      "DENTAL-490",
-      "DENTAL-415L",
-      "DENTAL-425L",
-      "DENTAL-435L",
-      "DENTAL-445L",
-      "DENTAL-455L",
-      "DENTAL-465L",
-      "DENTAL-475L",
-      "DENTAL-480L",
-      "DENTAL-490L"
+      "ARTH-C1100",
+      "ARTH-C1200",
+      "ART-14",
+      "ARTH-9",
+      "ARTH-7",
+      "ARTH-11",
+      "ART-10",
+      "ARTH-19",
+      "ART-12",
+      "ART-18",
+      "ART-20",
+      "ART-30",
+      "PHOTO-7",
+      "PHOTO-10",
+      "ART-16"
     ]
   },
   "S124 - Computer Game Development A.S. Degree": {
@@ -2382,510 +3468,121 @@ window.CHAFFEY_PROGRAM_DATA = {
       "COMPSCI-2"
     ]
   },
-  "S127 - CAD Drafting Technician: Architectural A.S. Degree": {
-    "id": "S127 - CAD Drafting Technician: Architectural A.S. Degree",
-    "code": "S127",
-    "title": "CAD Drafting Technician: Architectural A.S. Degree",
+  "S475 - Networking Specialist (CCNA) A.S. Degree": {
+    "id": "S475 - Networking Specialist (CCNA) A.S. Degree",
+    "code": "S475",
+    "title": "Networking Specialist (CCNA) A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "DRAFT-20",
-      "DRAFT-21",
-      "DRAFT-50",
-      "DRAFT-51",
-      "DRAFT-53",
-      "EGTECH-10",
-      "EGTECH-30",
-      "PHYS-5",
-      "PHYS-6"
+      "ITIS-53",
+      "ITIS-74",
+      "ITIS-70",
+      "ITIS-61",
+      "ITIS-56",
+      "ITIS-65",
+      "ITIS-60",
+      "ITIS-55",
+      "ITIS-52",
+      "ITIS-51",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
     ]
   },
-  "S133 - Administration of Justice for Transfer AS-T": {
-    "id": "S133 - Administration of Justice for Transfer AS-T",
-    "code": "S133",
-    "title": "Administration of Justice for Transfer AS-T",
+  "S470 - Programmer A.S. Degree": {
+    "id": "S470 - Programmer A.S. Degree",
+    "code": "S470",
+    "title": "Programmer A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "CJ-1",
-      "CJ-2",
-      "CJ-7",
-      "CJ-4",
-      "CJ-5",
-      "CJ-6",
-      "CJ-9",
-      "CJ-51",
-      "CJ-3",
-      "PSYC-C1000",
-      "SOC-10",
-      "STAT-C1000",
-      "SOC-17"
-    ]
-  },
-  "S137 - CAD Drafting Technician: Mechanical A.S. Degree": {
-    "id": "S137 - CAD Drafting Technician: Mechanical A.S. Degree",
-    "code": "S137",
-    "title": "CAD Drafting Technician: Mechanical A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "DRAFT-20",
-      "DRAFT-21",
-      "DRAFT-41",
-      "DRAFT-43",
-      "DRAFT-78",
-      "EGTECH-10",
-      "EGTECH-16",
-      "EGTECH-30",
-      "PHYS-5",
-      "PHYS-6"
-    ]
-  },
-  "S140 - Earth Science A.S. Degree": {
-    "id": "S140 - Earth Science A.S. Degree",
-    "code": "S140",
-    "title": "Earth Science A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ESC-5",
-      "ESC-5L",
-      "GEOL-1",
-      "GEOL-2",
-      "MATH-61",
-      "CHEM-10",
-      "GEOG-4"
-    ]
-  },
-  "S141 - Fire Technology: Professional Firefighter A.S. Degree": {
-    "id": "S141 - Fire Technology: Professional Firefighter A.S. Degree",
-    "code": "S141",
-    "title": "Fire Technology: Professional Firefighter A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "FIRETEC-1",
-      "FIRETEC-2",
-      "FIRETEC-3",
-      "FIRETEC-4",
-      "FIRETEC-5",
-      "FIRETEC-9",
-      "EMT-11",
-      "EMT-405",
-      "FIRETEC-6",
-      "FIRETEC-7",
-      "FIRETEC-10",
-      "FIRETEC-11",
-      "FIRETEC-12"
-    ]
-  },
-  "S142 - Film, Television and Electronic Media for Transfer AS-T": {
-    "id": "S142 - Film, Television and Electronic Media for Transfer AS-T",
-    "code": "S142",
-    "title": "Film, Television and Electronic Media for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "BRDCAST-55",
-      "CINEMA-30",
-      "BRDCAST-62",
-      "BRDCAST-60",
-      "BRDCAST-67",
-      "CINEMA-25",
-      "CINEMA-26",
-      "ARTH-C1200",
-      "CINEMA-96",
-      "BRDCAST-70",
-      "BRDCAST-74",
-      "COMSTD-12",
-      "BRDCAST-3",
-      "CINEMA-22"
-    ]
-  },
-  "S150 - Industrial Electrical Technology A.S. Degree": {
-    "id": "S150 - Industrial Electrical Technology A.S. Degree",
-    "code": "S150",
-    "title": "Industrial Electrical Technology A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "IET-401A",
-      "IET-401B",
-      "IET-403A",
-      "IET-403B",
-      "IET-405",
-      "IET-407",
-      "IET-411",
-      "IET-413",
-      "IET-414",
-      "IET-415",
-      "IET-417",
-      "IET-420",
-      "IET-422",
-      "IET-460",
-      "IET-400",
-      "IET-418",
-      "IET-484ABCD"
-    ]
-  },
-  "S156 - Mechatronics A.S. Degree": {
-    "id": "S156 - Mechatronics A.S. Degree",
-    "code": "S156",
-    "title": "Mechatronics A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "IET-401A",
-      "IET-401B",
-      "IET-407",
-      "IET-411",
-      "IET-422",
-      "IETELMT-430",
-      "IETELMT-432",
-      "IETELMT-436",
-      "IETELMT-438",
-      "IETMECH-400",
-      "IETMECH-401",
-      "IETMECH-402",
-      "IET-400",
-      "IETMECH-403"
-    ]
-  },
-  "S165 - Engineering A.S. Degree": {
-    "id": "S165 - Engineering A.S. Degree",
-    "code": "S165",
-    "title": "Engineering A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "CHEM-24B",
-      "DRAFT-43",
-      "MATH-75",
-      "MATH-81",
-      "MATH-85",
-      "STAT-C1000",
-      "PHYS-47",
-      "ENGIN-11",
-      "MATH-65A",
-      "MATH-65B",
-      "PHYS-45",
-      "PHYS-46",
-      "CHEM-24A",
-      "ENGIN-26",
-      "ENGIN-30",
-      "ENGIN-50",
-      "ENGIN-52",
-      "ENGIN-60",
-      "ENGIN-71"
-    ]
-  },
-  "S166 - Engineering Technology A.S. Degree": {
-    "id": "S166 - Engineering Technology A.S. Degree",
-    "code": "S166",
-    "title": "Engineering Technology A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "CHEM-24A",
-      "EGTECH-10",
-      "EGTECH-12",
-      "EGTECH-16",
-      "PHYS-20A",
-      "EGTECH-30",
-      "EGTECH-14",
-      "DRAFT-20",
-      "DRAFT-21",
-      "DRAFT-43",
-      "DRAFT-41",
-      "DRAFT-78"
-    ]
-  },
-  "S170 - Environmental Science for Transfer AS-T": {
-    "id": "S170 - Environmental Science for Transfer AS-T",
-    "code": "S170",
-    "title": "Environmental Science for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "STAT-C1000",
-      "MATH-65A",
-      "BIOL-2",
-      "GEOL-1",
-      "GEOG-4L",
-      "GEOG-4",
-      "BIOL-40",
-      "CHEM-24A",
-      "CHEM-24B",
-      "ECON-C2001",
-      "PHYS-35",
-      "PHYS-36",
-      "PHYS-20A",
-      "PHYS-20B"
-    ]
-  },
-  "S180 - Fashion Design A.S. Degree": {
-    "id": "S180 - Fashion Design A.S. Degree",
-    "code": "S180",
-    "title": "Fashion Design A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "FASHD-62",
-      "FASHD-72",
-      "FASHM-10",
-      "FASHM-60",
-      "FASHD-20",
-      "FASHD-28",
-      "FASHD-40",
-      "FASHD-42",
-      "FASHD-45",
-      "FASHD-61",
-      "FASHD-65",
-      "FASHD-89",
-      "FASHD-442",
-      "FASHD-470",
-      "FASHM-20"
-    ]
-  },
-  "S185 - Fashion Merchandising A.S. Degree": {
-    "id": "S185 - Fashion Merchandising A.S. Degree",
-    "code": "S185",
-    "title": "Fashion Merchandising A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "FASHD-20",
-      "FASHD-28",
-      "FASHD-40",
-      "FASHD-45",
-      "FASHD-89",
-      "FASHM-10",
-      "FASHM-11",
-      "FASHM-12",
-      "FASHM-20",
-      "FASHM-21",
-      "PHOTO-7",
-      "BUSTEC-63",
-      "FASHM-60"
-    ]
-  },
-  "S221 - Geology for Transfer AS-T": {
-    "id": "S221 - Geology for Transfer AS-T",
-    "code": "S221",
-    "title": "Geology for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "GEOL-1",
-      "GEOL-2",
-      "MATH-65A",
-      "MATH-65B",
-      "CHEM-24A",
-      "CHEM-24B"
-    ]
-  },
-  "S225 - Geological Sciences  A.S. Degree": {
-    "id": "S225 - Geological Sciences  A.S. Degree",
-    "code": "S225",
-    "title": "Geological Sciences  A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "GEOL-2",
-      "MATH-65A",
-      "CHEM-24A",
-      "CHEM-24B",
-      "BIOL-1",
-      "GEOL-1",
-      "PHYS-35"
-    ]
-  },
-  "S230 - Gerontology A.S. Degree": {
-    "id": "S230 - Gerontology A.S. Degree",
-    "code": "S230",
-    "title": "Gerontology A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "GERO-11",
-      "GERO-18",
-      "GERO-23",
-      "PH-10",
-      "GERO-22",
-      "GERO-400"
-    ]
-  },
-  "S242 - Nutrition and Dietetics for Transfer AS-T": {
-    "id": "S242 - Nutrition and Dietetics for Transfer AS-T",
-    "code": "S242",
-    "title": "Nutrition and Dietetics for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "NF-15",
-      "CHEM-24A",
-      "BIOL-23",
-      "BIOL-23L",
-      "PSYC-C1000",
-      "BIOL-20",
-      "BIOL-22",
-      "SCSCI-10",
-      "STAT-C1000",
-      "CHEM-75A",
-      "CUL-17"
-    ]
-  },
-  "S244 - Professional Baking and Patisserie A.S. Degree": {
-    "id": "S244 - Professional Baking and Patisserie A.S. Degree",
-    "code": "S244",
-    "title": "Professional Baking and Patisserie A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "CUL-15",
-      "CUL-17",
-      "CUL-22",
-      "CUL-440",
-      "CUL-441",
-      "CUL-443",
-      "CUL-445",
-      "CUL-446",
-      "CUL-447",
-      "HOTFS-10"
-    ]
-  },
-  "S252 - Hospitality Management for Transfer AS-T": {
-    "id": "S252 - Hospitality Management for Transfer AS-T",
-    "code": "S252",
-    "title": "Hospitality Management for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
-      "HOTFS-10",
-      "ECON-C2001",
-      "CUL-15",
-      "HOTFS-21",
-      "HOTFS-14",
-      "HOTFS-32",
-      "CUL-17",
-      "HOTFS-42",
-      "ACCTG-1A",
-      "BUSL-28A"
-    ]
-  },
-  "S255 - Hospitality Management: Food Service A.S. Degree": {
-    "id": "S255 - Hospitality Management: Food Service A.S. Degree",
-    "code": "S255",
-    "title": "Hospitality Management: Food Service A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "HOTFS-10",
-      "HOTFS-14",
-      "HOTFS-21",
-      "HOTFS-32",
-      "HOTFS-428",
-      "HOTFS-431",
-      "CUL-17",
-      "CUL-22",
-      "CUL-15",
-      "HOTFS-482"
-    ]
-  },
-  "S260 - Hospitality Management: Hotel Management A.S. Degree": {
-    "id": "S260 - Hospitality Management: Hotel Management A.S. Degree",
-    "code": "S260",
-    "title": "Hospitality Management: Hotel Management A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "HOTFS-10",
-      "HOTFS-14",
-      "HOTFS-21",
-      "HOTFS-32",
-      "HOTFS-428",
-      "HOTFS-431",
-      "CUL-15",
-      "HOTFS-42",
-      "HOTFS-482"
-    ]
-  },
-  "S270 - Interior Design A.S. Degree": {
-    "id": "S270 - Interior Design A.S. Degree",
-    "code": "S270",
-    "title": "Interior Design A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ID-10",
-      "ID-11",
-      "ID-12",
-      "ID-16",
-      "ID-17",
-      "ID-21",
-      "ID-22",
-      "ID-30",
-      "ID-15",
-      "ID-45",
-      "ID-14",
-      "ID-27",
-      "ID-426",
-      "ID-482ABCD"
-    ]
-  },
-  "S285 - Management A.S. Degree": {
-    "id": "S285 - Management A.S. Degree",
-    "code": "S285",
-    "title": "Management A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUSMGT-44",
-      "BUSMGT-42",
-      "BUSMGT-40",
-      "ACCTG-1B",
-      "BUSL-28B",
-      "BUS-61",
-      "BUSMGT-436",
-      "BUSMGT-441",
-      "BUSMGT-48",
-      "BUSMGT-480",
-      "BUSMKT-40",
-      "BUSMKT-420",
-      "BUSMGT-45",
-      "BUSMGT-11",
-      "BUS-10",
-      "BUS-88",
-      "BUS-60",
-      "BUSL-28A",
-      "ACCTGFS-465",
-      "ACCTG-1A"
-    ]
-  },
-  "S286 - Facilities Management A.S. Degree": {
-    "id": "S286 - Facilities Management A.S. Degree",
-    "code": "S286",
-    "title": "Facilities Management A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ACCTGFS-465",
-      "BUS-10",
-      "BUS-60",
-      "BUS-88",
-      "BUSL-28A",
-      "BUSMGT-40",
-      "BUSMGT-44",
-      "BUSMGT-470",
-      "BUSMGT-466",
-      "ACCTG-1A"
-    ]
-  },
-  "S288 - Supply Chain Management A.S. Degree": {
-    "id": "S288 - Supply Chain Management A.S. Degree",
-    "code": "S288",
-    "title": "Supply Chain Management A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUS-10",
-      "BUSMGT-13",
-      "BUSMGT-14",
-      "BUSMGT-436",
-      "BUSMGT-480",
-      "BUSMGT-48",
-      "BUSMKT-402"
-    ]
-  },
-  "S292 - Mathematics 2.0 for Transfer AS-T": {
-    "id": "S292 - Mathematics 2.0 for Transfer AS-T",
-    "code": "S292",
-    "title": "Mathematics 2.0 for Transfer AS-T",
-    "isAssociate": true,
-    "courses": [
+      "COMPSCI-6",
+      "COMPSCI-2",
       "COMPSCI-5",
       "COMPSCI-1",
-      "PHYS-45",
-      "MATH-81",
-      "MATH-85",
-      "MATH-75",
-      "MATH-65B",
-      "MATH-65A"
+      "COMPSCI-10",
+      "ITIS-84",
+      "ITIS-82",
+      "ITIS-80",
+      "ITIS-42",
+      "ITIS-30",
+      "ITIS-45",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
+    ]
+  },
+  "S472 - Development Operations  A.S. Degree": {
+    "id": "S472 - Development Operations  A.S. Degree",
+    "code": "S472",
+    "title": "Development Operations  A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "COMPSCI-10",
+      "COMPSCI-5",
+      "ITIS-74",
+      "ITIS-56",
+      "ITIS-84",
+      "ITIS-82",
+      "ITIS-80",
+      "ITIS-70",
+      "ITIS-60",
+      "ITIS-55",
+      "ITIS-30",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-16",
+      "ITIS-40",
+      "ITIS-14",
+      "ITIS-10"
+    ]
+  },
+  "S477 - Web Development and Social Media  A.S. Degree": {
+    "id": "S477 - Web Development and Social Media  A.S. Degree",
+    "code": "S477",
+    "title": "Web Development and Social Media  A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ITIS-425",
+      "ITIS-82",
+      "ITIS-30",
+      "COMPSCI-10",
+      "BUSMKT-55",
+      "ARTGD-82",
+      "ITIS-80",
+      "ITIS-84",
+      "AI-1",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
+    ]
+  },
+  "S474 - Technology and Innovation A.S. Degree": {
+    "id": "S474 - Technology and Innovation A.S. Degree",
+    "code": "S474",
+    "title": "Technology and Innovation A.S. Degree",
+    "isAssociate": true,
+    "courses": [
+      "ITIS-425",
+      "ITIS-82",
+      "ITIS-70",
+      "ITIS-60",
+      "ITIS-55",
+      "ITIS-30",
+      "COMPSCI-401",
+      "AI-1",
+      "ITIS-51",
+      "ITIS-50",
+      "ITIS-40",
+      "ITIS-16",
+      "ITIS-14",
+      "ITIS-10"
     ]
   },
   "S293 - Public Health Science for Transfer AS-T": {
@@ -2911,72 +3608,85 @@ window.CHAFFEY_PROGRAM_DATA = {
       "PH-11"
     ]
   },
-  "S294 - Public Health for Transfer AS-T": {
-    "id": "S294 - Public Health for Transfer AS-T",
-    "code": "S294",
-    "title": "Public Health for Transfer AS-T",
-    "isAssociate": true,
+  "N476 - Data Analytics  Certificate of Achievement": {
+    "id": "N476 - Data Analytics  Certificate of Achievement",
+    "code": "N476",
+    "title": "Data Analytics  Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "PH-40",
-      "PH-11",
-      "HS-15",
-      "PH-30",
-      "PH-13",
-      "CHEM-24A",
-      "CHEM-10",
-      "BIOL-22",
-      "BIOL-20",
-      "SCSCI-10",
+      "COMPSCI-10",
       "STAT-C1000",
-      "PH-20",
-      "PH-10",
-      "BIOL-23L",
-      "BIOL-23",
-      "BIOL-1"
+      "ITIS-12",
+      "ITIS-80",
+      "COMPSCI-5",
+      "ITIS-10"
     ]
   },
-  "S295 - Retail Management A.S. Degree": {
-    "id": "S295 - Retail Management A.S. Degree",
-    "code": "S295",
-    "title": "Retail Management A.S. Degree",
-    "isAssociate": true,
+  "E404 - Artificial Intelligence  Certificate of Career Preparation": {
+    "id": "E404 - Artificial Intelligence  Certificate of Career Preparation",
+    "code": "E404",
+    "title": "Artificial Intelligence  Certificate of Career Preparation",
+    "isAssociate": false,
     "courses": [
-      "BUSMKT-40",
-      "BUSMGT-11",
-      "BUSMGT-40",
-      "ITIS-10",
-      "ACCTGFS-465",
-      "BUSMGT-44",
-      "BUS-88",
-      "BUSMGT-42"
+      "AI-4",
+      "AI-3",
+      "AI-2",
+      "AI-1"
     ]
   },
-  "S300 - Physical Therapist Assistant A.S. Degree": {
-    "id": "S300 - Physical Therapist Assistant A.S. Degree",
-    "code": "S300",
-    "title": "Physical Therapist Assistant A.S. Degree",
+  "A121 - Elementary Teacher Education: Integrated Programs for Transfer AA-T": {
+    "id": "A121 - Elementary Teacher Education: Integrated Programs for Transfer AA-T",
+    "code": "A121",
+    "title": "Elementary Teacher Education: Integrated Programs for Transfer AA-T",
     "isAssociate": true,
     "courses": [
-      "PTA-24",
-      "PTA-31",
-      "PTA-32",
-      "PTA-33",
-      "PTA-23",
-      "PTA-22",
-      "PTA-21",
-      "PTA-14",
-      "PTA-13",
-      "PTA-12",
-      "PTA-11",
-      "STAT-C1000",
+      "CDE-2",
+      "COMM-C1000",
       "ENGL-C1000",
-      "BIOL-22",
+      "BIOL-1",
+      "ENGL-C1002",
+      "HIST-1",
+      "HIST-C1001",
+      "POLS-C1000",
+      "ED-10W",
+      "ED-10",
+      "MUSIC-4",
+      "THEATRE-1",
+      "ESC-1L",
+      "ESC-1",
+      "GEOG-1"
+    ]
+  },
+  "A346 - Kinesiology for Transfer AA-T": {
+    "id": "A346 - Kinesiology for Transfer AA-T",
+    "code": "A346",
+    "title": "Kinesiology for Transfer AA-T",
+    "isAssociate": true,
+    "courses": [
+      "KINLEC-18",
       "BIOL-20",
-      "PSYCH-25",
-      "KINLEC-24",
-      "NURADN-403",
-      "PTA-1",
-      "SCSCI-10"
+      "BIOL-22",
+      "KINACT-9",
+      "KINACT-31",
+      "KINACT-32A",
+      "KINACT-24",
+      "KINACT-25",
+      "KINACT-26",
+      "KINACT-28A",
+      "KINACT-29A",
+      "KINACT-35",
+      "KINACT-1",
+      "KINACT-20",
+      "KINACT-22",
+      "KINACT-3A",
+      "KINACT-5A",
+      "KINACT-6",
+      "STAT-C1000",
+      "SCSCI-10",
+      "CHEM-24A",
+      "PHYS-20A",
+      "PHYS-45",
+      "KINLEC-16"
     ]
   },
   "S310 - Nursing: ADN A.S. Degree": {
@@ -3036,515 +3746,83 @@ window.CHAFFEY_PROGRAM_DATA = {
       "NURADN-35"
     ]
   },
-  "S315 - Nursing: Vocational A.S. Degree": {
-    "id": "S315 - Nursing: Vocational A.S. Degree",
-    "code": "S315",
-    "title": "Nursing: Vocational A.S. Degree",
+  "S225 - Geological Sciences  A.S. Degree": {
+    "id": "S225 - Geological Sciences  A.S. Degree",
+    "code": "S225",
+    "title": "Geological Sciences  A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "NURVN-403",
-      "NURVN-403L",
-      "NURVN-405",
-      "NURVN-405L",
-      "NURVN-409",
-      "NURVN-409L",
-      "NURVN-411",
-      "NURVN-411L",
-      "NURVN-413",
-      "NURVN-413L",
-      "NURVN-415A",
-      "NURVN-415B",
-      "NURVN-417A",
-      "NURVN-417B",
-      "NURVN-421",
-      "NURVN-421L",
-      "NURVN-407A",
-      "NURVN-407B",
-      "NURVN-407C",
-      "BIOL-424"
-    ]
-  },
-  "S321 - Professional Administrative Management A.S. Degree": {
-    "id": "S321 - Professional Administrative Management A.S. Degree",
-    "code": "S321",
-    "title": "Professional Administrative Management A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUSTEC-50",
-      "BUSTEC-60B",
-      "BUSTEC-410",
-      "BUSTEC-452",
-      "BUSTEC-470",
-      "BUSTEC-61",
-      "BUSTEC-460",
-      "BUSTEC-40B",
-      "BUSTEC-60A",
-      "BUSTEC-62",
-      "BUSTEC-63",
-      "BUSTEC-64",
-      "BUSTEC-400",
-      "BUSTEC-455",
-      "BUSTEC-471",
-      "BUS-88"
-    ]
-  },
-  "S345 - Physical Education A.A. Degree": {
-    "id": "S345 - Physical Education A.A. Degree",
-    "code": "S345",
-    "title": "Physical Education A.A. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BIOL-22",
-      "CHEM-10",
-      "NF-5",
-      "KINLEC-2",
-      "KINLEC-11",
-      "KINLEC-24",
-      "KINLEC-32",
-      "KINLEC-16",
-      "KINLEC-17",
-      "KINLEC-3",
-      "KINACT-1",
-      "KINACT-2",
-      "KINACT-9",
-      "KINACT-16",
-      "KINACT-17",
-      "KINACT-20",
-      "KINACT-22",
-      "KINACT-23",
-      "KINACT-24",
-      "KINACT-25",
-      "KINACT-29A",
-      "KINACT-29B",
-      "KINACT-29C",
-      "KINACT-31",
-      "KINACT-35",
-      "KINTM-18",
-      "KINTM-19",
-      "KINACT-28A",
-      "KINACT-28B",
-      "KINACT-26",
-      "KINACT-32A",
-      "KINTM-17",
-      "KINACT-5A",
-      "KINACT-3A",
-      "KINTM-41I",
-      "KINTM-42I",
-      "KINTM-44I",
-      "KINTM-45I",
-      "KINTM-47I",
-      "KINTM-48I",
-      "KINTM-49I",
-      "KINTM-51I",
-      "KINTM-54I",
-      "KINTM-55I",
-      "KINTM-56AI",
-      "KINTM-56BI",
-      "KINTM-57AI",
-      "KINTM-57BI",
-      "KINTM-59I",
-      "KINTM-2ABCD",
-      "KINTM-1ABCD",
-      "KINTM-69ABC",
-      "KINTM-67ABC",
-      "KINTM-66ABC",
-      "KINTM-65ABC",
-      "KINTM-64ABC",
-      "KINTM-63ABC",
-      "KINTM-62ABC",
-      "KINTM-61ABC",
-      "KINTM-60ABC",
-      "KINTM-27ABCD",
-      "KINTM-26ABCD",
-      "KINTM-15ABCD",
-      "KINTM-14ABCD",
-      "KINTM-11ABCD",
-      "KINTM-9ABCD",
-      "KINTM-8ABCD",
-      "KINTM-7ABCD",
-      "KINTM-6ABCD",
-      "KINTM-5ABCD",
-      "KINTM-3ABCD",
-      "KINTM-16",
-      "KINACT-32B",
-      "KINACT-6",
-      "BIOL-20",
-      "BIOL-1",
-      "BIOL-424",
-      "BIOL-424L",
-      "KINLEC-18",
-      "KINLEC-15"
-    ]
-  },
-  "S357 - Physics University of California Transfer Pathway AS-T": {
-    "id": "S357 - Physics University of California Transfer Pathway AS-T",
-    "code": "S357",
-    "title": "Physics University of California Transfer Pathway AS-T",
-    "isAssociate": true,
-    "courses": [
-      "PHYS-47",
-      "PHYS-46",
-      "PHYS-45",
-      "MATH-85",
-      "MATH-81",
-      "MATH-75",
-      "MATH-65B",
+      "GEOL-2",
       "MATH-65A",
+      "CHEM-24A",
       "CHEM-24B",
-      "CHEM-24A"
+      "BIOL-1",
+      "GEOL-1",
+      "PHYS-35"
     ]
   },
-  "S358 - Physics 2.0 for Transfer AS-T": {
-    "id": "S358 - Physics 2.0 for Transfer AS-T",
-    "code": "S358",
-    "title": "Physics 2.0 for Transfer AS-T",
+  "S140 - Earth Science A.S. Degree": {
+    "id": "S140 - Earth Science A.S. Degree",
+    "code": "S140",
+    "title": "Earth Science A.S. Degree",
     "isAssociate": true,
     "courses": [
-      "MATH-85",
-      "PHYS-46",
-      "MATH-81",
-      "COMPSCI-5",
-      "COMPSCI-1",
-      "MATH-75",
-      "MATH-65B",
-      "MATH-65A",
-      "PHYS-47",
-      "PHYS-45"
+      "ESC-5",
+      "ESC-5L",
+      "GEOL-1",
+      "GEOL-2",
+      "MATH-61",
+      "CHEM-10",
+      "GEOG-4"
     ]
   },
-  "S375 - Radiologic Technology A.S. Degree": {
-    "id": "S375 - Radiologic Technology A.S. Degree",
-    "code": "S375",
-    "title": "Radiologic Technology A.S. Degree",
-    "isAssociate": true,
+  "L230 - Gerontology Certificate of Achievement": {
+    "id": "L230 - Gerontology Certificate of Achievement",
+    "code": "L230",
+    "title": "Gerontology Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "RADTEC-10",
-      "RADTEC-10L",
-      "RADTEC-16",
-      "RADTEC-16L",
-      "RADTEC-20",
-      "RADTEC-20L",
-      "RADTEC-25",
-      "RADTEC-25L",
-      "RADTEC-31",
-      "RADTEC-34",
-      "RADTEC-34L",
-      "RADTEC-41",
-      "RADTEC-51",
-      "RADTEC-55",
-      "RADTEC-61",
-      "RADTEC-67",
-      "RADTEC-67L",
-      "RADTEC-71",
-      "RADTEC-77",
-      "RADTEC-85",
-      "RADTEC-472",
-      "RADTEC-472L",
-      "RADTEC-82"
+      "GERO-22",
+      "GERO-97AB",
+      "GERO-24",
+      "GERO-18"
     ]
   },
-  "S381 - Real Estate A.S. Degree": {
-    "id": "S381 - Real Estate A.S. Degree",
-    "code": "S381",
-    "title": "Real Estate A.S. Degree",
-    "isAssociate": true,
+  "L105 - Correctional Science Certificate of Achievement": {
+    "id": "L105 - Correctional Science Certificate of Achievement",
+    "code": "L105",
+    "title": "Correctional Science Certificate of Achievement",
+    "isAssociate": false,
     "courses": [
-      "RE-410",
-      "RE-415",
-      "RE-460",
-      "RE-470",
-      "ACCTG-1A",
-      "BUSL-50",
-      "BUSL-28A",
-      "RE-472",
-      "RE-475",
-      "RE-486"
+      "CJ-51",
+      "CJ-53",
+      "CJ-6",
+      "CJ-56",
+      "CJ-58",
+      "CJ-1",
+      "CJ-3",
+      "CJ-57",
+      "CJ-10",
+      "CJ-55",
+      "SOC-17"
     ]
   },
-  "S383 - Real Estate Property Management A.S. Degree": {
-    "id": "S383 - Real Estate Property Management A.S. Degree",
-    "code": "S383",
-    "title": "Real Estate Property Management A.S. Degree",
+  "A306 - Music Industry Studies AA-T": {
+    "id": "A306 - Music Industry Studies AA-T",
+    "code": "A306",
+    "title": "Music Industry Studies AA-T",
     "isAssociate": true,
     "courses": [
-      "ACCTG-485",
-      "BUSMGT-42",
-      "BUSL-50",
-      "BUSMGT-470",
-      "RE-486",
-      "RE-415",
-      "RE-410",
-      "BUSTEC-455",
-      "BUSMKT-420",
-      "BUSMKT-40"
-    ]
-  },
-  "S390 - Small Business Entrepreneur A.S. Degree": {
-    "id": "S390 - Small Business Entrepreneur A.S. Degree",
-    "code": "S390",
-    "title": "Small Business Entrepreneur A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUS-10",
-      "BUSL-28A",
-      "BUS-60",
-      "BUS-88",
-      "ACCTG-1A",
-      "ACCTGFS-465",
-      "BUSL-28B",
-      "BUS-61",
-      "BUSMGT-11",
-      "BUSMGT-42",
-      "BUSMGT-436",
-      "BUSMGT-48",
-      "BUSMKT-13",
-      "BUSMKT-55",
-      "ACCTG-435",
-      "ACCTGFS-30",
-      "ACCTGFS-442",
-      "BUSMKT-420",
-      "BUSMGT-441",
-      "BUSTEC-63",
-      "BUSMKT-410",
-      "BUSMGT-45",
-      "ACCTG-460"
-    ]
-  },
-  "S404 - Artificial Intelligence A.S. Degree": {
-    "id": "S404 - Artificial Intelligence A.S. Degree",
-    "code": "S404",
-    "title": "Artificial Intelligence A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "AI-1",
-      "AI-2",
-      "AI-5",
-      "AI-4",
-      "AI-3",
-      "COMPSCI-5",
-      "ITIS-80",
-      "ITIS-40",
-      "COMPSCI-10",
-      "COMPSCI-4",
-      "AI-7",
-      "AI-6",
-      "AI-9",
-      "AI-8",
-      "COMPSCI-20",
-      "COMPSCI-11"
-    ]
-  },
-  "S410 - Supervision A.S. Degree": {
-    "id": "S410 - Supervision A.S. Degree",
-    "code": "S410",
-    "title": "Supervision A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "BUSMGT-480",
-      "BUSMGT-441",
-      "BUSMGT-40",
-      "BUS-61",
-      "BUSMGT-44",
-      "BUSL-28B",
-      "BUSMGT-11",
-      "BUSMGT-48",
-      "BUSMGT-42",
-      "BUS-10",
-      "BUSL-28A",
-      "BUS-60",
-      "BUS-88",
-      "ACCTG-1A",
-      "ACCTGFS-465"
-    ]
-  },
-  "S470 - Programmer A.S. Degree": {
-    "id": "S470 - Programmer A.S. Degree",
-    "code": "S470",
-    "title": "Programmer A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "COMPSCI-6",
-      "COMPSCI-2",
-      "COMPSCI-5",
-      "COMPSCI-1",
-      "COMPSCI-10",
-      "ITIS-84",
-      "ITIS-82",
-      "ITIS-80",
-      "ITIS-42",
-      "ITIS-30",
-      "ITIS-45",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "S472 - Development Operations  A.S. Degree": {
-    "id": "S472 - Development Operations  A.S. Degree",
-    "code": "S472",
-    "title": "Development Operations  A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "COMPSCI-10",
-      "COMPSCI-5",
-      "ITIS-74",
-      "ITIS-56",
-      "ITIS-84",
-      "ITIS-82",
-      "ITIS-80",
-      "ITIS-70",
-      "ITIS-60",
-      "ITIS-55",
-      "ITIS-30",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-16",
-      "ITIS-40",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "S474 - Technology and Innovation A.S. Degree": {
-    "id": "S474 - Technology and Innovation A.S. Degree",
-    "code": "S474",
-    "title": "Technology and Innovation A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ITIS-425",
-      "ITIS-82",
-      "ITIS-70",
-      "ITIS-60",
-      "ITIS-55",
-      "ITIS-30",
-      "COMPSCI-401",
-      "AI-1",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "S475 - Networking Specialist (CCNA) A.S. Degree": {
-    "id": "S475 - Networking Specialist (CCNA) A.S. Degree",
-    "code": "S475",
-    "title": "Networking Specialist (CCNA) A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ITIS-53",
-      "ITIS-74",
-      "ITIS-70",
-      "ITIS-61",
-      "ITIS-56",
-      "ITIS-65",
-      "ITIS-60",
-      "ITIS-55",
-      "ITIS-52",
-      "ITIS-51",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "S476 - Data Science A.S. Degree": {
-    "id": "S476 - Data Science A.S. Degree",
-    "code": "S476",
-    "title": "Data Science A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ITIS-10",
-      "COMPSCI-10",
-      "ITIS-80",
-      "COMPSCI-5",
-      "STAT-C1000",
-      "MATH-65A",
-      "MATH-65B",
-      "MATH-75",
-      "COMPSCI-11",
-      "MATH-81",
-      "COMPSCI-20",
-      "COMPSCI-4",
-      "ITIS-42"
-    ]
-  },
-  "S477 - Web Development and Social Media  A.S. Degree": {
-    "id": "S477 - Web Development and Social Media  A.S. Degree",
-    "code": "S477",
-    "title": "Web Development and Social Media  A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ITIS-425",
-      "ITIS-82",
-      "ITIS-30",
-      "COMPSCI-10",
-      "BUSMKT-55",
-      "ARTGD-82",
-      "ITIS-80",
-      "ITIS-84",
-      "AI-1",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "S484 - Cybersecurity Professional A.S. Degree": {
-    "id": "S484 - Cybersecurity Professional A.S. Degree",
-    "code": "S484",
-    "title": "Cybersecurity Professional A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ITIS-50",
-      "ITIS-51",
-      "ITIS-55",
-      "ITIS-14",
-      "ITIS-10",
-      "ITIS-65",
-      "ITIS-40",
-      "ITIS-60",
-      "ITIS-468",
-      "MATH-60",
-      "MATH-65A",
-      "COMPSCI-4",
-      "ITIS-30",
-      "ITIS-61",
-      "ITIS-45",
-      "COMPSCI-1",
-      "COMPSCI-5",
-      "ITIS-64",
-      "ITIS-70"
-    ]
-  },
-  "S492 - Cloud Solutions Architecting A.S. Degree": {
-    "id": "S492 - Cloud Solutions Architecting A.S. Degree",
-    "code": "S492",
-    "title": "Cloud Solutions Architecting A.S. Degree",
-    "isAssociate": true,
-    "courses": [
-      "ITIS-14",
-      "ITIS-10",
-      "ITIS-50",
-      "ITIS-16",
-      "ITIS-51",
-      "ITIS-40",
-      "ITIS-74",
-      "ITIS-70",
-      "ITIS-61",
-      "ITIS-60",
-      "ITIS-55",
-      "ITIS-30",
-      "ITIS-80",
-      "ITIS-42",
-      "ITIS-474",
-      "ITIS-45",
-      "ITIS-471"
+      "MUSIC-5",
+      "MUSIC-6",
+      "MUSIC-35",
+      "MUSIC-36",
+      "MUSIC-9",
+      "MUSIC-18",
+      "MUSIC-19",
+      "MUSIC-15",
+      "MUSIC-22",
+      "MUSIC-23"
     ]
   },
   "T003/X700C - California General Education Transfer Curriculum (Cal-GETC)": {
@@ -3757,429 +4035,150 @@ window.CHAFFEY_PROGRAM_DATA = {
       "ENGL-C1000"
     ]
   },
-  "T005 - Accounting Certificate of Achievement": {
-    "id": "T005 - Accounting Certificate of Achievement",
-    "code": "T005",
-    "title": "Accounting Certificate of Achievement",
-    "isAssociate": false,
+  "S292 - Mathematics 2.0 for Transfer AS-T": {
+    "id": "S292 - Mathematics 2.0 for Transfer AS-T",
+    "code": "S292",
+    "title": "Mathematics 2.0 for Transfer AS-T",
+    "isAssociate": true,
     "courses": [
-      "ACCTG-1A",
-      "ACCTG-1B",
-      "ACCTG-70",
-      "ACCTG-430",
-      "ACCTGFS-453",
-      "BUSTEC-63",
-      "ITIS-10",
-      "STAT-C1000",
-      "BUSL-28A",
-      "ACCTG-435",
-      "ACCTG-460",
-      "ITIS-16"
-    ]
-  },
-  "T009 - Airframe Certificate of Achievement": {
-    "id": "T009 - Airframe Certificate of Achievement",
-    "code": "T009",
-    "title": "Airframe Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "AMT-39B",
-      "AMT-39A",
-      "AMT-15A",
-      "AMT-15C"
-    ]
-  },
-  "T010 - Airframe and Powerplant Technician Certificate of Achievement": {
-    "id": "T010 - Airframe and Powerplant Technician Certificate of Achievement",
-    "code": "T010",
-    "title": "Airframe and Powerplant Technician Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "AMT-15C",
-      "AMT-15A",
-      "AMT-29A",
-      "AMT-29B",
-      "AMT-39A",
-      "AMT-39B"
-    ]
-  },
-  "T013 - Aircraft Electrical and Avionics Technician Certificate of Achievement": {
-    "id": "T013 - Aircraft Electrical and Avionics Technician Certificate of Achievement",
-    "code": "T013",
-    "title": "Aircraft Electrical and Avionics Technician Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "AMT-400",
-      "AMT-15A",
-      "AMT-15C",
-      "AMT-39B",
-      "AMT-39A"
-    ]
-  },
-  "T055 - Master Automotive Technician Certificate of Achievement": {
-    "id": "T055 - Master Automotive Technician Certificate of Achievement",
-    "code": "T055",
-    "title": "Master Automotive Technician Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "AUTOTEC-432",
-      "AUTOTEC-429",
-      "AUTOTEC-427",
-      "AUTOTEC-423",
-      "AUTOTEC-450",
-      "AUTOTEC-418",
-      "AUTOTEC-417",
-      "AUTOTEC-10",
-      "AUTOTEC-455",
-      "AUTOTEC-422",
-      "AUTOTEC-416",
-      "AUTOTEC-15"
-    ]
-  },
-  "T121 - Dental Assisting Certificate of Achievement": {
-    "id": "T121 - Dental Assisting Certificate of Achievement",
-    "code": "T121",
-    "title": "Dental Assisting Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "DENTAL-405",
-      "DENTAL-415",
-      "DENTAL-425",
-      "DENTAL-435",
-      "DENTAL-445",
-      "DENTAL-455",
-      "DENTAL-460",
-      "DENTAL-465",
-      "DENTAL-475",
-      "DENTAL-480",
-      "DENTAL-490",
-      "DENTAL-415L",
-      "DENTAL-425L",
-      "DENTAL-435L",
-      "DENTAL-445L",
-      "DENTAL-455L",
-      "DENTAL-465L",
-      "DENTAL-475L",
-      "DENTAL-480L",
-      "DENTAL-490L"
-    ]
-  },
-  "T141 - Fire Technology: Professional Firefighter Certificate of Achievement": {
-    "id": "T141 - Fire Technology: Professional Firefighter Certificate of Achievement",
-    "code": "T141",
-    "title": "Fire Technology: Professional Firefighter Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "FIRETEC-1",
-      "FIRETEC-2",
-      "FIRETEC-3",
-      "FIRETEC-4",
-      "FIRETEC-5",
-      "FIRETEC-9",
-      "EMT-11",
-      "EMT-405",
-      "FIRETEC-6",
-      "FIRETEC-7",
-      "FIRETEC-10",
-      "FIRETEC-11",
-      "FIRETEC-12"
-    ]
-  },
-  "T151 - Industrial Electrical Technology Level II Certificate of Achievement": {
-    "id": "T151 - Industrial Electrical Technology Level II Certificate of Achievement",
-    "code": "T151",
-    "title": "Industrial Electrical Technology Level II Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "IET-411",
-      "IET-413",
-      "IET-417",
-      "IET-420",
-      "IET-403B",
-      "IET-403A",
-      "IET-484ABCD",
-      "IET-400",
-      "IET-422",
-      "IET-401A",
-      "IET-401B",
-      "IET-460",
-      "IET-407",
-      "IET-405"
-    ]
-  },
-  "T154 - Industrial Electrical Technology Level III Certificate of Achievement": {
-    "id": "T154 - Industrial Electrical Technology Level III Certificate of Achievement",
-    "code": "T154",
-    "title": "Industrial Electrical Technology Level III Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "IET-420",
-      "IET-417",
-      "IET-413",
-      "IET-411",
-      "IET-403B",
-      "IET-403A",
-      "IET-418",
-      "IET-415",
-      "IET-414",
-      "IET-401A",
-      "IET-401B",
-      "IET-405",
-      "IET-407",
-      "IET-422",
-      "IET-460",
-      "IET-400",
-      "IET-484ABCD"
-    ]
-  },
-  "T255 - Hospitality Management: Food Service Certificate of Achievement": {
-    "id": "T255 - Hospitality Management: Food Service Certificate of Achievement",
-    "code": "T255",
-    "title": "Hospitality Management: Food Service Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "HOTFS-482",
-      "HOTFS-10",
-      "HOTFS-14",
-      "HOTFS-21",
-      "HOTFS-32",
-      "HOTFS-428",
-      "HOTFS-431",
-      "CUL-17",
-      "CUL-15",
-      "CUL-22"
-    ]
-  },
-  "T270 - Interior Design Certificate of Achievement": {
-    "id": "T270 - Interior Design Certificate of Achievement",
-    "code": "T270",
-    "title": "Interior Design Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ID-426",
-      "ID-45",
-      "ID-30",
-      "ID-27",
-      "ID-22",
-      "ID-21",
-      "ID-17",
-      "ID-16",
-      "ID-15",
-      "ID-14",
-      "ID-12",
-      "ID-11",
-      "ID-10",
-      "ID-482ABCD"
-    ]
-  },
-  "T315 - Nursing: Vocational Certificate of Achievement": {
-    "id": "T315 - Nursing: Vocational Certificate of Achievement",
-    "code": "T315",
-    "title": "Nursing: Vocational Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "NURVN-403",
-      "NURVN-403L",
-      "NURVN-405",
-      "NURVN-405L",
-      "NURVN-409",
-      "NURVN-409L",
-      "NURVN-411",
-      "NURVN-411L",
-      "NURVN-413",
-      "NURVN-413L",
-      "NURVN-415A",
-      "NURVN-415B",
-      "NURVN-417A",
-      "NURVN-417B",
-      "NURVN-421",
-      "NURVN-421L",
-      "NURVN-407A",
-      "NURVN-407B",
-      "NURVN-407C",
-      "BIOL-424"
-    ]
-  },
-  "T342 - Photography Certificate of Achievement": {
-    "id": "T342 - Photography Certificate of Achievement",
-    "code": "T342",
-    "title": "Photography Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "PHOTO-1",
-      "PHOTO-7",
-      "PHOTO-10",
-      "PHOTO-9",
-      "PHOTO-12",
-      "PHOTO-13",
-      "PHOTO-20",
-      "PHOTO-50",
-      "PHOTO-429",
-      "PHOTO-430",
-      "PHOTO-436",
-      "PHOTO-438",
-      "PHOTO-439",
-      "PHOTO-450"
-    ]
-  },
-  "T383 - Real Estate Property Management Certificate of Achievement": {
-    "id": "T383 - Real Estate Property Management Certificate of Achievement",
-    "code": "T383",
-    "title": "Real Estate Property Management Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "RE-486",
-      "RE-415",
-      "RE-410",
-      "BUSTEC-455",
-      "BUSMKT-420",
-      "BUSMKT-40",
-      "BUSMGT-470",
-      "BUSMGT-42",
-      "BUSL-50",
-      "ACCTG-485"
-    ]
-  },
-  "T470 - Programmer Certificate of Achievement": {
-    "id": "T470 - Programmer Certificate of Achievement",
-    "code": "T470",
-    "title": "Programmer Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "COMPSCI-10",
-      "COMPSCI-6",
-      "COMPSCI-2",
       "COMPSCI-5",
       "COMPSCI-1",
-      "ITIS-84",
-      "ITIS-82",
-      "ITIS-80",
-      "ITIS-42",
-      "ITIS-30",
-      "ITIS-45",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
+      "PHYS-45",
+      "MATH-81",
+      "MATH-85",
+      "MATH-75",
+      "MATH-65B",
+      "MATH-65A"
     ]
   },
-  "T472 - Development Operations Certificate of Achievement": {
-    "id": "T472 - Development Operations Certificate of Achievement",
-    "code": "T472",
-    "title": "Development Operations Certificate of Achievement",
-    "isAssociate": false,
+  "S358 - Physics 2.0 for Transfer AS-T": {
+    "id": "S358 - Physics 2.0 for Transfer AS-T",
+    "code": "S358",
+    "title": "Physics 2.0 for Transfer AS-T",
+    "isAssociate": true,
     "courses": [
-      "ITIS-84",
-      "ITIS-82",
-      "ITIS-80",
-      "ITIS-56",
-      "ITIS-70",
-      "ITIS-55",
-      "ITIS-30",
-      "COMPSCI-10",
+      "MATH-85",
+      "PHYS-46",
+      "MATH-81",
       "COMPSCI-5",
-      "ITIS-74",
-      "ITIS-60",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
+      "COMPSCI-1",
+      "MATH-75",
+      "MATH-65B",
+      "MATH-65A",
+      "PHYS-47",
+      "PHYS-45"
     ]
   },
-  "T474 - Technology and Innovation Certificate of Achievement": {
-    "id": "T474 - Technology and Innovation Certificate of Achievement",
-    "code": "T474",
-    "title": "Technology and Innovation Certificate of Achievement",
-    "isAssociate": false,
+  "S345 - Physical Education A.A. Degree": {
+    "id": "S345 - Physical Education A.A. Degree",
+    "code": "S345",
+    "title": "Physical Education A.A. Degree",
+    "isAssociate": true,
     "courses": [
-      "ITIS-425",
-      "ITIS-82",
-      "ITIS-70",
-      "ITIS-55",
-      "ITIS-60",
-      "ITIS-30",
-      "COMPSCI-401",
-      "AI-1",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
+      "BIOL-22",
+      "CHEM-10",
+      "NF-5",
+      "KINLEC-2",
+      "KINLEC-11",
+      "KINLEC-24",
+      "KINLEC-32",
+      "KINLEC-16",
+      "KINLEC-17",
+      "KINLEC-3",
+      "KINACT-1",
+      "KINACT-2",
+      "KINACT-9",
+      "KINACT-16",
+      "KINACT-17",
+      "KINACT-20",
+      "KINACT-22",
+      "KINACT-23",
+      "KINACT-24",
+      "KINACT-25",
+      "KINACT-29A",
+      "KINACT-29B",
+      "KINACT-29C",
+      "KINACT-31",
+      "KINACT-35",
+      "KINTM-18",
+      "KINTM-19",
+      "KINACT-28A",
+      "KINACT-28B",
+      "KINACT-26",
+      "KINACT-32A",
+      "KINTM-17",
+      "KINACT-5A",
+      "KINACT-3A",
+      "KINTM-41I",
+      "KINTM-42I",
+      "KINTM-44I",
+      "KINTM-45I",
+      "KINTM-47I",
+      "KINTM-48I",
+      "KINTM-49I",
+      "KINTM-51I",
+      "KINTM-54I",
+      "KINTM-55I",
+      "KINTM-56AI",
+      "KINTM-56BI",
+      "KINTM-57AI",
+      "KINTM-57BI",
+      "KINTM-59I",
+      "KINTM-2ABCD",
+      "KINTM-1ABCD",
+      "KINTM-69ABC",
+      "KINTM-67ABC",
+      "KINTM-66ABC",
+      "KINTM-65ABC",
+      "KINTM-64ABC",
+      "KINTM-63ABC",
+      "KINTM-62ABC",
+      "KINTM-61ABC",
+      "KINTM-60ABC",
+      "KINTM-27ABCD",
+      "KINTM-26ABCD",
+      "KINTM-15ABCD",
+      "KINTM-14ABCD",
+      "KINTM-11ABCD",
+      "KINTM-9ABCD",
+      "KINTM-8ABCD",
+      "KINTM-7ABCD",
+      "KINTM-6ABCD",
+      "KINTM-5ABCD",
+      "KINTM-3ABCD",
+      "KINTM-16",
+      "KINACT-32B",
+      "KINACT-6",
+      "BIOL-20",
+      "BIOL-1",
+      "BIOL-424",
+      "BIOL-424L",
+      "KINLEC-18",
+      "KINLEC-15"
     ]
   },
-  "T475 - Networking Specialist (CCNA) Certificate of Achievement": {
-    "id": "T475 - Networking Specialist (CCNA) Certificate of Achievement",
-    "code": "T475",
-    "title": "Networking Specialist (CCNA) Certificate of Achievement",
-    "isAssociate": false,
+  "S294 - Public Health for Transfer AS-T": {
+    "id": "S294 - Public Health for Transfer AS-T",
+    "code": "S294",
+    "title": "Public Health for Transfer AS-T",
+    "isAssociate": true,
     "courses": [
-      "ITIS-61",
-      "ITIS-53",
-      "ITIS-52",
-      "ITIS-70",
-      "ITIS-74",
-      "ITIS-65",
-      "ITIS-60",
-      "ITIS-56",
-      "ITIS-55",
-      "ITIS-51",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "T477 - Web Development and Social Media Certificate of Achievement": {
-    "id": "T477 - Web Development and Social Media Certificate of Achievement",
-    "code": "T477",
-    "title": "Web Development and Social Media Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ITIS-82",
-      "ITIS-30",
-      "ITIS-425",
-      "COMPSCI-10",
-      "BUSMKT-55",
-      "ARTGD-82",
-      "ITIS-80",
-      "ITIS-84",
-      "AI-1",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-40",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10"
-    ]
-  },
-  "T490 - Cloud Solutions Architecting  Certificate of Achievement": {
-    "id": "T490 - Cloud Solutions Architecting  Certificate of Achievement",
-    "code": "T490",
-    "title": "Cloud Solutions Architecting  Certificate of Achievement",
-    "isAssociate": false,
-    "courses": [
-      "ITIS-40",
-      "ITIS-51",
-      "ITIS-50",
-      "ITIS-16",
-      "ITIS-14",
-      "ITIS-10",
-      "ITIS-471",
-      "ITIS-70",
-      "ITIS-74",
-      "ITIS-61",
-      "ITIS-60",
-      "ITIS-55",
-      "ITIS-80",
-      "ITIS-45",
-      "ITIS-42",
-      "ITIS-30",
-      "ITIS-474"
+      "PH-40",
+      "PH-11",
+      "HS-15",
+      "PH-30",
+      "PH-13",
+      "CHEM-24A",
+      "CHEM-10",
+      "BIOL-22",
+      "BIOL-20",
+      "SCSCI-10",
+      "STAT-C1000",
+      "PH-20",
+      "PH-10",
+      "BIOL-23L",
+      "BIOL-23",
+      "BIOL-1"
     ]
   }
 };

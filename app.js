@@ -973,6 +973,12 @@ const appState = {
   efficiencySubLayout: 'room', // Default Efficiency grid view to Room View
   efficiencyActiveTab: 'all',  // Default to showing all Efficiency audit items
   currentEfficiencyAnalysis: null,
+  programCoverageSubLayout: 'audit', // 'audit', 'day', 'room'
+  programCoverageActiveTab: 'all',   // 'all', 'missing', 'scheduled', 'ge'
+  programCoverageSelectedProgram: '',// Selected Program ID (e.g. 'S078 - Business Administration...')
+  programCoverageCatalogSearch: '',  // Search query in catalog view
+  programCoverageDegreeFilter: 'all',// 'all', 'associate', 'certificate'
+  currentProgramCoverageAnalysis: null,
   geActivePattern: 'CALGETC', // Active pattern for GE Coverage audit
   geShowMissingOnly: false,
   filters: {
@@ -1091,23 +1097,71 @@ function parseProgramSummaryRows(rows) {
 }
 
 /**
- * Auto-loads program data on startup:
- * 1. Immediately checks window.CHAFFEY_PROGRAM_DATA (from program-data.js) for zero-latency offline loading.
- * 2. Attempts dynamic fetch of Program Summary CSV if hosted on a web server or GitHub Pages.
+ * Auto-loads program data on startup with zero-maintenance auto-discovery:
+ * 1. Checks window.CHAFFEY_PROGRAM_DATA (from program-data.js) for instant offline loading.
+ * 2. Checks localStorage cache for any previously parsed latest CSV.
+ * 3. On GitHub Pages / web servers: Queries GitHub REST API to auto-discover any new 'Program Summary*.csv' file!
+ * 4. On local dev servers (Python, Node, Live Server): Auto-scans directory listing for 'Program Summary*.csv'.
+ * 5. Falls back to standard candidate filenames.
  */
-function loadProgramSummaryData() {
+async function loadProgramSummaryData() {
+  // Step 1: Immediately apply pre-bundled program data for instant startup
   if (window.CHAFFEY_PROGRAM_DATA) {
     applyProgramData(window.CHAFFEY_PROGRAM_DATA);
   }
 
-  // Fallback / dynamic update if served over HTTP/HTTPS
-  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-    const candidateUrls = ['Program Summary.csv', 'program-summary.csv', 'Program Summary 2026-10-19_112619.csv'];
+  // Check localStorage cache
+  try {
+    const cached = localStorage.getItem('chaffey_program_cache');
+    if (cached) {
+      const parsedCache = JSON.parse(cached);
+      if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+        applyProgramData(parsedCache);
+      }
+    }
+  } catch (_) {}
 
-    async function tryFetchNext(idx) {
-      if (idx >= candidateUrls.length) return;
+  // Step 2: Auto-discover Program Summary CSV files dynamically if served over HTTP/HTTPS
+  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    let candidateUrls = [
+      'Program Summary.csv',
+      'program-summary.csv',
+      'Program Summary 2026-10-19_112619.csv'
+    ];
+
+    // Method A: Auto-discovery via GitHub repository contents API (works on GitHub Pages and online)
+    try {
+      const ghRepoUrl = 'https://api.github.com/repos/Joecascio2000/section-schedule-grid/contents/';
+      const ghResp = await fetch(ghRepoUrl);
+      if (ghResp.ok) {
+        const ghFiles = await ghResp.json();
+        if (Array.isArray(ghFiles)) {
+          const matching = ghFiles.filter(f => f.name && /^program\s*summary.*\.csv$/i.test(f.name));
+          matching.sort((a, b) => b.name.localeCompare(a.name));
+          const ghUrls = matching.map(f => f.download_url || f.name);
+          candidateUrls = Array.from(new Set([...ghUrls, ...candidateUrls]));
+        }
+      }
+    } catch (_) {}
+
+    // Method B: Auto-discovery via local server directory listing (e.g. Python http.server or Live Server)
+    try {
+      const dirResp = await fetch('./');
+      if (dirResp.ok) {
+        const dirHtml = await dirResp.text();
+        const matches = dirHtml.match(/href=["']([^"']*program\s*summary[^"']*\.csv)["']/gi);
+        if (matches) {
+          const discovered = matches.map(m => decodeURIComponent(m.replace(/^href=["']|["']$/g, '')));
+          discovered.sort((a, b) => b.localeCompare(a));
+          candidateUrls = Array.from(new Set([...discovered, ...candidateUrls]));
+        }
+      }
+    } catch (_) {}
+
+    // Step 3: Fetch and parse the latest candidate CSV
+    for (const url of candidateUrls) {
       try {
-        const resp = await fetch(candidateUrls[idx]);
+        const resp = await fetch(url);
         if (resp.ok) {
           const csvText = await resp.text();
           if (typeof XLSX !== 'undefined') {
@@ -1118,18 +1172,17 @@ function loadProgramSummaryData() {
               const parsed = parseProgramSummaryRows(jsonRows);
               if (parsed.length > 0) {
                 applyProgramData(parsed);
-                return;
+                try {
+                  localStorage.setItem('chaffey_program_cache', JSON.stringify(parsed));
+                } catch (_) {}
+                console.log(`[Auto-Loader] Loaded ${parsed.length} active programs from ${url}`);
+                break;
               }
             }
           }
         }
-      } catch (_) {
-        // Silently catch and try next candidate
-      }
-      tryFetchNext(idx + 1);
+      } catch (_) {}
     }
-
-    tryFetchNext(0);
   }
 }
 
@@ -2416,6 +2469,54 @@ function applyFiltersAndRender() {
     }
   }
 
+  // If in Program Coverage view, analyze program completability and slice if in Day/Room grid view
+  if (appState.layoutMode === 'program_coverage') {
+    let activeProgId = appState.programCoverageSelectedProgram;
+    if (!activeProgId && appState.filters.program.size === 1) {
+      activeProgId = Array.from(appState.filters.program)[0];
+      appState.programCoverageSelectedProgram = activeProgId;
+    }
+    if (!activeProgId && appState.programs.size > 0) {
+      const busProg = 'S078 - Business Administration 2.0 for Transfer AS-T';
+      activeProgId = appState.programs.has(busProg) ? busProg : Array.from(appState.programs.keys())[0];
+      appState.programCoverageSelectedProgram = activeProgId;
+    }
+
+    const progAnalysis = analyzeProgramCoverage(activeProgId, appState.filters.location, appState.sections);
+    appState.currentProgramCoverageAnalysis = progAnalysis;
+
+    // If Day View or Room View is toggled beneath the coverage audit
+    if (appState.programCoverageSubLayout === 'day' || appState.programCoverageSubLayout === 'room') {
+      const activeTab = appState.programCoverageActiveTab || 'all';
+      const targetCourses = new Set();
+      if (progAnalysis && progAnalysis.single) {
+        if (activeTab === 'scheduled') {
+          progAnalysis.single.scheduledCourses.forEach(c => targetCourses.add(c.course));
+        } else if (activeTab === 'missing') {
+          targetCourses.clear();
+        } else if (activeTab === 'ge') {
+          if (progAnalysis.single.geAudit) {
+            progAnalysis.single.geAudit.areas.forEach(a => {
+              (a.courses || []).forEach(c => targetCourses.add(c));
+            });
+          }
+        } else {
+          // 'all'
+          progAnalysis.single.requiredCourses.forEach(c => targetCourses.add(c));
+        }
+      }
+
+      if (targetCourses.size > 0) {
+        matchedSections = matchedSections.filter(s => targetCourses.has(s.course));
+        const matchedSecIds = new Set(matchedSections.map(s => s.sectionUniqueId));
+        filteredBlocks = filteredBlocks.filter(b => matchedSecIds.has(b.parentSection.sectionUniqueId));
+      } else if (activeTab === 'missing') {
+        matchedSections = [];
+        filteredBlocks = [];
+      }
+    }
+  }
+
   // REQUIREMENT 1: If Conflict Mode is active and "Isolate Conflicts Only" is on, isolate conflicts!
   if (appState.isConflictMode && appState.conflictsOnly) {
     filteredBlocks = filteredBlocks.filter(b => b.isConflict);
@@ -2591,6 +2692,7 @@ function dispatchViewRender() {
   const eveningContainer = document.getElementById('evening-coverage-container');
   const fasttrackContainer = document.getElementById('fasttrack-coverage-container');
   const efficiencyContainer = document.getElementById('efficiency-container');
+  const programContainer = document.getElementById('program-coverage-container');
 
   // If no sections are loaded yet, display prominent Step 1 upload hero
   if (appState.sections.length === 0) {
@@ -2601,6 +2703,7 @@ function dispatchViewRender() {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     return;
   }
 
@@ -2613,6 +2716,7 @@ function dispatchViewRender() {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     if (stackedContainer) {
       stackedContainer.style.display = 'flex';
       renderStackedRoomMatrix();
@@ -2621,6 +2725,7 @@ function dispatchViewRender() {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     if (geContainer) {
       geContainer.style.display = 'flex';
       renderGeCoverageDashboard();
@@ -2643,6 +2748,7 @@ function dispatchViewRender() {
     if (geContainer) geContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     if (eveningContainer) {
       eveningContainer.style.display = 'flex';
       renderEveningCoverageDashboard();
@@ -2665,6 +2771,7 @@ function dispatchViewRender() {
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     if (fasttrackContainer) {
       fasttrackContainer.style.display = 'flex';
       renderFastTrackCoverageDashboard();
@@ -2687,6 +2794,7 @@ function dispatchViewRender() {
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     if (efficiencyContainer) {
       efficiencyContainer.style.display = 'flex';
       renderEfficiencyDashboard();
@@ -2705,12 +2813,39 @@ function dispatchViewRender() {
         renderScheduleGrid();
       }
     }
+  } else if (appState.layoutMode === 'program_coverage') {
+    if (geContainer) geContainer.style.display = 'none';
+    if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) {
+      programContainer.style.display = 'flex';
+      renderProgramCoverageDashboard();
+    }
+    // Swap grid below coverage audit to either Day View or Room View, or hide if pure audit
+    if (appState.programCoverageSubLayout === 'room') {
+      if (standardGrid) standardGrid.style.display = 'none';
+      if (stackedContainer) {
+        stackedContainer.style.display = 'flex';
+        renderStackedRoomMatrix();
+      }
+    } else if (appState.programCoverageSubLayout === 'day') {
+      if (stackedContainer) stackedContainer.style.display = 'none';
+      if (standardGrid) {
+        standardGrid.style.display = 'grid';
+        renderScheduleGrid();
+      }
+    } else {
+      if (standardGrid) standardGrid.style.display = 'none';
+      if (stackedContainer) stackedContainer.style.display = 'none';
+    }
   } else {
     // Default 'day' view
     if (geContainer) geContainer.style.display = 'none';
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
     if (stackedContainer) stackedContainer.style.display = 'none';
     if (standardGrid) {
       standardGrid.style.display = 'grid';
@@ -4518,11 +4653,837 @@ function renderEfficiencyDashboard() {
   container.appendChild(cardsGrid);
 }
 
+// ==========================================================================
+// --- 10.5 PROGRAM COVERAGE & COMPLETABILITY AUDIT DASHBOARD ---
+// ==========================================================================
+
 /**
- * Creates an individual Schedule Tile DOM Element with dedicated Course Code row
- * preventing text smashing, and support for Stacked Classes & GE Badges
+ * Analyzes program completability and course offerings at a given location scope.
+ * Evaluates required major courses (scheduled vs missing) and GE breadth coverage for Associate degrees.
  */
-function createScheduleTileElement(block, leftPercent, widthPercent, topPx, heightPx) {
+function analyzeProgramCoverage(programId, location, scopeSections) {
+  const allSections = scopeSections || appState.sections || [];
+  const locFilter = (location || '').trim().toLowerCase();
+
+  // Filter sections by location if specified
+  const campusSections = locFilter
+    ? allSections.filter(sec => {
+        if (!sec.location) return false;
+        const secLoc = sec.location.toLowerCase();
+        return secLoc === locFilter || secLoc.includes(locFilter.replace(' campus', ''));
+      })
+    : allSections;
+
+  // Build course-to-sections map for the target campus
+  const campusCourseSecMap = new Map();
+  campusSections.forEach(sec => {
+    const c = (sec.course || '').trim().toUpperCase();
+    if (!c) return;
+    if (!campusCourseSecMap.has(c)) {
+      campusCourseSecMap.set(c, []);
+    }
+    campusCourseSecMap.get(c).push(sec);
+  });
+
+  // Build district-wide course-to-sections map (to show other campus offerings for missing courses)
+  const districtCourseSecMap = new Map();
+  allSections.forEach(sec => {
+    const c = (sec.course || '').trim().toUpperCase();
+    if (!c) return;
+    if (!districtCourseSecMap.has(c)) {
+      districtCourseSecMap.set(c, []);
+    }
+    districtCourseSecMap.get(c).push(sec);
+  });
+
+  // Single program deep dive if programId is provided and exists
+  let singleAnalysis = null;
+  const prog = appState.programs.get(programId);
+  if (prog) {
+    const reqCourses = Array.from(prog.courses || []).sort();
+    const scheduledCourses = [];
+    const missingCourses = [];
+
+    reqCourses.forEach(crse => {
+      const secs = campusCourseSecMap.get(crse) || [];
+      const otherSecs = districtCourseSecMap.get(crse) || [];
+      const otherCampusOfferings = [];
+
+      if (secs.length === 0 && otherSecs.length > 0) {
+        const locMap = new Map();
+        otherSecs.forEach(s => {
+          const l = s.location || 'Other';
+          locMap.set(l, (locMap.get(l) || 0) + 1);
+        });
+        locMap.forEach((cnt, l) => {
+          otherCampusOfferings.push({ location: l, count: cnt });
+        });
+      }
+
+      let totalAct = 0;
+      let totalCap = 0;
+      const modalities = new Set();
+      const rooms = new Set();
+      secs.forEach(s => {
+        totalAct += (s.activeStudents || 0);
+        totalCap += (s.capacity || 0);
+        if (s.modality) modalities.add(s.modality);
+        (s.scheduleBlocks || []).forEach(b => {
+          if (b.room && b.building) rooms.add(`${b.building} ${b.room}`);
+        });
+      });
+
+      const auditItem = {
+        course: crse,
+        isScheduled: secs.length > 0,
+        sections: secs,
+        sectionCount: secs.length,
+        otherOfferings: otherCampusOfferings,
+        activeStudents: totalAct,
+        capacity: totalCap,
+        fillRate: totalCap > 0 ? (totalAct / totalCap) : 0,
+        modalities: Array.from(modalities),
+        rooms: Array.from(rooms)
+      };
+
+      if (secs.length > 0) {
+        scheduledCourses.push(auditItem);
+      } else {
+        missingCourses.push(auditItem);
+      }
+    });
+
+    const totalRequired = reqCourses.length;
+    const scheduledCount = scheduledCourses.length;
+    const missingCount = missingCourses.length;
+    const completeness = totalRequired > 0 ? Math.round((scheduledCount / totalRequired) * 100) : 0;
+
+    let statusTier = 'incomplete';
+    let statusLabel = '';
+    if (completeness === 100) {
+      statusTier = 'completable';
+      statusLabel = `Fully Completable at ${location || 'All Campuses'}`;
+    } else if (completeness >= 75) {
+      statusTier = 'near';
+      statusLabel = `Near Completable (Needs ${missingCount} course${missingCount > 1 ? 's' : ''})`;
+    } else if (completeness >= 50) {
+      statusTier = 'partial';
+      statusLabel = `Partially Completable (${scheduledCount}/${totalRequired} courses)`;
+    } else {
+      statusTier = 'incomplete';
+      statusLabel = `Low Coverage (${missingCount} missing course${missingCount > 1 ? 's' : ''})`;
+    }
+
+    // General Education Breadth Analysis for Associate Degrees
+    let geAudit = null;
+    if (prog.isAssociate) {
+      const calGetcAreas = GE_STANDARD_AREAS['CALGETC'] || [];
+      const auditedGeAreas = [];
+      let coveredGeCount = 0;
+
+      calGetcAreas.forEach(areaDef => {
+        const areaCode = areaDef.code;
+        const matchingSecs = campusSections.filter(sec => {
+          if (sec.geAssociations && sec.geAssociations.some(p => p.area === areaCode)) return true;
+          if (sec.generalEdArea && sec.generalEdArea.includes(areaCode)) return true;
+          return false;
+        });
+
+        const uniqueCourses = Array.from(new Set(matchingSecs.map(s => s.course))).sort();
+        const isCovered = matchingSecs.length > 0;
+        if (isCovered) coveredGeCount++;
+
+        auditedGeAreas.push({
+          code: areaCode,
+          name: areaDef.name,
+          desc: areaDef.desc,
+          isCovered: isCovered,
+          sections: matchingSecs,
+          sectionCount: matchingSecs.length,
+          courses: uniqueCourses
+        });
+      });
+
+      const totalGeAreas = auditedGeAreas.length;
+      const geCompleteness = totalGeAreas > 0 ? Math.round((coveredGeCount / totalGeAreas) * 100) : 0;
+
+      geAudit = {
+        areas: auditedGeAreas,
+        coveredCount: coveredGeCount,
+        totalAreas: totalGeAreas,
+        completeness: geCompleteness
+      };
+    }
+
+    singleAnalysis = {
+      program: prog,
+      requiredCourses: reqCourses,
+      scheduledCourses: scheduledCourses,
+      missingCourses: missingCourses,
+      totalRequired: totalRequired,
+      scheduledCount: scheduledCount,
+      missingCount: missingCount,
+      completeness: completeness,
+      statusTier: statusTier,
+      statusLabel: statusLabel,
+      geAudit: geAudit,
+      campusSectionsCount: campusSections.length,
+      locationLabel: location || 'All Campuses'
+    };
+  }
+
+  // Multi-program Catalog Matrix Analysis (ranking all 202 active programs)
+  const catalogList = [];
+  appState.programs.forEach(p => {
+    const reqs = Array.from(p.courses || []);
+    let sched = 0;
+    reqs.forEach(c => {
+      if (campusCourseSecMap.has(c)) sched++;
+    });
+    const tot = reqs.length;
+    const miss = Math.max(0, tot - sched);
+    const score = tot > 0 ? Math.round((sched / tot) * 100) : 0;
+
+    let tier = 'incomplete';
+    if (score === 100) tier = 'completable';
+    else if (score >= 75) tier = 'near';
+    else if (score >= 50) tier = 'partial';
+
+    catalogList.push({
+      id: p.id,
+      code: p.code,
+      title: p.title,
+      isAssociate: p.isAssociate,
+      totalCourses: tot,
+      scheduledCourses: sched,
+      missingCourses: miss,
+      completeness: score,
+      statusTier: tier
+    });
+  });
+
+  // Sort catalog by completeness descending, then title
+  catalogList.sort((a, b) => {
+    if (b.completeness !== a.completeness) return b.completeness - a.completeness;
+    return a.title.localeCompare(b.title);
+  });
+
+  return {
+    single: singleAnalysis,
+    catalog: catalogList,
+    location: location || 'All Campuses',
+    campusSectionsCount: campusSections.length
+  };
+}
+
+/**
+ * Renders the Program Coverage & Completability Audit Dashboard.
+ * Includes executive hero completability card, KPI summary bar, sub-tabs for
+ * missing vs scheduled courses, GE breadth analysis, interactive section inspect rows,
+ * and an all-programs catalog matrix.
+ */
+function renderProgramCoverageDashboard() {
+  const container = document.getElementById('program-coverage-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Determine active program and location
+  let activeProgId = appState.programCoverageSelectedProgram;
+  if (!activeProgId && appState.filters.program.size === 1) {
+    activeProgId = Array.from(appState.filters.program)[0];
+    appState.programCoverageSelectedProgram = activeProgId;
+  }
+  if (!activeProgId && appState.programs.size > 0) {
+    const busProg = 'S078 - Business Administration 2.0 for Transfer AS-T';
+    activeProgId = appState.programs.has(busProg) ? busProg : Array.from(appState.programs.keys())[0];
+    appState.programCoverageSelectedProgram = activeProgId;
+  }
+
+  const analysis = analyzeProgramCoverage(activeProgId, appState.filters.location, appState.sections);
+  appState.currentProgramCoverageAnalysis = analysis;
+
+  const single = analysis.single;
+  const locationLabel = analysis.location;
+  const isCatalogMode = Boolean(appState.programCoverageCatalogView);
+
+  // 1. HEADER ROW: Title, Quick Campus Pills & Sub-Layout Switcher
+  const headerRow = document.createElement('div');
+  headerRow.className = 'prog-coverage-header';
+
+  // Campus options for quick-switch pills
+  const campusPillsConfig = [
+    { label: 'All Campuses', value: '' },
+    { label: 'Chino Campus', value: 'Chino Campus' },
+    { label: 'Fontana Campus', value: 'Fontana Campus' },
+    { label: 'Rancho Campus', value: 'Rancho Campus' }
+  ];
+
+  const currentLocFilter = (appState.filters.location || '').trim();
+
+  headerRow.innerHTML = `
+    <div class="prog-coverage-title">
+      <h3>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#990000" stroke-width="2.2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        Program Coverage & Completability Audit: <span>${locationLabel}</span>
+      </h3>
+      <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are fully completable at specific campus locations.</p>
+    </div>
+    <div class="prog-header-controls">
+      <!-- Quick Campus Switcher Pills -->
+      <div class="sub-layout-switcher">
+        <span class="sub-layout-label">Campus Scope:</span>
+        <div class="btn-sub-toggle-group" id="prog-campus-pill-group">
+          ${campusPillsConfig.map(cp => {
+            const isActive = cp.value === '' ? !currentLocFilter : currentLocFilter.toLowerCase().includes(cp.value.toLowerCase().replace(' campus', ''));
+            return `<button type="button" class="btn-sub-layout-toggle ${isActive ? 'active' : ''}" data-campus="${cp.value}">${cp.label}</button>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Grid View Switcher (Audit vs Day vs Room) -->
+      <div class="sub-layout-switcher">
+        <span class="sub-layout-label">Grid View:</span>
+        <div class="btn-sub-toggle-group" id="prog-sublayout-group">
+          <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'audit' ? 'active' : ''}" data-sublayout="audit" title="Audit Dashboard only">Audit View</button>
+          <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View scheduled program courses in Day Grid">Day View</button>
+          <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View scheduled program courses in Room View">Room View</button>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(headerRow);
+
+  // Wire Campus Pill Clicks
+  headerRow.querySelectorAll('#prog-campus-pill-group .btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const camp = btn.getAttribute('data-campus');
+      appState.filters.location = camp;
+      const locSelect = document.getElementById('filter-location');
+      if (locSelect) locSelect.value = camp;
+      updateCascadingBuildingAndRoom();
+      applyFiltersAndRender();
+    });
+  });
+
+  // Wire Sublayout Switcher
+  headerRow.querySelectorAll('#prog-sublayout-group .btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.programCoverageSubLayout = btn.getAttribute('data-sublayout');
+      headerRow.querySelectorAll('#prog-sublayout-group .btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFiltersAndRender();
+    });
+  });
+
+  // 2. PROGRAM SELECTION & SEARCH BAR
+  const searchBar = document.createElement('div');
+  searchBar.style.cssText = 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;';
+  
+  const allProgIds = Array.from(appState.programs.keys()).sort();
+
+  searchBar.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
+      <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Active Program:</span>
+      <input type="text" id="prog-audit-input" list="prog-audit-datalist" class="form-control" style="flex: 1; padding: 6px 12px; font-size: 13px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);" placeholder="Search or select from 202 active programs..." value="${activeProgId || ''}">
+      <datalist id="prog-audit-datalist">
+        ${allProgIds.map(pId => `<option value="${pId}">`).join('')}
+      </datalist>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button type="button" id="btn-toggle-catalog-view" class="btn btn-secondary" style="font-size: 12px; font-weight: 700; padding: 6px 12px;">
+        ${isCatalogMode ? '← Back to Program Audit' : 'Browse All 202 Programs'}
+      </button>
+    </div>
+  `;
+  container.appendChild(searchBar);
+
+  // Wire Program Search Input
+  const progInput = searchBar.querySelector('#prog-audit-input');
+  if (progInput) {
+    progInput.addEventListener('change', (e) => {
+      const val = e.target.value.trim();
+      if (appState.programs.has(val)) {
+        appState.programCoverageSelectedProgram = val;
+        appState.programCoverageCatalogView = false;
+        appState.filters.program.clear();
+        appState.filters.program.add(val);
+        applyFiltersAndRender();
+      } else {
+        // Find best match
+        const lower = val.toLowerCase();
+        const matchedKey = allProgIds.find(k => k.toLowerCase().includes(lower));
+        if (matchedKey) {
+          appState.programCoverageSelectedProgram = matchedKey;
+          appState.programCoverageCatalogView = false;
+          appState.filters.program.clear();
+          appState.filters.program.add(matchedKey);
+          applyFiltersAndRender();
+        }
+      }
+    });
+  }
+
+  // Wire Catalog Toggle Button
+  searchBar.querySelector('#btn-toggle-catalog-view')?.addEventListener('click', () => {
+    appState.programCoverageCatalogView = !appState.programCoverageCatalogView;
+    renderProgramCoverageDashboard();
+  });
+
+  // 3. MAIN CONTENT: Catalog View OR Single Program Audit Drilldown
+  if (isCatalogMode || !single) {
+    renderCatalogMatrixView(container, analysis);
+  } else {
+    renderSingleProgramAuditView(container, single, analysis);
+  }
+}
+
+/**
+ * Renders the Single Program Completability Audit View (Hero card, KPIs, tabs, course cards).
+ */
+function renderSingleProgramAuditView(container, single, fullAnalysis) {
+  const prog = single.program;
+  const isAssociate = prog.isAssociate;
+  const locationLabel = single.locationLabel;
+
+  // 1. EXECUTIVE HERO COMPLETABILITY CARD
+  const heroCard = document.createElement('div');
+  heroCard.className = 'prog-hero-card';
+
+  let fillGradientClass = 'fill-danger';
+  if (single.completeness === 100) fillGradientClass = 'fill-success';
+  else if (single.completeness >= 65) fillGradientClass = 'fill-warning';
+
+  let recommendationText = '';
+  if (single.missingCourses.length === 0) {
+    recommendationText = `<strong>Fully Completable at ${locationLabel}!</strong> All ${single.totalRequired} required major courses are scheduled at this campus. Students can complete all degree requirements locally without traveling.`;
+  } else {
+    const missingCodes = single.missingCourses.map(c => c.course).join(', ');
+    recommendationText = `<strong>Action Required to Enable 100% Degree Completability:</strong> Schedule sections for the following ${single.missingCount} missing course${single.missingCount > 1 ? 's' : ''} at ${locationLabel}: <strong>${missingCodes}</strong>. Consider offering in 8-week Fast-Track sequential pairs or evening/hybrid slots to maximize room utilization.`;
+  }
+
+  heroCard.innerHTML = `
+    <div class="prog-hero-top">
+      <div class="prog-hero-name">
+        <span>${prog.title}</span>
+        <span class="prog-badge-degree ${isAssociate ? 'prog-badge-associate' : 'prog-badge-cert'}">
+          ${isAssociate ? 'Associate Degree' : 'Certificate of Achievement'}
+        </span>
+        <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">(${prog.code})</span>
+      </div>
+      <div>
+        <span class="prog-hero-status-pill status-${single.statusTier}">
+          ${single.statusLabel}
+        </span>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="prog-progress-wrapper">
+      <div class="prog-progress-bar-bg">
+        <div class="prog-progress-bar-fill ${fillGradientClass}" style="width: ${single.completeness}%;"></div>
+      </div>
+      <span class="prog-progress-label">${single.completeness}%</span>
+    </div>
+
+    <!-- Recommendation Box -->
+    <div class="prog-action-box" style="margin-top: 4px; ${single.missingCourses.length === 0 ? 'background-color: rgba(5, 150, 105, 0.08); border-color: rgba(5, 150, 105, 0.3); color: #065f46;' : ''}">
+      ${recommendationText}
+    </div>
+  `;
+  container.appendChild(heroCard);
+
+  // 2. SUMMARY KPI STAT CARDS
+  const summaryBar = document.createElement('div');
+  summaryBar.className = 'prog-summary-bar';
+
+  let totalActive = 0;
+  let totalSections = 0;
+  single.scheduledCourses.forEach(c => {
+    totalActive += c.activeStudents;
+    totalSections += c.sectionCount;
+  });
+
+  summaryBar.innerHTML = `
+    <div class="prog-stat-card ${single.completeness === 100 ? 'opt-card' : 'highlight-card'}">
+      <span class="prog-stat-title">Major Completeness</span>
+      <span class="prog-stat-value">${single.completeness}%</span>
+      <span class="prog-stat-sub">${single.scheduledCount} of ${single.totalRequired} required courses scheduled</span>
+    </div>
+
+    <div class="prog-stat-card ${single.missingCount > 0 ? 'alert-card' : 'opt-card'}">
+      <span class="prog-stat-title">Missing Major Courses</span>
+      <span class="prog-stat-value" style="color: ${single.missingCount > 0 ? 'var(--chaffey-red)' : '#059669'};">${single.missingCount}</span>
+      <span class="prog-stat-sub">${single.missingCount > 0 ? 'Action items to add to schedule' : '0 missing - 100% scheduled'}</span>
+    </div>
+
+    ${isAssociate && single.geAudit ? `
+      <div class="prog-stat-card opt-card">
+        <span class="prog-stat-title">GE Breadth Coverage</span>
+        <span class="prog-stat-value">${single.geAudit.coveredCount} / ${single.geAudit.totalAreas}</span>
+        <span class="prog-stat-sub">${single.geAudit.completeness}% CalGETC areas covered at ${locationLabel}</span>
+      </div>
+    ` : `
+      <div class="prog-stat-card">
+        <span class="prog-stat-title">Curriculum Type</span>
+        <span class="prog-stat-value" style="font-size: 16px;">Certificate</span>
+        <span class="prog-stat-sub">Major requirements only (no GE)</span>
+      </div>
+    `}
+
+    <div class="prog-stat-card">
+      <span class="prog-stat-title">Student Enrollment</span>
+      <span class="prog-stat-value">${totalActive}</span>
+      <span class="prog-stat-sub">Enrolled in ${totalSections} program sections</span>
+    </div>
+
+    <div class="prog-stat-card">
+      <span class="prog-stat-title">Campus Scope</span>
+      <span class="prog-stat-value" style="font-size: 16px;">${locationLabel}</span>
+      <span class="prog-stat-sub">${single.campusSectionsCount} total sections at campus</span>
+    </div>
+  `;
+  container.appendChild(summaryBar);
+
+  // 3. SUB-TABS NAVIGATION
+  const navRow = document.createElement('div');
+  navRow.className = 'prog-audit-nav';
+
+  const currentTab = appState.programCoverageActiveTab || 'all';
+
+  navRow.innerHTML = `
+    <div class="prog-audit-tabs">
+      <button type="button" class="prog-tab-btn ${currentTab === 'all' ? 'active' : ''}" data-tab="all">
+        All Required Courses <span class="prog-tab-badge">${single.totalRequired}</span>
+      </button>
+      <button type="button" class="prog-tab-btn ${currentTab === 'missing' ? 'active' : ''}" data-tab="missing" style="${single.missingCount > 0 ? 'color: #dc2626;' : ''}">
+        Missing Courses <span class="prog-tab-badge" style="${single.missingCount > 0 ? 'background-color: #fee2e2; color: #dc2626;' : ''}">${single.missingCount}</span>
+      </button>
+      <button type="button" class="prog-tab-btn ${currentTab === 'scheduled' ? 'active' : ''}" data-tab="scheduled">
+        Scheduled Courses <span class="prog-tab-badge">${single.scheduledCount}</span>
+      </button>
+      ${isAssociate && single.geAudit ? `
+        <button type="button" class="prog-tab-btn ${currentTab === 'ge' ? 'active' : ''}" data-tab="ge">
+          GE Breadth Coverage <span class="prog-tab-badge">${single.geAudit.coveredCount}/${single.geAudit.totalAreas}</span>
+        </button>
+      ` : ''}
+    </div>
+    <div>
+      <span style="font-size: 11.5px; color: var(--text-muted);">
+        Click any scheduled section to open details modal
+      </span>
+    </div>
+  `;
+  container.appendChild(navRow);
+
+  // Wire Tab Clicks
+  navRow.querySelectorAll('.prog-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.programCoverageActiveTab = btn.getAttribute('data-tab');
+      renderProgramCoverageDashboard();
+    });
+  });
+
+  // 4. CARDS GRID
+  const cardsGrid = document.createElement('div');
+  cardsGrid.className = 'prog-cards-grid';
+
+  if (currentTab === 'ge' && isAssociate && single.geAudit) {
+    // Render GE Breadth Area Cards
+    single.geAudit.areas.forEach(area => {
+      const card = document.createElement('div');
+      card.className = `prog-course-card ${area.isCovered ? 'card-scheduled' : 'card-missing'}`;
+
+      card.innerHTML = `
+        <div class="prog-course-header">
+          <div class="prog-course-code">Area ${area.code}: ${area.name}</div>
+          <span class="prog-course-status ${area.isCovered ? 'status-scheduled-tag' : 'status-missing-tag'}">
+            ${area.isCovered ? `✓ COVERED (${area.sectionCount} secs)` : '⚠ MISSING AT CAMPUS'}
+          </span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">${area.desc}</div>
+
+        ${area.isCovered ? `
+          <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
+            <strong>Fulfilling Courses:</strong> ${area.courses.join(', ')}
+          </div>
+          <div class="prog-sections-list">
+            ${area.sections.slice(0, 4).map(sec => `
+              <div class="prog-section-row" data-secid="${sec.sectionUniqueId}">
+                <span><strong>${sec.course}</strong> (${sec.sectionName})</span>
+                <span>${sec.facultyName || 'Staff'} • ${sec.activeStudents}/${sec.capacity}</span>
+              </div>
+            `).join('')}
+            ${area.sections.length > 4 ? `
+              <div style="font-size: 11px; text-align: center; color: var(--text-muted); padding: 4px;">+ ${area.sections.length - 4} more sections</div>
+            ` : ''}
+          </div>
+        ` : `
+          <div class="prog-action-box" style="margin-top: 6px;">
+            Action Required: 0 sections satisfying CalGETC Area ${area.code} are scheduled at ${locationLabel}. Students must complete this requirement at another campus or online.
+          </div>
+        `}
+      `;
+
+      card.querySelectorAll('.prog-section-row').forEach(row => {
+        const secId = row.getAttribute('data-secid');
+        const matched = area.sections.find(s => s.sectionUniqueId === secId);
+        if (matched) {
+          row.addEventListener('click', () => showSectionModal(matched));
+          row.addEventListener('mouseenter', (e) => showPopover(e, matched));
+          row.addEventListener('mousemove', (e) => positionPopover(e));
+          row.addEventListener('mouseleave', hidePopover);
+        }
+      });
+
+      cardsGrid.appendChild(card);
+    });
+  } else {
+    // Render Major Course Cards (Missing and/or Scheduled)
+    let coursesToDisplay = [];
+    if (currentTab === 'missing') {
+      coursesToDisplay = single.missingCourses;
+    } else if (currentTab === 'scheduled') {
+      coursesToDisplay = single.scheduledCourses;
+    } else {
+      // 'all': Show missing courses first as action items, followed by scheduled courses
+      coursesToDisplay = [...single.missingCourses, ...single.scheduledCourses];
+    }
+
+    if (coursesToDisplay.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.style.cssText = 'grid-column: 1 / -1; padding: 30px; text-align: center; font-size: 14px; color: var(--text-muted); background: var(--bg-surface-subtle); border-radius: 8px; border: 1px dashed var(--border-color);';
+      emptyMsg.textContent = currentTab === 'missing'
+        ? `No missing courses! All required major courses for ${prog.title} are scheduled at ${locationLabel}.`
+        : `No scheduled courses in this view.`;
+      cardsGrid.appendChild(emptyMsg);
+    } else {
+      coursesToDisplay.forEach(item => {
+        const card = document.createElement('div');
+        card.className = `prog-course-card ${item.isScheduled ? 'card-scheduled' : 'card-missing'}`;
+
+        const fillPct = Math.round(item.fillRate * 100);
+
+        card.innerHTML = `
+          <div class="prog-course-header">
+            <div class="prog-course-code">${item.course}</div>
+            <span class="prog-course-status ${item.isScheduled ? 'status-scheduled-tag' : 'status-missing-tag'}">
+              ${item.isScheduled ? `✓ ${item.sectionCount} Section${item.sectionCount > 1 ? 's' : ''} Scheduled` : '⚠ NOT SCHEDULED'}
+            </span>
+          </div>
+
+          ${item.isScheduled ? `
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
+              <span><strong>Enrolled:</strong> ${item.activeStudents} / ${item.capacity} (${fillPct}% fill)</span>
+              <span><strong>Modalities:</strong> ${item.modalities.join(', ') || 'In-Person'}</span>
+            </div>
+
+            <div class="prog-sections-list">
+              ${item.sections.map(sec => {
+                const b = sec.scheduleBlocks[0] || {};
+                const daysStr = b.daysRaw || 'TBA';
+                const timeStr = b.startTimeStr ? `${b.startTimeStr} - ${b.endTimeStr}` : 'TBA';
+                const roomStr = b.room ? `${b.building} ${b.room}` : 'TBA';
+                return `
+                  <div class="prog-section-row" data-secid="${sec.sectionUniqueId}">
+                    <div>
+                      <div><strong>${sec.sectionName}</strong> (#${sec.sectionUniqueId})</div>
+                      <div style="font-size: 10.5px; color: var(--text-muted);">${daysStr} ${timeStr} • ${roomStr}</div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-weight: 700; color: ${sec.isLowEnrolled ? 'var(--chaffey-red)' : 'var(--text-primary)'};">${sec.activeStudents}/${sec.capacity}</div>
+                      <div style="font-size: 10px; color: var(--text-muted);">${sec.facultyName || 'Staff'}</div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : `
+            <div class="prog-action-box">
+              <strong>Action Item:</strong> 0 sections of ${item.course} are scheduled at ${locationLabel}. To enable students to complete the ${prog.title} locally, schedule at least one section of this course.
+            </div>
+
+            ${item.otherOfferings.length > 0 ? `
+              <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 6px;">
+                <strong>Offered at other district locations:</strong>
+                <ul style="margin: 4px 0 0 16px; padding: 0;">
+                  ${item.otherOfferings.map(o => `<li>${o.location}: <strong>${o.count} section${o.count > 1 ? 's' : ''}</strong></li>`).join('')}
+                </ul>
+              </div>
+            ` : `
+              <div style="font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 4px;">
+                Note: This course is currently not offered anywhere in the district for this term.
+              </div>
+            `}
+          `}
+        `;
+
+        // Wire section modal & popover on scheduled section rows
+        if (item.isScheduled) {
+          card.querySelectorAll('.prog-section-row').forEach(row => {
+            const secId = row.getAttribute('data-secid');
+            const matched = item.sections.find(s => s.sectionUniqueId === secId);
+            if (matched) {
+              row.addEventListener('click', () => showSectionModal(matched));
+              row.addEventListener('mouseenter', (e) => showPopover(e, matched));
+              row.addEventListener('mousemove', (e) => positionPopover(e));
+              row.addEventListener('mouseleave', hidePopover);
+            }
+          });
+        }
+
+        cardsGrid.appendChild(card);
+      });
+    }
+  }
+
+  container.appendChild(cardsGrid);
+}
+
+/**
+ * Renders the All-Programs Catalog Matrix View, ranking all 202 active programs by completability.
+ */
+function renderCatalogMatrixView(container, analysis) {
+  const catalog = analysis.catalog || [];
+  const locationLabel = analysis.location;
+
+  const catalogBox = document.createElement('div');
+  catalogBox.style.cssText = 'display: flex; flex-direction: column; gap: 14px;';
+
+  // Catalog Filters & Counts
+  const filterDegree = appState.programCoverageDegreeFilter || 'all';
+  const searchTerm = (appState.programCoverageCatalogSearch || '').toLowerCase().trim();
+
+  let filteredCatalog = catalog;
+  if (filterDegree === 'associate') {
+    filteredCatalog = filteredCatalog.filter(p => p.isAssociate);
+  } else if (filterDegree === 'certificate') {
+    filteredCatalog = filteredCatalog.filter(p => !p.isAssociate);
+  }
+
+  if (searchTerm) {
+    filteredCatalog = filteredCatalog.filter(p =>
+      p.title.toLowerCase().includes(searchTerm) ||
+      p.code.toLowerCase().includes(searchTerm) ||
+      p.id.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  const assocCount = catalog.filter(p => p.isAssociate).length;
+  const certCount = catalog.filter(p => !p.isAssociate).length;
+
+  catalogBox.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h4 style="font-size: 15px; font-weight: 800; color: var(--text-primary);">
+          Program Completability Catalog Matrix: ${locationLabel}
+        </h4>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+          Ranked by % of required curriculum scheduled at ${locationLabel}. Click "Audit Program" on any row to drill down.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <input type="text" id="catalog-search-input" class="form-control" placeholder="Search catalog..." value="${appState.programCoverageCatalogSearch || ''}" style="width: 200px; padding: 6px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);">
+        <div class="btn-sub-toggle-group" id="catalog-degree-group">
+          <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'all' ? 'active' : ''}" data-deg="all">All (${catalog.length})</button>
+          <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'associate' ? 'active' : ''}" data-deg="associate">Associate Degrees (${assocCount})</button>
+          <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'certificate' ? 'active' : ''}" data-deg="certificate">Certificates (${certCount})</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prog-catalog-table-container">
+      <table class="prog-catalog-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Program Entity Title</th>
+            <th>Type</th>
+            <th>Required Courses</th>
+            <th>Scheduled at Campus</th>
+            <th>Missing</th>
+            <th>Completeness</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredCatalog.map(p => {
+            let fillClass = 'fill-danger';
+            if (p.completeness === 100) fillClass = 'fill-success';
+            else if (p.completeness >= 65) fillClass = 'fill-warning';
+
+            return `
+              <tr data-progid="${p.id}" style="cursor: pointer;">
+                <td style="font-family: var(--font-mono); font-weight: 700;">${p.code}</td>
+                <td style="font-weight: 700; color: var(--text-primary);">${p.title}</td>
+                <td>
+                  <span class="prog-badge-degree ${p.isAssociate ? 'prog-badge-associate' : 'prog-badge-cert'}">
+                    ${p.isAssociate ? 'Associate' : 'Certificate'}
+                  </span>
+                </td>
+                <td style="font-weight: 700;">${p.totalCourses}</td>
+                <td style="color: #059669; font-weight: 700;">${p.scheduledCourses}</td>
+                <td style="color: ${p.missingCourses > 0 ? '#dc2626' : 'var(--text-muted)'}; font-weight: 700;">${p.missingCourses}</td>
+                <td style="min-width: 130px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="prog-progress-bar-bg" style="flex: 1; height: 8px;">
+                      <div class="prog-progress-bar-fill ${fillClass}" style="width: ${p.completeness}%;"></div>
+                    </div>
+                    <span style="font-size: 11px; font-weight: 700; min-width: 32px;">${p.completeness}%</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="prog-hero-status-pill status-${p.statusTier}" style="font-size: 10px; padding: 3px 8px;">
+                    ${p.completeness === 100 ? '100% Completable' : (p.completeness >= 75 ? 'Near Completable' : (p.completeness >= 50 ? 'Partial' : 'Low Coverage'))}
+                  </span>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-secondary btn-audit-prog" data-progid="${p.id}" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                    Audit
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.appendChild(catalogBox);
+
+  // Wire Degree Filter Buttons
+  catalogBox.querySelectorAll('#catalog-degree-group .btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.programCoverageDegreeFilter = btn.getAttribute('data-deg');
+      renderProgramCoverageDashboard();
+    });
+  });
+
+  // Wire Search Input
+  catalogBox.querySelector('#catalog-search-input')?.addEventListener('input', (e) => {
+    appState.programCoverageCatalogSearch = e.target.value;
+    renderProgramCoverageDashboard();
+  });
+
+  // Wire Row & Audit Button Clicks
+  catalogBox.querySelectorAll('tr[data-progid]').forEach(row => {
+    row.addEventListener('click', (e) => {
+      const pId = row.getAttribute('data-progid');
+      if (pId) {
+        appState.programCoverageSelectedProgram = pId;
+        appState.programCoverageCatalogView = false;
+        appState.filters.program.clear();
+        appState.filters.program.add(pId);
+        applyFiltersAndRender();
+      }
+    });
+  });
+}
   const tile = document.createElement('div');
   const typeLower = block.instructionType.toLowerCase();
 
@@ -5528,6 +6489,8 @@ function resetAllFilters() {
   appState.filters.traits.clear();
   appState.fasttrackActiveTab = 'all';
   appState.efficiencyActiveTab = 'all';
+  appState.programCoverageActiveTab = 'all';
+  appState.programCoverageSubLayout = 'audit';
 
   const searchInput = document.getElementById('filter-search');
   if (searchInput) searchInput.value = '';
