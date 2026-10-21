@@ -1474,6 +1474,41 @@ function isFastTrackBlock(block) {
 }
 
 /**
+ * Helper to identify virtual rooms, online classes, and Canvas environments.
+ * As specified: location = "Online Class" and Buildings = "Canvas - Online" (as well as Canvas, Via, Online)
+ * are virtual rooms and entirely online, and cannot result in room scheduling conflicts.
+ */
+function isVirtualRoomOrOnline(blk) {
+  if (!blk) return false;
+  const bldg = String(blk.building || '').trim().toUpperCase();
+  const room = String(blk.room || '').trim().toUpperCase();
+  const bldgDesc = String(blk.buildingDesc || '').trim().toUpperCase();
+  const inst = String(blk.instructionType || '').trim().toUpperCase();
+
+  const sec = blk.parentSection;
+  const loc = String(sec?.location || '').trim().toUpperCase();
+  const modality = String(sec?.modality || '').trim().toUpperCase();
+
+  // Location = Online Class / Online
+  if (loc === 'ONLINE CLASS' || loc === 'ONLINE' || loc.includes('ONLINE')) return true;
+
+  // Fully Online Modality
+  if (modality === 'ONLINE' || modality === 'FULLY ONLINE' || (modality.includes('ONLINE') && !modality.includes('IN-PERSON') && !modality.includes('HYBRID'))) return true;
+
+  // Buildings = Canvas - Online, Canvas, Via, Online
+  if (bldg === 'CANVAS' || bldg === 'VIA' || bldg === 'ONLINE' || bldg === 'CANVAS - ONLINE' || bldg.includes('CANVAS') || bldg.includes('ONLINE')) return true;
+  if (bldgDesc === 'CANVAS' || bldgDesc === 'VIA' || bldgDesc === 'ONLINE' || bldgDesc === 'CANVAS - ONLINE' || bldgDesc.includes('CANVAS') || bldgDesc.includes('ONLINE')) return true;
+
+  // Rooms = Online, Canvas, Internet, Virtual
+  if (room === 'CANVAS' || room === 'ONLINE' || room === 'INTERNET' || room === 'VIRTUAL' || room.includes('ONLINE') || room.includes('CANVAS')) return true;
+
+  // Instruction type strictly online
+  if (inst.includes('ONLINE') && !inst.includes('IN-PERSON') && !inst.includes('HYBRID')) return true;
+
+  return false;
+}
+
+/**
  * Helper to determine if a scheduled meeting block/component has complete physical scheduling info.
  * For Fast-Track Coverage:
  * - IGNORES meeting components/parts that do not list days, times, locations, or hours (e.g., Success Center Hrs in #209439).
@@ -1490,6 +1525,9 @@ function isPhysicalMeetingBlock(blk) {
   const bldg = String(blk.building || '').trim();
   const room = String(blk.room || '').trim();
   if (!bldg || !room) return false;
+
+  // Ignore virtual rooms, online classes, and Canvas environments
+  if (isVirtualRoomOrOnline(blk)) return false;
 
   const bldgUpper = bldg.toUpperCase();
   const roomUpper = room.toUpperCase();
@@ -2009,10 +2047,12 @@ function evaluateRoomConflicts(blocks) {
   for (let i = 0; i < blocks.length; i++) {
     const a = blocks[i];
     if (!a.building || !a.room) continue;
+    if (isVirtualRoomOrOnline(a)) continue;
 
     for (let j = i + 1; j < blocks.length; j++) {
       const b = blocks[j];
       if (!b.building || !b.room) continue;
+      if (isVirtualRoomOrOnline(b)) continue;
 
       if (a.parentSection.sectionUniqueId === b.parentSection.sectionUniqueId) continue;
       if (a.day !== b.day) continue;
@@ -3681,10 +3721,34 @@ function renderGeCoverageDashboard() {
     });
   });
 
+  // Cal-GETC Area 3A & 3B Mutual Exclusivity Check:
+  // Students are required to take two distinct classes (one for Area 3A and one for Area 3B).
+  // A single course (e.g. PHOTO-1) cannot satisfy both areas simultaneously.
+  // If the union of unique courses across both Area 3A and Area 3B is less than 2,
+  // then Area 3B is marked deficient because at least one additional distinct course must be offered.
+  if (activePattern === 'CALGETC') {
+    const data3A = areaCoverageMap.get('3A');
+    const data3B = areaCoverageMap.get('3B');
+    if (data3A && data3B && data3A.offerings.length > 0 && data3B.offerings.length > 0) {
+      const courses3A = new Set(data3A.offerings.map(s => (s.course || '').trim().toUpperCase()).filter(Boolean));
+      const courses3B = new Set(data3B.offerings.map(s => (s.course || '').trim().toUpperCase()).filter(Boolean));
+      const union3 = new Set([...courses3A, ...courses3B]);
+
+      if (union3.size < 2) {
+        const sharedCourse = Array.from(union3)[0] || 'Scheduled course';
+        data3B.unfulfilledByConflict = true;
+        data3B.sharedCourse = sharedCourse;
+        data3B.conflictReason = `Dual-Area Overlap Conflict: ${sharedCourse} is the only course scheduled across both Area 3A and Area 3B in this scope. Students cannot use ${sharedCourse} to satisfy both requirements. At least one additional distinct course must be offered in Area 3B or Area 3A for full coverage.`;
+        data3A.sharedCourseNote = `Note: ${sharedCourse} is also scheduled for Area 3B, but students cannot use the same course to satisfy both requirements.`;
+      }
+    }
+  }
+
   let coveredCount = 0;
   let missingCount = 0;
   areaCoverageMap.forEach(v => {
-    if (v.offerings.length > 0) coveredCount++;
+    const isCovered = v.offerings.length > 0 && !v.unfulfilledByConflict;
+    if (isCovered) coveredCount++;
     else missingCount++;
   });
 
@@ -3777,7 +3841,7 @@ function renderGeCoverageDashboard() {
 
   let renderedCardsCount = 0;
   areaCoverageMap.forEach((data, areaCode) => {
-    const isCovered = data.offerings.length > 0;
+    const isCovered = data.offerings.length > 0 && !data.unfulfilledByConflict;
     if (appState.geShowMissingOnly && isCovered) return;
 
     renderedCardsCount++;
@@ -3791,24 +3855,52 @@ function renderGeCoverageDashboard() {
       return `<span class="ge-course-chip" data-sec-id="${sec.sectionUniqueId}" title="${sec.sectionName} (${times})">${sec.course} (${sec.facultyName || 'Staff'})</span>`;
     }).join('');
 
-    card.innerHTML = `
-      <div class="ge-area-card-header">
-        <span class="ge-area-badge ${colorClass}">Area ${areaCode}</span>
-        <span class="ge-status-pill ${isCovered ? 'status-covered' : 'status-missing'}">
-          ${isCovered ? `✓ ${data.offerings.length} Scheduled` : `⚠ Missing in ${scopeLabel}`}
-        </span>
-      </div>
-      <div class="ge-area-name">${data.meta.name}</div>
-      <div style="font-size:10.5px; color:var(--text-muted);">${data.meta.desc}</div>
-      ${isCovered ? `
+    let statusPillHtml = '';
+    if (data.unfulfilledByConflict) {
+      statusPillHtml = `<span class="ge-status-pill status-missing">⚠ Deficient (Shared with 3A)</span>`;
+    } else if (isCovered) {
+      statusPillHtml = `<span class="ge-status-pill status-covered">✓ ${data.offerings.length} Scheduled</span>`;
+    } else {
+      statusPillHtml = `<span class="ge-status-pill status-missing">⚠ Missing in ${scopeLabel}</span>`;
+    }
+
+    let cardBodyHtml = '';
+    if (data.unfulfilledByConflict) {
+      cardBodyHtml = `
+        <div style="font-size:11px; color:#b91c1c; font-weight:600; margin-top:4px; line-height:1.4;">
+          ⚠ Dual-Area Overlap Conflict: <strong>${data.sharedCourse}</strong> is the only course scheduled across both Area 3A and Area 3B in this scope. Students cannot use ${data.sharedCourse} to satisfy both areas. At least one additional distinct course must be offered for full coverage.
+        </div>
+        <div class="ge-area-courses-list" style="margin-top:6px;">
+          ${offeringsChips}
+        </div>
+      `;
+    } else if (isCovered) {
+      cardBodyHtml = `
         <div class="ge-area-courses-list">
           ${offeringsChips}
         </div>
-      ` : `
+        ${data.sharedCourseNote ? `
+          <div style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">
+            ℹ ${data.sharedCourseNote}
+          </div>
+        ` : ''}
+      `;
+    } else {
+      cardBodyHtml = `
         <div style="font-size:11px; color:#b91c1c; font-weight:600; margin-top:2px;">
           No class section scheduled for Area ${areaCode}
         </div>
-      `}
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="ge-area-card-header">
+        <span class="ge-area-badge ${colorClass}">Area ${areaCode}</span>
+        ${statusPillHtml}
+      </div>
+      <div class="ge-area-name">${data.meta.name}</div>
+      <div style="font-size:10.5px; color:var(--text-muted);">${data.meta.desc}</div>
+      ${cardBodyHtml}
     `;
 
     areasGrid.appendChild(card);
@@ -5150,6 +5242,22 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
         });
       });
 
+      // Cal-GETC Area 3A & 3B Mutual Exclusivity Check for Associate Degrees
+      const area3A = auditedGeAreas.find(a => a.code === '3A');
+      const area3B = auditedGeAreas.find(a => a.code === '3B');
+      if (area3A && area3B && area3A.courses.length > 0 && area3B.courses.length > 0) {
+        const union3 = new Set([...area3A.courses, ...area3B.courses]);
+        if (union3.size < 2) {
+          const sharedCourse = Array.from(union3)[0] || 'Scheduled course';
+          area3B.isCovered = false;
+          area3B.unfulfilledByConflict = true;
+          area3B.sharedCourse = sharedCourse;
+          area3B.conflictReason = `Dual-Area Overlap Conflict: ${sharedCourse} is the only course scheduled across both Area 3A and Area 3B in this scope. Students cannot use ${sharedCourse} for both requirements. At least one additional distinct course must be offered in Area 3B or Area 3A for full coverage.`;
+          area3A.sharedCourseNote = `Note: ${sharedCourse} cannot also be used to satisfy Area 3B.`;
+          coveredGeCount = Math.max(0, coveredGeCount - 1);
+        }
+      }
+
       const totalGeAreas = auditedGeAreas.length;
       const geCompleteness = totalGeAreas > 0 ? Math.round((coveredGeCount / totalGeAreas) * 100) : 0;
 
@@ -5502,21 +5610,45 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
   if (currentTab === 'ge' && isAssociate && single.geAudit) {
     // Render GE Breadth Area Cards
     single.geAudit.areas.forEach(area => {
+      const isAreaCovered = area.isCovered && !area.unfulfilledByConflict;
       const card = document.createElement('div');
-      card.className = `prog-course-card ${area.isCovered ? 'card-scheduled' : 'card-missing'}`;
+      card.className = `prog-course-card ${isAreaCovered ? 'card-scheduled' : 'card-missing'}`;
+
+      let statusTag = '';
+      if (area.unfulfilledByConflict) {
+        statusTag = `<span class="prog-course-status status-missing-tag">⚠ DEFICIENT (SHARED WITH 3A)</span>`;
+      } else if (isAreaCovered) {
+        statusTag = `<span class="prog-course-status status-scheduled-tag">✓ COVERED (${area.sectionCount} secs)</span>`;
+      } else {
+        statusTag = `<span class="prog-course-status status-missing-tag">⚠ MISSING AT CAMPUS</span>`;
+      }
 
       card.innerHTML = `
         <div class="prog-course-header">
           <div class="prog-course-code">Area ${area.code}: ${area.name}</div>
-          <span class="prog-course-status ${area.isCovered ? 'status-scheduled-tag' : 'status-missing-tag'}">
-            ${area.isCovered ? `✓ COVERED (${area.sectionCount} secs)` : '⚠ MISSING AT CAMPUS'}
-          </span>
+          ${statusTag}
         </div>
         <div style="font-size: 12px; color: var(--text-muted);">${area.desc}</div>
 
-        ${area.isCovered ? `
+        ${area.unfulfilledByConflict ? `
+          <div class="prog-action-box" style="margin-top: 6px;">
+            <strong>Action Required:</strong> ${area.conflictReason}
+          </div>
+          <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 6px;">
+            <strong>Scheduled Sections (Shared with 3A):</strong>
+          </div>
+          <div class="prog-sections-list">
+            ${area.sections.slice(0, 4).map(sec => `
+              <div class="prog-section-row" data-secid="${sec.sectionUniqueId}">
+                <span><strong>${sec.course}</strong> (${sec.sectionName})</span>
+                <span>${sec.facultyName || 'Staff'} • ${sec.activeStudents}/${sec.capacity}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : isAreaCovered ? `
           <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
             <strong>Fulfilling Courses:</strong> ${area.courses.join(', ')}
+            ${area.sharedCourseNote ? `<span style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:2px;">ℹ ${area.sharedCourseNote}</span>` : ''}
           </div>
           <div class="prog-sections-list">
             ${area.sections.slice(0, 4).map(sec => `
