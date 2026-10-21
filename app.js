@@ -1563,6 +1563,50 @@ function parseScheduleDays(daysRaw) {
 }
 
 /**
+ * INLINE COMMENT EXPLAINING DUPLICATE SCHEDULE CHECKING:
+ * In institutional schedule datasets, a section can have duplicate rows with identical
+ * schedule parameters (instruction type, building, room, days, start time, end time, and dates).
+ * For example, SECTION UNIQUE ID #213157 contains identical rows for NURVN-403L lab meetings.
+ * We detect and deduplicate these exact duplicate rows so that:
+ * 1. Only unique schedule components appear in section details and modals.
+ * 2. Only single, unique meeting blocks are rendered on the calendar grids.
+ * 3. Exact duplicate records do not produce duplicate entries or false room conflicts.
+ */
+function isDuplicateMeetingComponent(existingBlocks, newBlock) {
+  if (!existingBlocks || existingBlocks.length === 0) return false;
+
+  const newBldg = (newBlock.building || '').trim().toUpperCase();
+  const newRoom = (newBlock.room || '').trim().toUpperCase();
+  const newType = (newBlock.instructionType || '').trim().toUpperCase();
+  const newStartMin = newBlock.startMinutes;
+  const newEndMin = newBlock.endMinutes;
+  const newDaysRaw = String(newBlock.daysRaw || '').trim();
+  const newDays = Array.isArray(newBlock.days) ? newBlock.days.slice().sort().join(',') : '';
+  const newStartDate = String(newBlock.startDate || '').trim().toUpperCase();
+  const newEndDate = String(newBlock.endDate || '').trim().toUpperCase();
+
+  return existingBlocks.some(b => {
+    const bBldg = (b.building || '').trim().toUpperCase();
+    const bRoom = (b.room || '').trim().toUpperCase();
+    const bType = (b.instructionType || '').trim().toUpperCase();
+    const bStartMin = b.startMinutes;
+    const bEndMin = b.endMinutes;
+    const bDaysRaw = String(b.daysRaw || '').trim();
+    const bDays = Array.isArray(b.days) ? b.days.slice().sort().join(',') : '';
+    const bStartDate = String(b.startDate || '').trim().toUpperCase();
+    const bEndDate = String(b.endDate || '').trim().toUpperCase();
+
+    const sameLocation = bBldg === newBldg && bRoom === newRoom;
+    const sameTimes = bStartMin === newStartMin && bEndMin === newEndMin;
+    const sameDays = (bDaysRaw === newDaysRaw) || (bDays === newDays);
+    const sameType = bType === newType;
+    const sameDates = bStartDate === newStartDate && bEndDate === newEndDate;
+
+    return sameLocation && sameTimes && sameDays && sameType && sameDates;
+  });
+}
+
+/**
  * INLINE COMMENT EXPLAINING SECTION TRAITS COMMA SPLITTING:
  * The `Section Traits` column contains comma-separated values
  * (e.g., "Not Basic Skills,Not Coop Work Experience,In-Person,Low-Cost Textbook (<$50)").
@@ -1789,33 +1833,38 @@ function processRawDataset(rawData) {
       parentSection: parentSection
     };
 
-    parentSection.scheduleBlocks.push(meetingRow);
+    // Duplicate schedule checking: ensure only unique schedule components are added
+    // to parentSection.scheduleBlocks and allMeetingBlocks
+    const isDuplicate = isDuplicateMeetingComponent(parentSection.scheduleBlocks, meetingRow);
+    if (!isDuplicate) {
+      parentSection.scheduleBlocks.push(meetingRow);
 
-    if (daysArray.length > 0 && startMinutes !== null && endMinutes !== null) {
-      daysArray.forEach(dayNumber => {
-        allMeetingBlocks.push({
-          blockId: `block_${rowIndex}_d${dayNumber}`,
-          day: dayNumber,
-          days: daysArray,
-          startMinutes: startMinutes,
-          endMinutes: endMinutes,
-          duration: Math.max(endMinutes - startMinutes, 20),
-          instructionType: meetingRow.instructionType,
-          building: meetingRow.building,
-          buildingDesc: meetingRow.buildingDesc,
-          room: meetingRow.room,
-          startTimeStr: meetingRow.startTimeStr,
-          endTimeStr: meetingRow.endTimeStr,
-          startDate: meetingRow.startDate,
-          endDate: meetingRow.endDate,
-          parentSection: parentSection,
-          meetingRow: meetingRow,
-          isConflict: false,
-          conflictsWith: [],
-          isStacked: false,
-          stackedWith: []
+      if (daysArray.length > 0 && startMinutes !== null && endMinutes !== null) {
+        daysArray.forEach(dayNumber => {
+          allMeetingBlocks.push({
+            blockId: `block_${rowIndex}_d${dayNumber}`,
+            day: dayNumber,
+            days: daysArray,
+            startMinutes: startMinutes,
+            endMinutes: endMinutes,
+            duration: Math.max(endMinutes - startMinutes, 20),
+            instructionType: meetingRow.instructionType,
+            building: meetingRow.building,
+            buildingDesc: meetingRow.buildingDesc,
+            room: meetingRow.room,
+            startTimeStr: meetingRow.startTimeStr,
+            endTimeStr: meetingRow.endTimeStr,
+            startDate: meetingRow.startDate,
+            endDate: meetingRow.endDate,
+            parentSection: parentSection,
+            meetingRow: meetingRow,
+            isConflict: false,
+            conflictsWith: [],
+            isStacked: false,
+            stackedWith: []
+          });
         });
-      });
+      }
     }
   });
 
@@ -1857,10 +1906,12 @@ function processRawDataset(rawData) {
  * - NURADN (Nursing ADN)
  * - DENTAL (Dental Assisting / Dental Hygiene)
  * - RADTEC (Radiologic Technology)
+ * - AUTOTEC (Automotive Technology)
+ * - NURVN (Vocational Nursing)
  * If overlapping classes belong to the SAME program from this list, mark them as Stacked rather than Conflict.
  * If subjects differ (e.g. DENTAL vs RADTEC), it remains a true Room Conflict.
  */
-const MULTI_INSTRUCTOR_STACK_PROGRAMS = ['AMT', 'NURADN', 'DENTAL', 'RADTEC'];
+const MULTI_INSTRUCTOR_STACK_PROGRAMS = ['AMT', 'NURADN', 'DENTAL', 'RADTEC', 'AUTOTEC', 'NURVN'];
 
 function getSectionStackSubject(sec) {
   if (!sec) return '';
@@ -1877,6 +1928,8 @@ function getSectionStackSubject(sec) {
   if (subj.includes('NURADN') || (subj.includes('NURSING') && subj.includes('ADN')) || crse.startsWith('NURADN')) return 'NURADN';
   if (subj.includes('DENTAL') || crse.startsWith('DENTAL')) return 'DENTAL';
   if (subj.includes('RADTEC') || subj.includes('RADIOLOG') || crse.startsWith('RADTEC')) return 'RADTEC';
+  if (subj.includes('AUTOTEC') || subj.includes('AUTOMOTIVE') || crse.startsWith('AUTOTEC')) return 'AUTOTEC';
+  if (subj.includes('NURVN') || subj.includes('VOCATIONAL') || (subj.includes('NURSING') && subj.includes('VN')) || crse.startsWith('NURVN')) return 'NURVN';
 
   return '';
 }
@@ -1977,16 +2030,21 @@ function evaluateRoomConflicts(blocks) {
         const stackProgA = getSectionStackSubject(a.parentSection);
         const stackProgB = getSectionStackSubject(b.parentSection);
 
-        // Check if both classes share the same program known to stack across instructors (AMT, NURADN, DENTAL, RADTEC)
+        // Check if both classes share the same program known to stack across instructors (AMT, NURADN, DENTAL, RADTEC, AUTOTEC, NURVN)
         const isSameProgramMultiStack = stackProgA && stackProgB && (stackProgA === stackProgB);
+
+        // Check if both classes are sections of the exact same course (cohort labs / cross-listed sections)
+        const crseA = String(a.parentSection.course || '').trim().toUpperCase();
+        const crseB = String(b.parentSection.course || '').trim().toUpperCase();
+        const isSameCourse = Boolean(crseA && crseB && crseA === crseB);
 
         // Check if this is a Fast-Track 1 and Fast-Track 2 pairing where FT1 ends before FT2 begins
         const isFastTrackSeq = isSequentialFastTrackPair(a, b);
 
-        const isStacked = isSameInstructor || isSameProgramMultiStack || isFastTrackSeq;
+        const isStacked = isSameInstructor || isSameProgramMultiStack || isSameCourse || isFastTrackSeq;
 
         if (isStacked) {
-          // STACKED CLASS: Same room, day, time, and either same faculty, same specialized program, OR sequential FT1/FT2!
+          // STACKED CLASS: Same room, day, time, and either same faculty, same specialized program, same course, OR sequential FT1/FT2!
           a.isStacked = true;
           b.isStacked = true;
           if (!a.stackedWith.includes(b)) a.stackedWith.push(b);
@@ -1997,8 +2055,12 @@ function evaluateRoomConflicts(blocks) {
             stackReason = `Fast-Track Sequential Session (FT1 & FT2 - Non-overlapping Dates)`;
           } else if (isSameInstructor) {
             stackReason = `Same Instructor: ${a.parentSection.facultyName}`;
-          } else {
+          } else if (isSameProgramMultiStack) {
             stackReason = `Cohort Program Stack: ${stackProgA} (Multi-Instructor)`;
+          } else if (isSameCourse) {
+            stackReason = `Same Course Cohort Stack: ${crseA} (Multi-Instructor)`;
+          } else {
+            stackReason = `Stacked Sections (${crseA} & ${crseB})`;
           }
 
           stackedPairs.push({
