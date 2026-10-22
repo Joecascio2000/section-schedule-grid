@@ -1136,7 +1136,7 @@ const appState = {
   efficiencySubLayout: 'room', // Default Efficiency grid view to Room View
   efficiencyActiveTab: 'all',  // Default to showing all Efficiency audit items
   currentEfficiencyAnalysis: null,
-  programCoverageSubLayout: 'audit', // 'audit', 'day', 'room'
+  programCoverageSubLayout: 'room',  // Default to Room View ('day', 'room')
   programCoverageActiveTab: 'all',   // 'all', 'missing', 'scheduled', 'ge'
   programCoverageSelectedProgram: '',// Selected Program ID (e.g. 'S078 - Business Administration...')
   programCoverageCatalogSearch: '',  // Search query in catalog view
@@ -1166,6 +1166,52 @@ const appState = {
 };
 
 // --- 2.5 PROGRAM OF STUDY DATA & MAPPING ---
+
+/**
+ * Helper to retrieve scheduled sections matching a program course requirement.
+ * Accommodates work experience courses coded with 'ABCD' (e.g., ID-482ABCD),
+ * which can be satisfied by any of the scheduled broken out variants:
+ * ID-482A, ID-482B, ID-482C, or ID-482D.
+ */
+function getMatchingScheduledSectionsForProgramCourse(courseReq, courseSecMap) {
+  if (!courseReq || !courseSecMap) return [];
+  const reqNorm = String(courseReq).trim().toUpperCase();
+
+  if (reqNorm.endsWith('ABCD')) {
+    const base = reqNorm.slice(0, -4);
+    const variants = [reqNorm, `${base}A`, `${base}B`, `${base}C`, `${base}D`];
+    const found = [];
+    const seenSecIds = new Set();
+    variants.forEach(v => {
+      const list = courseSecMap.get(v) || [];
+      list.forEach(sec => {
+        if (!seenSecIds.has(sec.sectionUniqueId)) {
+          seenSecIds.add(sec.sectionUniqueId);
+          found.push(sec);
+        }
+      });
+    });
+    return found;
+  }
+
+  return courseSecMap.get(reqNorm) || [];
+}
+
+/**
+ * Checks if a scheduled section course matches a program requirement,
+ * including ABCD work experience course variants (e.g. ID-482A satisfies ID-482ABCD).
+ */
+function isCourseSatisfyingProgramRequirement(secCourse, reqCourse) {
+  if (!secCourse || !reqCourse) return false;
+  const s = String(secCourse).trim().toUpperCase();
+  const r = String(reqCourse).trim().toUpperCase();
+  if (s === r) return true;
+  if (r.endsWith('ABCD')) {
+    const base = r.slice(0, -4);
+    if (s === `${base}A` || s === `${base}B` || s === `${base}C` || s === `${base}D`) return true;
+  }
+  return false;
+}
 
 /**
  * Applies a list of program objects to appState.programs and appState.courseToProgramsMap.
@@ -1206,6 +1252,18 @@ function applyProgramData(programData) {
         courseMap.set(c, new Set());
       }
       courseMap.get(c).add(pId);
+
+      // If work experience course ends with ABCD (e.g. ID-482ABCD), also map individual scheduled variants
+      if (c.endsWith('ABCD')) {
+        const base = c.slice(0, -4);
+        ['A', 'B', 'C', 'D'].forEach(suffix => {
+          const variant = `${base}${suffix}`;
+          if (!courseMap.has(variant)) {
+            courseMap.set(variant, new Set());
+          }
+          courseMap.get(variant).add(pId);
+        });
+      }
     });
   });
 
@@ -2242,9 +2300,19 @@ function matchesOtherFilters(sec, excludeDimension = null) {
       const prog = appState.programs.get(progId);
       if (!prog) continue;
 
-      if (prog.courses && prog.courses.has(sec.course)) {
-        matchesProgram = true;
-        break;
+      if (prog.courses) {
+        if (prog.courses.has(sec.course)) {
+          matchesProgram = true;
+          break;
+        }
+        // Check ABCD work experience course variants (e.g. ID-482A satisfies ID-482ABCD)
+        for (const reqCourse of prog.courses) {
+          if (isCourseSatisfyingProgramRequirement(sec.course, reqCourse)) {
+            matchesProgram = true;
+            break;
+          }
+        }
+        if (matchesProgram) break;
       }
 
       if (prog.isAssociate) {
@@ -2835,7 +2903,14 @@ function applyFiltersAndRender() {
       const targetCourses = new Set();
       if (progAnalysis && progAnalysis.single) {
         if (activeTab === 'scheduled') {
-          progAnalysis.single.scheduledCourses.forEach(c => targetCourses.add(c.course));
+          progAnalysis.single.scheduledCourses.forEach(c => {
+            targetCourses.add(c.course);
+            (c.sections || []).forEach(s => targetCourses.add(s.course));
+            if (c.course.endsWith('ABCD')) {
+              const base = c.course.slice(0, -4);
+              ['A', 'B', 'C', 'D'].forEach(l => targetCourses.add(`${base}${l}`));
+            }
+          });
         } else if (activeTab === 'missing') {
           targetCourses.clear();
         } else if (activeTab === 'ge') {
@@ -2846,7 +2921,13 @@ function applyFiltersAndRender() {
           }
         } else {
           // 'all'
-          progAnalysis.single.requiredCourses.forEach(c => targetCourses.add(c));
+          progAnalysis.single.requiredCourses.forEach(c => {
+            targetCourses.add(c);
+            if (c.endsWith('ABCD')) {
+              const base = c.slice(0, -4);
+              ['A', 'B', 'C', 'D'].forEach(l => targetCourses.add(`${base}${l}`));
+            }
+          });
         }
       }
 
@@ -2861,9 +2942,24 @@ function applyFiltersAndRender() {
     }
   }
 
-  // REQUIREMENT 1: If Conflict Mode is active and "Isolate Conflicts Only" is on, isolate conflicts!
-  if (appState.isConflictMode && appState.conflictsOnly) {
-    filteredBlocks = filteredBlocks.filter(b => b.isConflict);
+  // REQUIREMENT 1: If Conflict Mode is active:
+  if (appState.isConflictMode) {
+    if (appState.conflictsOnly) {
+      filteredBlocks = filteredBlocks.filter(b => b.isConflict);
+    } else {
+      // "Show in Context": Show all classes in context, but ONLY for classrooms with one or more conflicts!
+      const conflictRooms = new Set();
+      (appState.conflicts || []).forEach(c => {
+        const key = `${c.building} ${c.room}`.trim().toUpperCase();
+        if (key) conflictRooms.add(key);
+      });
+      filteredBlocks = filteredBlocks.filter(b => {
+        const key = `${b.building} ${b.room}`.trim().toUpperCase();
+        return conflictRooms.has(key);
+      });
+      const contextSecIds = new Set(filteredBlocks.map(b => b.parentSection.sectionUniqueId));
+      matchedSections = matchedSections.filter(s => contextSecIds.has(s.sectionUniqueId));
+    }
   }
 
   appState.filteredBlocks = filteredBlocks;
@@ -3181,14 +3277,8 @@ function dispatchViewRender() {
       programContainer.style.display = 'flex';
       renderProgramCoverageDashboard();
     }
-    // Swap grid below coverage audit to either Day View or Room View, or hide if pure audit
-    if (appState.programCoverageSubLayout === 'room') {
-      if (standardGrid) standardGrid.style.display = 'none';
-      if (stackedContainer) {
-        stackedContainer.style.display = 'flex';
-        renderStackedRoomMatrix();
-      }
-    } else if (appState.programCoverageSubLayout === 'day') {
+    // Swap grid below coverage audit to either Day View or Room View (Default to Room View)
+    if (appState.programCoverageSubLayout === 'day') {
       if (stackedContainer) stackedContainer.style.display = 'none';
       if (standardGrid) {
         standardGrid.style.display = 'grid';
@@ -3196,7 +3286,10 @@ function dispatchViewRender() {
       }
     } else {
       if (standardGrid) standardGrid.style.display = 'none';
-      if (stackedContainer) stackedContainer.style.display = 'none';
+      if (stackedContainer) {
+        stackedContainer.style.display = 'flex';
+        renderStackedRoomMatrix();
+      }
     }
   } else {
     // Default 'day' view
@@ -5121,8 +5214,8 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     const missingCourses = [];
 
     reqCourses.forEach(crse => {
-      const secs = campusCourseSecMap.get(crse) || [];
-      const otherSecs = districtCourseSecMap.get(crse) || [];
+      const secs = getMatchingScheduledSectionsForProgramCourse(crse, campusCourseSecMap);
+      const otherSecs = getMatchingScheduledSectionsForProgramCourse(crse, districtCourseSecMap);
       const otherCampusOfferings = [];
 
       if (!isDistrictWide && otherSecs.length > 0) {
@@ -5293,7 +5386,8 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     const reqs = Array.from(p.courses || []);
     let sched = 0;
     reqs.forEach(c => {
-      if (campusCourseSecMap.has(c)) sched++;
+      const matchingSecs = getMatchingScheduledSectionsForProgramCourse(c, campusCourseSecMap);
+      if (matchingSecs.length > 0) sched++;
     });
     const tot = reqs.length;
     const miss = Math.max(0, tot - sched);
@@ -5389,11 +5483,10 @@ function renderProgramCoverageDashboard() {
       <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are completable at specific campus locations or across the district.</p>
     </div>
     <div class="prog-header-controls">
-      <!-- Grid View Switcher (Audit vs Day vs Room) -->
+      <!-- Grid View Switcher (Day View vs Room View - Defaulted to Room View) -->
       <div class="sub-layout-switcher">
         <span class="sub-layout-label">Grid View:</span>
         <div class="btn-sub-toggle-group" id="prog-sublayout-group">
-          <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'audit' ? 'active' : ''}" data-sublayout="audit" title="Audit Dashboard only">Audit View</button>
           <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View scheduled program courses in Day Grid">Day View</button>
           <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View scheduled program courses in Room View">Room View</button>
         </div>
@@ -5708,16 +5801,28 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
         card.className = `prog-course-card ${item.isScheduled ? 'card-scheduled' : 'card-missing'}`;
 
         const fillPct = Math.round(item.fillRate * 100);
+        const isAbcdWorkExp = item.course.endsWith('ABCD');
+        const abcdNote = isAbcdWorkExp
+          ? `<span style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-left: 6px;">(Work Experience: A, B, C, or D)</span>`
+          : '';
+        const scheduledVariantList = isAbcdWorkExp && item.isScheduled
+          ? Array.from(new Set(item.sections.map(s => s.course))).join(', ')
+          : '';
 
         card.innerHTML = `
           <div class="prog-course-header">
-            <div class="prog-course-code">${item.course}</div>
+            <div class="prog-course-code">${item.course}${abcdNote}</div>
             <span class="prog-course-status ${item.isScheduled ? 'status-scheduled-tag' : 'status-missing-tag'}">
               ${item.isScheduled ? `✓ ${item.sectionCount} Section${item.sectionCount > 1 ? 's' : ''} Scheduled` : '⚠ NOT SCHEDULED'}
             </span>
           </div>
 
           ${item.isScheduled ? `
+            ${scheduledVariantList ? `
+              <div style="font-size: 11.5px; color: #065f46; font-weight: 600; margin-top: 2px;">
+                ✓ Requirement satisfied by scheduled course${item.sections.length > 1 ? 's' : ''}: <strong>${scheduledVariantList}</strong>
+              </div>
+            ` : ''}
             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
               <span><strong>Enrolled:</strong> ${item.activeStudents} / ${item.capacity} (${fillPct}% fill)</span>
               <span><strong>Modalities:</strong> ${item.modalities.join(', ') || 'In-Person'}</span>
@@ -6126,6 +6231,10 @@ function showPopover(event, target) {
       <div class="popover-sec-name">${sec.sectionName}</div>
     </div>
     <div class="popover-grid">
+      ${sec.term ? `
+        <span class="popover-field-label">Term:</span>
+        <span class="popover-field-value" style="font-weight:700; color:var(--chaffey-red);">${sec.term}</span>
+      ` : ''}
       <span class="popover-field-label">Subject:</span>
       <span class="popover-field-value">${sec.subject}</span>
 
@@ -6262,6 +6371,12 @@ function showSectionModal(section, activeBlock) {
   modalBody.innerHTML = `
     ${lowEnrolledModalBanner}
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+      ${section.term ? `
+        <div>
+          <div style="font-size:11px; color:var(--text-muted); font-weight:600;">ACADEMIC TERM</div>
+          <div style="font-size:13px; font-weight:700; color:var(--chaffey-red);">${section.term}</div>
+        </div>
+      ` : ''}
       <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">SUBJECT & COURSE</div>
         <div style="font-size:13px; font-weight:600;">${section.subject} (${section.course})</div>
@@ -6956,7 +7071,7 @@ function resetAllFilters() {
   appState.fasttrackActiveTab = 'all';
   appState.efficiencyActiveTab = 'all';
   appState.programCoverageActiveTab = 'all';
-  appState.programCoverageSubLayout = 'audit';
+  appState.programCoverageSubLayout = 'room';
   appState.programCoverageSelectedProgram = '';
   appState.programCoverageCatalogView = false;
 
