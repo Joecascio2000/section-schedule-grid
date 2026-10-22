@@ -6590,7 +6590,77 @@ function handleFileSelect(file) {
   reader.readAsArrayBuffer(file);
 }
 
-// --- 12. EXPORT FUNCTIONALITY (PNG, PDF, CSV) ---
+// --- 12. EXPORT & PRINT FUNCTIONALITY (PRINT/PDF, MULTI-PAGE PDF, FULL PNG, CSV) ---
+
+function preparePrintHeader() {
+  const printHeader = document.getElementById('print-doc-header');
+  if (!printHeader) return;
+
+  const viewLabels = {
+    day: 'Day View Schedule Grid',
+    room: 'Room View Schedule Matrix',
+    ge: 'General Education Breadth & Campus Coverage Audit',
+    evening: 'Evening & Weekend Offerings Audit',
+    fasttrack: 'Fast-Track Sequential Offerings Audit',
+    efficiency: 'Enrollment Efficiency & FTES Productivity Audit',
+    program_coverage: 'Program of Study Coverage & Completability Audit'
+  };
+
+  const viewTitle = viewLabels[appState.layoutMode] || 'Academic Schedule Grid';
+  const termStr = appState.filters.term || 'All Loaded Terms';
+  const locationStr = appState.filters.location || 'District-Wide (All Campuses)';
+  const totalSecs = appState.filteredSections ? appState.filteredSections.length : 0;
+  const totalBlocks = appState.filteredBlocks ? appState.filteredBlocks.length : 0;
+  const nowStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const activeFiltersDesc = [];
+  if (appState.filters.building) activeFiltersDesc.push(`Building: ${appState.filters.building}`);
+  if (appState.filters.room) activeFiltersDesc.push(`Room: ${appState.filters.room}`);
+  if (appState.filters.subject.size > 0) activeFiltersDesc.push(`Subject: ${Array.from(appState.filters.subject).join(', ')}`);
+  if (appState.filters.course.size > 0) activeFiltersDesc.push(`Course: ${Array.from(appState.filters.course).join(', ')}`);
+  if (appState.layoutMode === 'ge' && appState.geActivePattern) activeFiltersDesc.push(`GE Pattern: ${appState.geActivePattern}`);
+  if (appState.layoutMode === 'program_coverage' && appState.programCoverageSelectedProgram) activeFiltersDesc.push(`Program: ${appState.programCoverageSelectedProgram}`);
+
+  const filtersSummary = activeFiltersDesc.length > 0 ? activeFiltersDesc.join(' | ') : 'All Offerings (Full Campus Scope)';
+
+  printHeader.innerHTML = `
+    <div class="print-header-top">
+      <div class="print-brand">
+        <div class="print-crest">CC</div>
+        <div class="print-title-text">
+          <h1>Chaffey College</h1>
+          <h2>${viewTitle}</h2>
+        </div>
+      </div>
+      <div style="text-align:right; font-size:11px; color:#475569; line-height:1.4;">
+        <div><strong>Printed:</strong> ${nowStr}</div>
+        <div><strong>Dataset:</strong> ${totalSecs} Sections &bull; ${totalBlocks} Scheduled Meetings</div>
+      </div>
+    </div>
+    <div class="print-meta-row">
+      <div class="print-meta-item"><strong>Academic Term:</strong> ${termStr}</div>
+      <div class="print-meta-item"><strong>Location Scope:</strong> ${locationStr}</div>
+      <div class="print-meta-item"><strong>Active Filters:</strong> ${filtersSummary}</div>
+    </div>
+  `;
+}
+
+function triggerPrint() {
+  if (appState.sections.length === 0) {
+    showToast('Please upload a schedule spreadsheet first.');
+    setTimeout(hideToast, 2500);
+    return;
+  }
+  preparePrintHeader();
+  window.print();
+}
 
 async function exportAsPng() {
   if (appState.sections.length === 0) {
@@ -6602,23 +6672,68 @@ async function exportAsPng() {
   const gridViewport = document.getElementById('schedule-grid-viewport');
   if (!gridViewport) return;
 
-  showToast('Generating high-resolution PNG export...');
+  showToast('Generating full-resolution unclipped PNG export...');
 
   try {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
+    const fullScrollHeight = Math.max(gridViewport.scrollHeight, gridViewport.offsetHeight, 800);
+    const fullScrollWidth = Math.max(gridViewport.scrollWidth, gridViewport.offsetWidth, 1200);
+
     const canvas = await html2canvas(gridViewport, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
       logging: false,
-      backgroundColor: isDark ? '#090d16' : '#ffffff'
+      backgroundColor: isDark ? '#090d16' : '#ffffff',
+      scrollX: 0,
+      scrollY: 0,
+      width: fullScrollWidth,
+      height: fullScrollHeight,
+      windowWidth: fullScrollWidth,
+      windowHeight: fullScrollHeight,
+      onclone: (clonedDoc) => {
+        const clonedViewport = clonedDoc.getElementById('schedule-grid-viewport');
+        if (clonedViewport) {
+          clonedViewport.style.height = 'auto';
+          clonedViewport.style.maxHeight = 'none';
+          clonedViewport.style.overflow = 'visible';
+          clonedViewport.style.position = 'static';
+          clonedViewport.style.width = '100%';
+        }
+        const clonedWorkspace = clonedDoc.querySelector('.app-workspace');
+        if (clonedWorkspace) {
+          clonedWorkspace.style.height = 'auto';
+          clonedWorkspace.style.maxHeight = 'none';
+          clonedWorkspace.style.overflow = 'visible';
+        }
+        const clonedMain = clonedDoc.querySelector('.main-content');
+        if (clonedMain) {
+          clonedMain.style.height = 'auto';
+          clonedMain.style.maxHeight = 'none';
+          clonedMain.style.overflow = 'visible';
+        }
+        const clonedContainer = clonedDoc.querySelector('.app-container');
+        if (clonedContainer) {
+          clonedContainer.style.height = 'auto';
+          clonedContainer.style.maxHeight = 'none';
+          clonedContainer.style.overflow = 'visible';
+        }
+        clonedDoc.querySelectorAll('.grid-corner-cell, .grid-day-header').forEach(el => {
+          el.style.position = 'static';
+        });
+      }
     });
 
+    const viewName = appState.layoutMode.toUpperCase();
+    const termSuffix = appState.filters.term ? `_${appState.filters.term.replace('/', '-')}` : '';
+    const locSuffix = appState.filters.location ? `_${appState.filters.location.replace(/\s+/g, '_')}` : '';
+    const dateStr = new Date().toISOString().slice(0, 10);
+
     const link = document.createElement('a');
-    link.download = `Chaffey_Schedule_${appState.layoutMode.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `Chaffey_Schedule_${viewName}${locSuffix}${termSuffix}_${dateStr}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 
-    showToast('PNG downloaded successfully!');
+    showToast('Full PNG downloaded successfully!');
     setTimeout(hideToast, 2000);
   } catch (err) {
     console.error('Error exporting PNG:', err);
@@ -6634,21 +6749,16 @@ async function exportAsPdf() {
     return;
   }
 
-  const gridViewport = document.getElementById('schedule-grid-viewport');
-  if (!gridViewport || !window.jspdf) return;
+  if (!window.jspdf) {
+    alert('PDF export library (jsPDF) is not loaded.');
+    return;
+  }
 
-  showToast('Generating PDF document...');
+  showToast('Preparing multi-page PDF document...');
 
   try {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
-    const canvas = await html2canvas(gridViewport, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: isDark ? '#090d16' : '#ffffff'
-    });
-
-    const imgData = canvas.toDataURL('image/png');
+    const bgCol = isDark ? '#090d16' : '#ffffff';
     const { jsPDF } = window.jspdf;
 
     const pdf = new jsPDF({
@@ -6659,40 +6769,188 @@ async function exportAsPdf() {
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 24;
+    const contentWidth = pageWidth - (margin * 2);
+    const contentHeight = pageHeight - 52 - margin;
 
-    pdf.setFillColor(153, 0, 0);
-    pdf.rect(0, 0, pageWidth, 40, 'F');
+    function drawPdfHeader(doc, pageTitle, pageNum, totalPages) {
+      doc.setFillColor(153, 0, 0); // Chaffey Red
+      doc.rect(0, 0, pageWidth, 36, 'F');
 
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(14);
-    pdf.text('CHAFFEY COLLEGE | Academic Schedule Grid', 20, 25);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('CHAFFEY COLLEGE | Academic Schedule Grid & Audit', margin, 23);
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
-    const dateStr = `Exported: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()} | View: ${appState.layoutMode.toUpperCase()} | Sections: ${appState.filteredBlocks.length}`;
-    pdf.text(dateStr, pageWidth - 20, 25, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const titleStr = pageTitle || [
+        appState.filters.term || 'All Terms',
+        appState.filters.location || 'All Campuses',
+        `View: ${appState.layoutMode.toUpperCase()}`
+      ].join(' | ');
+      doc.text(titleStr, pageWidth / 2, 23, { align: 'center' });
 
-    const margin = 20;
-    const availableWidth = pageWidth - (margin * 2);
-    const availableHeight = pageHeight - 55 - margin;
-
-    const imgWidth = availableWidth;
-    const imgHeight = (canvas.height * availableWidth) / canvas.width;
-
-    if (imgHeight <= availableHeight) {
-      pdf.addImage(imgData, 'PNG', margin, 50, imgWidth, imgHeight);
-    } else {
-      const scaledWidth = (canvas.width * availableHeight) / canvas.height;
-      pdf.addImage(imgData, 'PNG', (pageWidth - scaledWidth) / 2, 50, scaledWidth, availableHeight);
+      const pageStr = totalPages ? `Page ${pageNum} of ${totalPages}` : `Page ${pageNum}`;
+      doc.text(pageStr, pageWidth - margin, 23, { align: 'right' });
     }
 
-    pdf.save(`Chaffey_Schedule_${appState.layoutMode.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.pdf`);
-    showToast('PDF downloaded successfully!');
-    setTimeout(hideToast, 2000);
+    const mode = appState.layoutMode;
+    let auditContainer = null;
+    let auditTitle = '';
+
+    if (mode === 'ge') {
+      auditContainer = document.getElementById('ge-coverage-container');
+      auditTitle = `GE Breadth Audit & Coverage (${appState.geActivePattern || 'CAL-GETC'}) - ${appState.filters.location || 'All Campuses'}`;
+    } else if (mode === 'program_coverage') {
+      auditContainer = document.getElementById('program-coverage-container');
+      auditTitle = `Program Coverage Audit - ${appState.programCoverageSelectedProgram || 'Selected Program'}`;
+    } else if (mode === 'fasttrack') {
+      auditContainer = document.getElementById('fasttrack-coverage-container');
+      auditTitle = `Fast-Track Sequential Pairing Audit - ${appState.filters.location || 'All Campuses'}`;
+    } else if (mode === 'evening') {
+      auditContainer = document.getElementById('evening-coverage-container');
+      auditTitle = `Evening & Weekend Coverage Audit - ${appState.filters.location || 'All Campuses'}`;
+    } else if (mode === 'efficiency') {
+      auditContainer = document.getElementById('efficiency-container');
+      auditTitle = `Enrollment Efficiency & FTES Audit - ${appState.filters.location || 'All Campuses'}`;
+    }
+
+    const roomContainer = document.getElementById('room-matrix-stacked');
+    const dayGridContainer = document.getElementById('schedule-grid');
+    const isRoomModeActive = (mode === 'room') ||
+      (mode === 'ge' && appState.geSubLayout === 'room') ||
+      (mode === 'program_coverage' && appState.programCoverageSubLayout === 'room') ||
+      (mode === 'fasttrack' && appState.fasttrackSubLayout === 'room') ||
+      (mode === 'evening' && appState.eveningSubLayout === 'room') ||
+      (mode === 'efficiency' && appState.efficiencySubLayout === 'room');
+
+    const visibleRoomCards = isRoomModeActive && roomContainer && roomContainer.style.display !== 'none'
+      ? Array.from(roomContainer.querySelectorAll('.room-matrix-card'))
+      : [];
+
+    let totalPagesEstimated = 0;
+    if (auditContainer && auditContainer.style.display !== 'none') totalPagesEstimated += 1;
+    if (visibleRoomCards.length > 0) {
+      totalPagesEstimated += visibleRoomCards.length;
+    } else if (dayGridContainer && dayGridContainer.style.display !== 'none') {
+      totalPagesEstimated += 1;
+    }
+    if (totalPagesEstimated === 0) totalPagesEstimated = 1;
+
+    let currentPage = 1;
+    let isFirstPage = true;
+
+    // 1. Render Audit Dashboard Container (Page 1) if in Coverage/Audit Mode
+    if (auditContainer && auditContainer.style.display !== 'none') {
+      showToast('Rendering Coverage & Audit page...');
+      await new Promise(r => setTimeout(r, 20));
+
+      const auditCanvas = await html2canvas(auditContainer, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: bgCol
+      });
+
+      const imgData = auditCanvas.toDataURL('image/png');
+      drawPdfHeader(pdf, auditTitle, currentPage, totalPagesEstimated);
+
+      const imgWidth = contentWidth;
+      const imgHeight = (auditCanvas.height * contentWidth) / auditCanvas.width;
+
+      if (imgHeight <= contentHeight) {
+        pdf.addImage(imgData, 'PNG', margin, 44, imgWidth, imgHeight);
+      } else {
+        const scaledWidth = (auditCanvas.width * contentHeight) / auditCanvas.height;
+        pdf.addImage(imgData, 'PNG', margin + (contentWidth - scaledWidth) / 2, 44, scaledWidth, contentHeight);
+      }
+
+      isFirstPage = false;
+      currentPage++;
+    }
+
+    // 2. Render Room Cards (1 room per landscape page for crisp legibility and zero clipping)
+    if (visibleRoomCards.length > 0) {
+      for (let i = 0; i < visibleRoomCards.length; i++) {
+        const card = visibleRoomCards[i];
+        const roomCode = card.querySelector('.room-code-badge')?.textContent || `Room ${i + 1}`;
+        const bldgDesc = card.querySelector('.room-bldg-desc')?.textContent || '';
+        const roomTitle = `${roomCode} ${bldgDesc ? `(${bldgDesc})` : ''} - Schedule Grid`;
+
+        showToast(`Rendering PDF: Room ${i + 1} of ${visibleRoomCards.length} (${roomCode})...`);
+        await new Promise(r => setTimeout(r, 15));
+
+        if (!isFirstPage) {
+          pdf.addPage('a4', 'landscape');
+        } else {
+          isFirstPage = false;
+        }
+
+        drawPdfHeader(pdf, roomTitle, currentPage, totalPagesEstimated);
+
+        const cardCanvas = await html2canvas(card, {
+          scale: 1.5,
+          useCORS: true,
+          logging: false,
+          backgroundColor: bgCol
+        });
+
+        const imgData = cardCanvas.toDataURL('image/png');
+        const imgWidth = contentWidth;
+        const imgHeight = (cardCanvas.height * contentWidth) / cardCanvas.width;
+
+        if (imgHeight <= contentHeight) {
+          pdf.addImage(imgData, 'PNG', margin, 44 + (contentHeight - imgHeight) / 2, imgWidth, imgHeight);
+        } else {
+          const scaledWidth = (cardCanvas.width * contentHeight) / cardCanvas.height;
+          pdf.addImage(imgData, 'PNG', margin + (contentWidth - scaledWidth) / 2, 44, scaledWidth, contentHeight);
+        }
+
+        currentPage++;
+      }
+    } else if (dayGridContainer && dayGridContainer.style.display !== 'none') {
+      // 3. Render Day Grid Container
+      showToast('Rendering Day Schedule Grid page...');
+      await new Promise(r => setTimeout(r, 20));
+
+      if (!isFirstPage) {
+        pdf.addPage('a4', 'landscape');
+      }
+
+      const dayTitle = `Day View Schedule Grid - ${appState.filters.location || 'All Campuses'} (${appState.filters.term || 'All Terms'})`;
+      drawPdfHeader(pdf, dayTitle, currentPage, totalPagesEstimated);
+
+      const dayCanvas = await html2canvas(dayGridContainer, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: bgCol
+      });
+
+      const imgData = dayCanvas.toDataURL('image/png');
+      const imgWidth = contentWidth;
+      const imgHeight = (dayCanvas.height * contentWidth) / dayCanvas.width;
+
+      if (imgHeight <= contentHeight) {
+        pdf.addImage(imgData, 'PNG', margin, 44, imgWidth, imgHeight);
+      } else {
+        const scaledWidth = (dayCanvas.width * contentHeight) / dayCanvas.height;
+        pdf.addImage(imgData, 'PNG', margin + (contentWidth - scaledWidth) / 2, 44, scaledWidth, contentHeight);
+      }
+    }
+
+    const viewName = appState.layoutMode.toUpperCase();
+    const termSuffix = appState.filters.term ? `_${appState.filters.term.replace('/', '-')}` : '';
+    const locSuffix = appState.filters.location ? `_${appState.filters.location.replace(/\s+/g, '_')}` : '';
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    pdf.save(`Chaffey_Schedule_${viewName}${locSuffix}${termSuffix}_${dateStr}.pdf`);
+    showToast('Multi-page PDF downloaded successfully!');
+    setTimeout(hideToast, 2500);
   } catch (err) {
-    console.error('Error exporting PDF:', err);
-    alert('Failed to generate PDF export.');
+    console.error('Error generating PDF:', err);
+    alert(`Failed to generate PDF: ${err.message}`);
     hideToast();
   }
 }
@@ -6869,10 +7127,14 @@ function setupEventListeners() {
       exportDropdown.classList.remove('show');
     });
 
-    document.getElementById('btn-export-png')?.addEventListener('click', exportAsPng);
+    document.getElementById('btn-print-view')?.addEventListener('click', triggerPrint);
     document.getElementById('btn-export-pdf')?.addEventListener('click', exportAsPdf);
+    document.getElementById('btn-export-png')?.addEventListener('click', exportAsPng);
     document.getElementById('btn-export-csv')?.addEventListener('click', exportAsCsv);
   }
+
+  // Register native print dialog listener (Ctrl+P or browser Print menu)
+  window.addEventListener('beforeprint', preparePrintHeader);
 
   // Light / Dark Mode Toggle
   const btnThemeToggle = document.getElementById('btn-theme-toggle');
