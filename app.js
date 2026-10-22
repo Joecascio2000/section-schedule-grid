@@ -6777,22 +6777,42 @@ async function exportAsPdf() {
       doc.setFillColor(153, 0, 0); // Chaffey Red
       doc.rect(0, 0, pageWidth, 36, 'F');
 
+      // 1. Left Title: "Academic Schedule Grid & Audit" (removed "CHAFFEY COLLEGE | " to prevent overlap)
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('CHAFFEY COLLEGE | Academic Schedule Grid & Audit', margin, 23);
+      doc.setFontSize(11);
+      const leftTitle = 'Academic Schedule Grid & Audit';
+      doc.text(leftTitle, margin, 23);
+      const leftTitleWidth = doc.getTextWidth(leftTitle);
 
+      // 2. Right Page Number
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      const titleStr = pageTitle || [
+      const pageStr = totalPages ? `Page ${pageNum} of ${totalPages}` : `Page ${pageNum}`;
+      doc.text(pageStr, pageWidth - margin, 23, { align: 'right' });
+      const pageStrWidth = doc.getTextWidth(pageStr);
+
+      // 3. Middle / Scope Title: Cleanly bounded and centered between left title and right page number
+      const leftBoundary = margin + leftTitleWidth + 16;
+      const rightBoundary = pageWidth - margin - pageStrWidth - 16;
+      const availableWidth = rightBoundary - leftBoundary;
+
+      const rawTitleStr = pageTitle || [
         appState.filters.term || 'All Terms',
         appState.filters.location || 'All Campuses',
         `View: ${appState.layoutMode.toUpperCase()}`
       ].join(' | ');
-      doc.text(titleStr, pageWidth / 2, 23, { align: 'center' });
 
-      const pageStr = totalPages ? `Page ${pageNum} of ${totalPages}` : `Page ${pageNum}`;
-      doc.text(pageStr, pageWidth - margin, 23, { align: 'right' });
+      let titleStr = rawTitleStr;
+      if (doc.getTextWidth(titleStr) > availableWidth) {
+        while (titleStr.length > 3 && doc.getTextWidth(titleStr + '...') > availableWidth) {
+          titleStr = titleStr.slice(0, -1);
+        }
+        titleStr += '...';
+      }
+
+      const centerX = (leftBoundary + rightBoundary) / 2;
+      doc.text(titleStr, centerX, 23, { align: 'center' });
     }
 
     const mode = appState.layoutMode;
@@ -7127,7 +7147,6 @@ function setupEventListeners() {
       exportDropdown.classList.remove('show');
     });
 
-    document.getElementById('btn-print-view')?.addEventListener('click', triggerPrint);
     document.getElementById('btn-export-pdf')?.addEventListener('click', exportAsPdf);
     document.getElementById('btn-export-png')?.addEventListener('click', exportAsPng);
     document.getElementById('btn-export-csv')?.addEventListener('click', exportAsCsv);
