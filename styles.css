@@ -3159,6 +3159,11 @@ body {
   background: linear-gradient(135deg, rgba(254, 243, 199, 0.5) 0%, var(--bg-surface) 100%);
 }
 
+.eff-stat-card.online-ftes-card {
+  border-left: 4px solid #0284c7;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.6) 0%, var(--bg-surface) 100%);
+}
+
 .eff-stat-card.potential-card {
   border-left: 4px solid #7c3aed;
   background: linear-gradient(135deg, rgba(245, 243, 255, 0.5) 0%, var(--bg-surface) 100%);
@@ -3570,6 +3575,11 @@ body {
 
 [data-theme="dark"] .eff-stat-card.lost-card {
   background: linear-gradient(135deg, rgba(120, 53, 15, 0.25) 0%, var(--bg-surface) 100%);
+}
+
+[data-theme="dark"] .eff-stat-card.online-ftes-card {
+  border-left-color: #38bdf8;
+  background: linear-gradient(135deg, rgba(8, 47, 73, 0.35) 0%, var(--bg-surface) 100%);
 }
 
 [data-theme="dark"] .eff-stat-card.potential-card {

@@ -3411,14 +3411,11 @@ function renderScheduleGrid() {
         appState.fasttrackSubLayout = 'room';
       } else if (appState.layoutMode === 'efficiency') {
         appState.efficiencySubLayout = 'room';
+      } else if (appState.layoutMode === 'program_coverage') {
+        appState.programCoverageSubLayout = 'room';
       } else {
         appState.layoutMode = 'room';
-        const layoutGroup = document.getElementById('btn-group-layout');
-        if (layoutGroup) {
-          layoutGroup.querySelectorAll('.btn-toggle').forEach(b => {
-            b.classList.toggle('active', b.getAttribute('data-layout') === 'room');
-          });
-        }
+        updateLayoutButtonUI('room');
       }
       dispatchViewRender();
     });
@@ -4799,14 +4796,115 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
     }
   });
 
+  // --- ONLINE FTES APPORTIONMENT FOR CHINO AND FONTANA CAMPUSES ---
+  // Online FTES is apportioned to Chino and Fontana based on the percentage of
+  // In-Person classes scheduled at that location by Subject across the district.
+  const locNorm = (appState.filters.location || '').trim().toLowerCase();
+  const isChino = locNorm.includes('chino');
+  const isFontana = locNorm.includes('fontana');
+  let onlineApportionedFtes = 0;
+  const subjectApportionmentDetails = [];
+  const accApportionedMap = new Map();
+
+  if (isChino || isFontana) {
+    const termFilter = appState.filters.term;
+    const allTermSections = termFilter
+      ? appState.sections.filter(s => s.term === termFilter)
+      : appState.sections;
+
+    // Group district in-person and online sections by subject
+    const districtInPersonBySubj = new Map();
+    const districtOnlineBySubj = new Map();
+    const subjAccMap = new Map();
+
+    allTermSections.forEach(s => {
+      const subj = s.subject || 'Unknown';
+      if (s.acc) subjAccMap.set(subj, s.acc);
+
+      const sLoc = (s.location || '').toLowerCase();
+      const isOnline = sLoc === 'online class' || sLoc.includes('online');
+      if (isOnline) {
+        if (!districtOnlineBySubj.has(subj)) districtOnlineBySubj.set(subj, []);
+        districtOnlineBySubj.get(subj).push(s);
+      } else {
+        if (!districtInPersonBySubj.has(subj)) districtInPersonBySubj.set(subj, []);
+        districtInPersonBySubj.get(subj).push(s);
+      }
+    });
+
+    // In-person sections at target campus in current active filter scope
+    const targetInPersonBySubj = new Map();
+    sections.forEach(s => {
+      const sLoc = (s.location || '').toLowerCase();
+      const isOnline = sLoc === 'online class' || sLoc.includes('online');
+      if (!isOnline) {
+        const subj = s.subject || 'Unknown';
+        if (!targetInPersonBySubj.has(subj)) targetInPersonBySubj.set(subj, []);
+        targetInPersonBySubj.get(subj).push(s);
+      }
+    });
+
+    // Calculate apportionment for each subject scheduled at target campus
+    targetInPersonBySubj.forEach((campusSecs, subj) => {
+      const locCnt = campusSecs.length;
+      const distInPersonSecs = districtInPersonBySubj.get(subj) || [];
+      const distCnt = distInPersonSecs.length;
+      const onlineSecs = districtOnlineBySubj.get(subj) || [];
+      const onlineFtes = onlineSecs.reduce((sum, s) => sum + (Number(s.estimatedFtes) || 0), 0);
+
+      const sharePct = distCnt > 0 ? (locCnt / distCnt) : 0;
+      const allocatedFtes = sharePct * onlineFtes;
+      onlineApportionedFtes += allocatedFtes;
+
+      const acc = subjAccMap.get(subj) || (campusSecs[0] && campusSecs[0].acc) || 'Unassigned';
+      accApportionedMap.set(acc, (accApportionedMap.get(acc) || 0) + allocatedFtes);
+
+      subjectApportionmentDetails.push({
+        subject: subj,
+        locCnt,
+        distCnt,
+        sharePct,
+        onlineCnt: onlineSecs.length,
+        onlineFtes,
+        allocatedFtes,
+        acc
+      });
+    });
+
+    subjectApportionmentDetails.sort((a, b) => b.allocatedFtes - a.allocatedFtes);
+  }
+
+  // Update ACC items with apportioned online FTES
+  accApportionedMap.forEach((onlineFtes, accKey) => {
+    if (!accMap.has(accKey)) {
+      accMap.set(accKey, {
+        acc: accKey,
+        sectionsCount: 0,
+        capacity: 0,
+        active: 0,
+        estimatedFtes: 0,
+        onlineApportionedFtes: onlineFtes,
+        totalEstimatedFtes: onlineFtes,
+        lostFtes: 0,
+        lowEnrolledCount: 0
+      });
+    } else {
+      const item = accMap.get(accKey);
+      item.onlineApportionedFtes = onlineFtes;
+      item.totalEstimatedFtes = item.estimatedFtes + onlineFtes;
+    }
+  });
+
   const overallFillRate = totalCapacity > 0 ? (totalActive / totalCapacity) * 100 : 0;
-  const totalPotentialFtes = totalEstimatedFtes + totalLostFtes;
-  const ftesRealizationRate = totalPotentialFtes > 0 ? (totalEstimatedFtes / totalPotentialFtes) * 100 : 0;
+  const totalRealizedFtes = totalEstimatedFtes + onlineApportionedFtes;
+  const totalPotentialFtes = totalRealizedFtes + totalLostFtes;
+  const ftesRealizationRate = totalPotentialFtes > 0 ? (totalRealizedFtes / totalPotentialFtes) * 100 : 0;
 
   const accBreakdown = Array.from(accMap.values()).map(item => {
     item.fillRate = item.capacity > 0 ? (item.active / item.capacity) * 100 : 0;
+    item.totalEstimatedFtes = item.estimatedFtes + (item.onlineApportionedFtes || 0);
     return item;
-  }).sort((a, b) => b.sectionsCount - a.sectionsCount);
+  }).sort((a, b) => (b.totalEstimatedFtes || b.estimatedFtes) - (a.totalEstimatedFtes || a.estimatedFtes));
 
   return {
     totalSections,
@@ -4814,6 +4912,8 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
     totalActive,
     overallFillRate,
     totalEstimatedFtes,
+    onlineApportionedFtes,
+    totalRealizedFtes,
     totalLostFtes,
     totalPotentialFtes,
     ftesRealizationRate,
@@ -4827,7 +4927,9 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       moderate: { count: tierMedCount, pct: totalSections > 0 ? (tierMedCount / totalSections) * 100 : 0 },
       low: { count: tierLowCount, pct: totalSections > 0 ? (tierLowCount / totalSections) * 100 : 0 }
     },
-    accBreakdown
+    accBreakdown,
+    subjectApportionmentDetails,
+    isLocationApportioned: (isChino || isFontana)
   };
 }
 
@@ -4901,9 +5003,22 @@ function renderEfficiencyDashboard() {
     ? ((effAnalysis.lowEnrolledSections.length / effAnalysis.totalSections) * 100).toFixed(1)
     : '0.0';
   const unfilledSeats = Math.max(0, effAnalysis.totalCapacity - effAnalysis.totalActive);
+  const isApportioned = effAnalysis.isLocationApportioned && effAnalysis.onlineApportionedFtes > 0;
 
   const summaryBar = document.createElement('div');
   summaryBar.className = 'efficiency-summary-bar';
+
+  let onlineCardHtml = '';
+  if (isApportioned) {
+    onlineCardHtml = `
+      <div class="eff-stat-card online-ftes-card">
+        <span class="eff-stat-card-title">Apportioned Online FTES</span>
+        <span class="eff-stat-card-value" style="color:#0284c7;">+${effAnalysis.onlineApportionedFtes.toFixed(1)}</span>
+        <span class="eff-stat-card-sub">Subject-weighted share of online offerings</span>
+      </div>
+    `;
+  }
+
   summaryBar.innerHTML = `
     <div class="eff-stat-card alert-card">
       <span class="eff-stat-card-title">Low Enrolled Alert</span>
@@ -4916,19 +5031,20 @@ function renderEfficiencyDashboard() {
       <span class="eff-stat-card-sub">${effAnalysis.totalActive.toLocaleString()} enrolled / ${effAnalysis.totalCapacity.toLocaleString()} seats</span>
     </div>
     <div class="eff-stat-card ftes-card">
-      <span class="eff-stat-card-title">Estimated FTES</span>
+      <span class="eff-stat-card-title">${isApportioned ? 'In-Person Est. FTES' : 'Estimated FTES'}</span>
       <span class="eff-stat-card-value">${effAnalysis.totalEstimatedFtes.toFixed(1)}</span>
-      <span class="eff-stat-card-sub">Active census productivity</span>
+      <span class="eff-stat-card-sub">${isApportioned ? `${effAnalysis.totalRealizedFtes.toFixed(1)} Total with Online FTES` : 'Active census productivity'}</span>
     </div>
+    ${onlineCardHtml}
     <div class="eff-stat-card lost-card">
       <span class="eff-stat-card-title">Lost / Missing FTES</span>
       <span class="eff-stat-card-value">${effAnalysis.totalLostFtes.toFixed(1)}</span>
-      <span class="eff-stat-card-sub">${unfilledSeats.toLocaleString()} unfilled seats across sections</span>
+      <span class="eff-stat-card-sub">${unfilledSeats.toLocaleString()} unfilled campus seats</span>
     </div>
     <div class="eff-stat-card potential-card">
       <span class="eff-stat-card-title">Potential FTES</span>
       <span class="eff-stat-card-value">${effAnalysis.totalPotentialFtes.toFixed(1)}</span>
-      <span class="eff-stat-card-sub">${effAnalysis.ftesRealizationRate.toFixed(1)}% realization rate</span>
+      <span class="eff-stat-card-sub">${effAnalysis.ftesRealizationRate.toFixed(1)}% realization rate${isApportioned ? ` (${effAnalysis.totalRealizedFtes.toFixed(1)} realized)` : ''}</span>
     </div>
   `;
   container.appendChild(summaryBar);
@@ -4984,6 +5100,10 @@ function renderEfficiencyDashboard() {
       <td style="text-align:right;">${item.sectionsCount}</td>
       <td style="text-align:right;"><strong>${item.fillRate.toFixed(1)}%</strong></td>
       <td style="text-align:right;">${item.estimatedFtes.toFixed(1)}</td>
+      ${isApportioned ? `
+        <td style="text-align:right; color:#0284c7; font-weight:700;">+${(item.onlineApportionedFtes || 0).toFixed(1)}</td>
+        <td style="text-align:right; font-weight:800; color:var(--text-primary);">${item.totalEstimatedFtes.toFixed(1)}</td>
+      ` : ''}
       <td style="text-align:right; color:#d97706; font-weight:600;">${item.lostFtes.toFixed(1)}</td>
       <td style="text-align:right;">
         ${item.lowEnrolledCount > 0 ? `<span style="color:#dc2626; font-weight:700;">⚠ ${item.lowEnrolledCount}</span>` : `<span style="color:#059669;">0</span>`}
@@ -5003,13 +5123,17 @@ function renderEfficiencyDashboard() {
             <th>ACC</th>
             <th style="text-align:right;">Secs</th>
             <th style="text-align:right;">Fill %</th>
-            <th style="text-align:right;">Est FTES</th>
+            <th style="text-align:right;">${isApportioned ? 'In-Person FTES' : 'Est FTES'}</th>
+            ${isApportioned ? `
+              <th style="text-align:right;" title="Apportioned share of online FTES by subject">Online Est FTES</th>
+              <th style="text-align:right;">Total FTES</th>
+            ` : ''}
             <th style="text-align:right;">Lost FTES</th>
             <th style="text-align:right;">Low Enr</th>
           </tr>
         </thead>
         <tbody>
-          ${accRowsHtml || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No ACC data</td></tr>'}
+          ${accRowsHtml || `<tr><td colspan="${isApportioned ? 8 : 6}" style="text-align:center; color:var(--text-muted);">No ACC data</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -5018,6 +5142,62 @@ function renderEfficiencyDashboard() {
   analyticsRow.appendChild(tierPanel);
   analyticsRow.appendChild(accPanel);
   container.appendChild(analyticsRow);
+
+  // If Location is Chino or Fontana, render the Subject-Level Online FTES Apportionment Table
+  if (isApportioned && effAnalysis.subjectApportionmentDetails && effAnalysis.subjectApportionmentDetails.length > 0) {
+    const locName = (appState.filters.location || '').toLowerCase();
+    const targetCampusLabel = locName.includes('chino') ? 'Chino Campus' : 'Fontana Campus';
+    const subjectPanel = document.createElement('div');
+    subjectPanel.className = 'efficiency-panel';
+    subjectPanel.style.marginTop = '14px';
+
+    const subjectRowsHtml = effAnalysis.subjectApportionmentDetails.map(d => `
+      <tr>
+        <td style="font-weight:700; color:var(--text-primary);">${d.subject}</td>
+        <td style="font-size:11px; color:var(--text-secondary); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.acc}">${d.acc}</td>
+        <td style="text-align:right; font-weight:600;">${d.locCnt}</td>
+        <td style="text-align:right;">${d.distCnt}</td>
+        <td style="text-align:right; font-weight:700; color:var(--chaffey-red);">${(d.sharePct * 100).toFixed(1)}%</td>
+        <td style="text-align:right;">${d.onlineCnt}</td>
+        <td style="text-align:right;">${d.onlineFtes.toFixed(1)}</td>
+        <td style="text-align:right; font-weight:800; color:#0284c7;">+${d.allocatedFtes.toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    subjectPanel.innerHTML = `
+      <div class="efficiency-panel-title">
+        <div>
+          <span>Online FTES Subject Apportionment Audit: ${targetCampusLabel}</span>
+          <div style="font-size:11px; font-weight:400; color:var(--text-muted); margin-top:2px;">
+            Online FTES is apportioned to ${targetCampusLabel} based on its percentage share of in-person sections scheduled by subject across the district.
+          </div>
+        </div>
+        <span style="font-size:11.5px; font-weight:700; color:#0284c7; background:var(--bg-surface-subtle); padding:4px 10px; border-radius:6px; border:1px solid var(--border-color);">
+          Total: +${effAnalysis.onlineApportionedFtes.toFixed(1)} Online FTES
+        </span>
+      </div>
+      <div class="efficiency-table-container">
+        <table class="efficiency-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>ACC</th>
+              <th style="text-align:right;">${targetCampusLabel.replace(' Campus', '')} In-Person</th>
+              <th style="text-align:right;">District In-Person</th>
+              <th style="text-align:right;">Campus Share %</th>
+              <th style="text-align:right;">District Online Secs</th>
+              <th style="text-align:right;">District Online FTES</th>
+              <th style="text-align:right;">Apportioned Online FTES</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${subjectRowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+    container.appendChild(subjectPanel);
+  }
 
   // 4. Tab Navigation Bar
   const activeTab = appState.efficiencyActiveTab || 'all';
@@ -7037,6 +7217,12 @@ function exportAsCsv() {
   document.body.removeChild(link);
 }
 
+function updateLayoutButtonUI(activeMode) {
+  document.querySelectorAll('[data-layout]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-layout') === activeMode);
+  });
+}
+
 function showToast(text) {
   const toast = document.getElementById('export-toast');
   const toastText = document.getElementById('export-toast-text');
@@ -7083,13 +7269,69 @@ function setupEventListeners() {
     }
   });
 
-  // REQUIREMENT 1: When clicking View Room Conflicts, default to Isolate Conflicts Only!
+  // REQUIREMENT 3: When clicking View Room Conflicts, switch to Room View and clear all applicable filters (except term & location)
   const btnConflicts = document.getElementById('btn-toggle-conflicts');
   if (btnConflicts) {
     btnConflicts.addEventListener('click', () => {
-      appState.isConflictMode = !appState.isConflictMode;
+      const willBeActive = !appState.isConflictMode;
 
-      if (appState.isConflictMode) {
+      if (willBeActive) {
+        appState.isConflictMode = true;
+
+        // 1. Switch to Room View if not already selected
+        appState.layoutMode = 'room';
+        updateLayoutButtonUI('room');
+
+        // 2. Clear all applicable filters EXCEPT term and location
+        appState.filters.search = '';
+        appState.filters.building = '';
+        appState.filters.room = '';
+        appState.filters.dayEvening.clear();
+        appState.filters.geArea.clear();
+        appState.filters.gePattern.clear();
+        appState.filters.program.clear();
+        appState.filters.acc.clear();
+        appState.filters.subject.clear();
+        appState.filters.course.clear();
+        appState.filters.modality.clear();
+        appState.filters.session.clear();
+        appState.filters.traits.clear();
+
+        appState.fasttrackActiveTab = 'all';
+        appState.efficiencyActiveTab = 'all';
+        appState.programCoverageActiveTab = 'all';
+        appState.programCoverageSelectedProgram = '';
+        appState.programCoverageCatalogView = false;
+
+        const searchInput = document.getElementById('filter-search');
+        if (searchInput) searchInput.value = '';
+        const btnClearSearch = document.getElementById('btn-clear-search');
+        if (btnClearSearch) btnClearSearch.style.display = 'none';
+
+        const bldgSelect = document.getElementById('filter-building');
+        if (bldgSelect) bldgSelect.value = '';
+        const roomSelect = document.getElementById('filter-room');
+        if (roomSelect) roomSelect.value = '';
+        const programSearch = document.getElementById('filter-program-search');
+        if (programSearch) programSearch.value = '';
+        const subjectSearch = document.getElementById('filter-subject-search');
+        if (subjectSearch) subjectSearch.value = '';
+        const courseSearch = document.getElementById('filter-course-search');
+        if (courseSearch) courseSearch.value = '';
+        const traitsSearch = document.getElementById('filter-traits-search');
+        if (traitsSearch) traitsSearch.value = '';
+
+        [
+          'list-ge-area', 'list-ge-pattern', 'list-acc', 'list-program', 'list-subject',
+          'list-course', 'list-modality', 'list-session', 'list-day-evening', 'list-traits'
+        ].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el._renderKey = null;
+        });
+
+        updateCascadingBuildingAndRoom();
+        populateFilterControls();
+
         // Default to Isolate Conflicts Only
         appState.conflictsOnly = true;
 
@@ -7103,6 +7345,7 @@ function setupEventListeners() {
           setTimeout(hideToast, 3500);
         }
       } else {
+        appState.isConflictMode = false;
         appState.conflictsOnly = false;
         const switcher = document.getElementById('conflict-mode-switcher');
         if (switcher) switcher.style.display = 'none';
@@ -7279,18 +7522,15 @@ function setupEventListeners() {
     });
   }
 
-  // Layout View Button Group (Day View vs Room View vs GE Coverage)
-  const layoutGroup = document.getElementById('btn-group-layout');
-  if (layoutGroup) {
-    layoutGroup.querySelectorAll('.btn-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        layoutGroup.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        appState.layoutMode = btn.getAttribute('data-layout');
-        applyFiltersAndRender();
-      });
+  // Layout View Button Groups (Views: Day, Room; Dashboards: GE, Evening, Fast-Track, Program, Efficiency)
+  document.querySelectorAll('[data-layout]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-layout');
+      appState.layoutMode = mode;
+      updateLayoutButtonUI(mode);
+      applyFiltersAndRender();
     });
-  }
+  });
 
   // Sidebar Toggle
   document.getElementById('btn-toggle-sidebar')?.addEventListener('click', () => {
