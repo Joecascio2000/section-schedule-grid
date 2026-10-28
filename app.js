@@ -2413,7 +2413,9 @@ function getValidFacetValues(dimension) {
         if (sec.term) valid.add(sec.term);
         break;
       case 'location':
-        if (sec.location) valid.add(sec.location);
+        if (sec.location && sec.location.trim().toLowerCase() !== 'other') {
+          valid.add(sec.location);
+        }
         break;
       case 'acc':
         if (sec.acc) valid.add(sec.acc);
@@ -2547,15 +2549,16 @@ function populateFilterControls() {
       if (countTerm) countTerm.textContent = `(${terms.size})`;
     }
 
-    // Location Dropdown
+    // Location Dropdown (Excludes 'Other' so it never shows in dropdown)
     const locSelect = document.getElementById('filter-location');
     if (locSelect) {
-      if (appState.filters.location && !locations.has(appState.filters.location)) {
+      const validLocations = Array.from(locations).filter(l => l.trim().toLowerCase() !== 'other');
+      if (appState.filters.location && !validLocations.includes(appState.filters.location)) {
         appState.filters.location = '';
         hadPruning = true;
       }
       const currentLoc = appState.filters.location;
-      const sortedLocs = Array.from(locations).sort();
+      const sortedLocs = validLocations.sort();
       const locKey = sortedLocs.join('|') + '::' + currentLoc;
       if (locSelect._lastKey !== locKey) {
         locSelect._lastKey = locKey;
@@ -2569,7 +2572,7 @@ function populateFilterControls() {
         });
       }
       const countLoc = document.getElementById('count-location');
-      if (countLoc) countLoc.textContent = `(${locations.size})`;
+      if (countLoc) countLoc.textContent = `(${validLocations.length})`;
     }
 
     if (updateCascadingBuildingAndRoom()) {
@@ -4798,7 +4801,7 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
 
   // --- ONLINE FTES APPORTIONMENT FOR CHINO AND FONTANA CAMPUSES ---
   // Online FTES is apportioned to Chino and Fontana based on the percentage of
-  // In-Person classes scheduled at that location by Subject across the district.
+  // In-Person FTES generated at that location by Subject across the district (including 'Other' location).
   const locNorm = (appState.filters.location || '').trim().toLowerCase();
   const isChino = locNorm.includes('chino');
   const isFontana = locNorm.includes('fontana');
@@ -4813,6 +4816,7 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       : appState.sections;
 
     // Group district in-person and online sections by subject
+    // Sections at 'Other' location are in-person district offerings and must be calculated into district in-person FTES
     const districtInPersonBySubj = new Map();
     const districtOnlineBySubj = new Map();
     const subjAccMap = new Map();
@@ -4822,7 +4826,8 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       if (s.acc) subjAccMap.set(subj, s.acc);
 
       const sLoc = (s.location || '').toLowerCase();
-      const isOnline = sLoc === 'online class' || sLoc.includes('online');
+      const isOtherLoc = sLoc === 'other';
+      const isOnline = !isOtherLoc && (sLoc === 'online class' || sLoc.includes('online'));
       if (isOnline) {
         if (!districtOnlineBySubj.has(subj)) districtOnlineBySubj.set(subj, []);
         districtOnlineBySubj.get(subj).push(s);
@@ -4844,15 +4849,20 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       }
     });
 
-    // Calculate apportionment for each subject scheduled at target campus
+    // Calculate apportionment for each subject scheduled at target campus based on FTES sum
     targetInPersonBySubj.forEach((campusSecs, subj) => {
       const locCnt = campusSecs.length;
+      const campusFtes = campusSecs.reduce((sum, s) => sum + (Number(s.estimatedFtes) || 0), 0);
+
       const distInPersonSecs = districtInPersonBySubj.get(subj) || [];
       const distCnt = distInPersonSecs.length;
+      const distFtes = distInPersonSecs.reduce((sum, s) => sum + (Number(s.estimatedFtes) || 0), 0);
+
       const onlineSecs = districtOnlineBySubj.get(subj) || [];
       const onlineFtes = onlineSecs.reduce((sum, s) => sum + (Number(s.estimatedFtes) || 0), 0);
 
-      const sharePct = distCnt > 0 ? (locCnt / distCnt) : 0;
+      // Subject Share percentage is strictly based on the sum of in-person FTES rather than section counts
+      const sharePct = distFtes > 0 ? (campusFtes / distFtes) : 0;
       const allocatedFtes = sharePct * onlineFtes;
       onlineApportionedFtes += allocatedFtes;
 
@@ -4862,7 +4872,9 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       subjectApportionmentDetails.push({
         subject: subj,
         locCnt,
+        campusFtes,
         distCnt,
+        distFtes,
         sharePct,
         onlineCnt: onlineSecs.length,
         onlineFtes,
@@ -4871,7 +4883,7 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       });
     });
 
-    subjectApportionmentDetails.sort((a, b) => b.allocatedFtes - a.allocatedFtes);
+    subjectApportionmentDetails.sort((a, b) => b.allocatedFtes - a.allocatedFtes || b.campusFtes - a.campusFtes);
   }
 
   // Update ACC items with apportioned online FTES
@@ -5014,7 +5026,7 @@ function renderEfficiencyDashboard() {
       <div class="eff-stat-card online-ftes-card">
         <span class="eff-stat-card-title">Apportioned Online FTES</span>
         <span class="eff-stat-card-value" style="color:#0284c7;">+${effAnalysis.onlineApportionedFtes.toFixed(1)}</span>
-        <span class="eff-stat-card-sub">Subject-weighted share of online offerings</span>
+        <span class="eff-stat-card-sub">In-person FTES weighted share of online offerings</span>
       </div>
     `;
   }
@@ -5155,11 +5167,10 @@ function renderEfficiencyDashboard() {
       <tr>
         <td style="font-weight:700; color:var(--text-primary);">${d.subject}</td>
         <td style="font-size:11px; color:var(--text-secondary); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.acc}">${d.acc}</td>
-        <td style="text-align:right; font-weight:600;">${d.locCnt}</td>
-        <td style="text-align:right;">${d.distCnt}</td>
+        <td style="text-align:right;"><strong>${d.campusFtes.toFixed(1)}</strong> <span style="font-size:10.5px; color:var(--text-muted);">(${d.locCnt} ${d.locCnt === 1 ? 'sec' : 'secs'})</span></td>
+        <td style="text-align:right;"><strong>${d.distFtes.toFixed(1)}</strong> <span style="font-size:10.5px; color:var(--text-muted);">(${d.distCnt} ${d.distCnt === 1 ? 'sec' : 'secs'})</span></td>
         <td style="text-align:right; font-weight:700; color:var(--chaffey-red);">${(d.sharePct * 100).toFixed(1)}%</td>
-        <td style="text-align:right;">${d.onlineCnt}</td>
-        <td style="text-align:right;">${d.onlineFtes.toFixed(1)}</td>
+        <td style="text-align:right;"><strong>${d.onlineFtes.toFixed(1)}</strong> <span style="font-size:10.5px; color:var(--text-muted);">(${d.onlineCnt} ${d.onlineCnt === 1 ? 'sec' : 'secs'})</span></td>
         <td style="text-align:right; font-weight:800; color:#0284c7;">+${d.allocatedFtes.toFixed(2)}</td>
       </tr>
     `).join('');
@@ -5169,7 +5180,7 @@ function renderEfficiencyDashboard() {
         <div>
           <span>Online FTES Subject Apportionment Audit: ${targetCampusLabel}</span>
           <div style="font-size:11px; font-weight:400; color:var(--text-muted); margin-top:2px;">
-            Online FTES is apportioned to ${targetCampusLabel} based on its percentage share of in-person sections scheduled by subject across the district.
+            Online FTES is apportioned to ${targetCampusLabel} based on its percentage share of in-person FTES generated by subject across the district (including all district in-person locations).
           </div>
         </div>
         <span style="font-size:11.5px; font-weight:700; color:#0284c7; background:var(--bg-surface-subtle); padding:4px 10px; border-radius:6px; border:1px solid var(--border-color);">
@@ -5182,10 +5193,9 @@ function renderEfficiencyDashboard() {
             <tr>
               <th>Subject</th>
               <th>ACC</th>
-              <th style="text-align:right;">${targetCampusLabel.replace(' Campus', '')} In-Person</th>
-              <th style="text-align:right;">District In-Person</th>
-              <th style="text-align:right;">Campus Share %</th>
-              <th style="text-align:right;">District Online Secs</th>
+              <th style="text-align:right;">${targetCampusLabel.replace(' Campus', '')} In-Person FTES</th>
+              <th style="text-align:right;">District In-Person FTES</th>
+              <th style="text-align:right;">Subject Share %</th>
               <th style="text-align:right;">District Online FTES</th>
               <th style="text-align:right;">Apportioned Online FTES</th>
             </tr>
