@@ -4883,7 +4883,7 @@ function analyzeEnrollmentEfficiency(baseSections, activeBlocks) {
       });
     });
 
-    subjectApportionmentDetails.sort((a, b) => b.allocatedFtes - a.allocatedFtes || b.campusFtes - a.campusFtes);
+    subjectApportionmentDetails.sort((a, b) => a.subject.localeCompare(b.subject));
   }
 
   // Update ACC items with apportioned online FTES
@@ -5163,7 +5163,8 @@ function renderEfficiencyDashboard() {
     subjectPanel.className = 'efficiency-panel';
     subjectPanel.style.marginTop = '14px';
 
-    const subjectRowsHtml = effAnalysis.subjectApportionmentDetails.map(d => `
+    const sortedDetails = [...effAnalysis.subjectApportionmentDetails].sort((a, b) => a.subject.localeCompare(b.subject));
+    const subjectRowsHtml = sortedDetails.map(d => `
       <tr>
         <td style="font-weight:700; color:var(--text-primary);">${d.subject}</td>
         <td style="font-size:11px; color:var(--text-secondary); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.acc}">${d.acc}</td>
