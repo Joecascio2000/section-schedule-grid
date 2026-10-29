@@ -376,6 +376,7 @@
               <button class="btn-toggle" data-layout="fasttrack" title="Fast-Track 1 & 2 sequential pairing audit & schedule">Fast-Track Coverage</button>
               <button class="btn-toggle" data-layout="program_coverage" title="Program of Study course coverage, completability & missing courses audit">Program Coverage</button>
               <button class="btn-toggle" data-layout="efficiency" title="Enrollment efficiency, fill rates, low-enrolled alerts & FTES audit">Efficiency Audit</button>
+              <button class="btn-toggle" data-layout="waitlist" title="Waitlist demand vs. open seat supply & capacity expansion audit">Waitlist Audit</button>
             </div>
           </div>
         </div>
@@ -475,6 +476,11 @@
 
           <!-- Program Coverage & Completability Audit Dashboard (Shown in Program Coverage mode) -->
           <div class="program-coverage-container" id="program-coverage-container" style="display:none;">
+            <!-- Dynamically populated via app.js -->
+          </div>
+
+          <!-- Waitlist Demand & Seat Capacity Audit Dashboard (Shown in Waitlist mode) -->
+          <div class="waitlist-coverage-container" id="waitlist-coverage-container" style="display:none;">
             <!-- Dynamically populated via app.js -->
           </div>
 

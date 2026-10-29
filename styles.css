@@ -4348,6 +4348,23 @@ body {
     break-after: avoid;
   }
 
+  .waitlist-coverage-container::after {
+    content: "— Waitlist Audited Classroom Grids —";
+    display: block;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #990000;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 20px 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #cbd5e1;
+    page-break-before: auto;
+    break-before: auto;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
   /* Room Matrix & Schedule Grids */
   .room-matrix-stacked {
     display: block !important;
@@ -4464,7 +4481,8 @@ body {
   .prog-degree-audit-grid,
   .prog-courses-grid,
   .ft-pairings-grid,
-  .efficiency-cards-grid {
+  .efficiency-cards-grid,
+  .waitlist-cohorts-grid {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 8px !important;
@@ -4473,7 +4491,8 @@ body {
   .prog-audit-card,
   .ft-pair-card,
   .eff-section-card,
-  .efficiency-panel {
+  .efficiency-panel,
+  .waitlist-cohort-card {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     border: 1px solid #cbd5e1 !important;
@@ -4481,6 +4500,513 @@ body {
     box-shadow: none !important;
   }
 }
+
+/* ==========================================================================
+   DASHBOARD BOTTOM GRID VIEW SWITCHER BAR
+   Directly below the audit content and directly above schedule-grid views
+   ========================================================================== */
+.dashboard-grid-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 18px;
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 14px;
+}
+
+.dashboard-grid-view-bar .grid-view-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-grid-view-bar .grid-view-bar-left svg {
+  color: var(--chaffey-red);
+  flex-shrink: 0;
+}
+
+.dashboard-grid-view-bar .grid-view-bar-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.dashboard-grid-view-bar .grid-view-bar-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ==========================================================================
+   WAITLIST DEMAND & SEAT CAPACITY AUDIT DASHBOARD
+   ========================================================================== */
+.waitlist-coverage-container {
+  padding: 20px;
+  background-color: var(--bg-surface);
+  border-bottom: 2px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.waitlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.waitlist-title h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.waitlist-title h3 span {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--chaffey-red);
+}
+
+.waitlist-title p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+}
+
+.waitlist-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.waitlist-stat-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.waitlist-stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.waitlist-stat-card.stat-waitlist {
+  border-left: 4px solid #ea580c;
+  background: linear-gradient(135deg, rgba(255, 237, 213, 0.45) 0%, var(--bg-surface) 100%);
+}
+
+.waitlist-stat-card.stat-unmet {
+  border-left: 4px solid #dc2626;
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.5) 0%, var(--bg-surface) 100%);
+}
+
+.waitlist-stat-card.stat-action {
+  border-left: 4px solid #059669;
+  background: linear-gradient(135deg, rgba(209, 250, 229, 0.45) 0%, var(--bg-surface) 100%);
+}
+
+.waitlist-stat-card.stat-ftes {
+  border-left: 4px solid #2563eb;
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.5) 0%, var(--bg-surface) 100%);
+}
+
+.waitlist-stat-card.stat-absorb {
+  border-left: 4px solid #0284c7;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.55) 0%, var(--bg-surface) 100%);
+}
+
+.waitlist-stat-card .eff-stat-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.waitlist-stat-card .eff-stat-card-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.waitlist-stat-card .eff-stat-card-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.waitlist-audit-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.waitlist-audit-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.waitlist-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.waitlist-tab-btn:hover {
+  background-color: var(--bg-surface-active);
+  color: var(--text-primary);
+}
+
+.waitlist-tab-btn.active {
+  background-color: var(--chaffey-red);
+  border-color: var(--chaffey-red);
+  color: #ffffff;
+}
+
+.waitlist-tab-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.waitlist-tab-btn.active .waitlist-tab-badge {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.waitlist-cohorts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .waitlist-cohorts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.waitlist-cohort-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+}
+
+.waitlist-cohort-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #cbd5e1;
+}
+
+.waitlist-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.waitlist-course-badge {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.waitlist-course-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.waitlist-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.waitlist-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.waitlist-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.waitlist-badge.badge-actionable {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.waitlist-badge.badge-absorb {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.waitlist-badge.badge-monitor {
+  background-color: #fefce8;
+  color: #854d0e;
+  border: 1px solid #fef08a;
+}
+
+.waitlist-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.waitlist-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.waitlist-metric-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.waitlist-metric-val {
+  font-size: 14px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.waitlist-gauge-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.waitlist-gauge-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.waitlist-gauge-track {
+  height: 8px;
+  background-color: var(--bg-surface-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid var(--border-subtle);
+}
+
+.waitlist-gauge-demand {
+  background-color: #dc2626;
+  height: 100%;
+}
+
+.waitlist-gauge-supply {
+  background-color: #059669;
+  height: 100%;
+}
+
+.waitlist-reason-banner {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  border-left: 3px solid transparent;
+}
+
+.waitlist-reason-banner.banner-actionable {
+  background-color: #f0fdf4;
+  border-left-color: #16a34a;
+  color: #14532d;
+  border: 1px solid #bbf7d0;
+  border-left-width: 4px;
+}
+
+.waitlist-reason-banner.banner-absorb {
+  background-color: #f0f9ff;
+  border-left-color: #0284c7;
+  color: #0c4a6e;
+  border: 1px solid #bae6fd;
+  border-left-width: 4px;
+}
+
+.waitlist-reason-banner.banner-monitor {
+  background-color: #fffbeb;
+  border-left-color: #d97706;
+  color: #78350f;
+  border: 1px solid #fde68a;
+  border-left-width: 4px;
+}
+
+.waitlist-toggle-sections {
+  background: none;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.15s ease;
+}
+
+.waitlist-toggle-sections:hover {
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-primary);
+  border-style: solid;
+}
+
+.waitlist-sections-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.waitlist-sections-table th,
+.waitlist-sections-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+.waitlist-sections-table th {
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 9.5px;
+  background-color: var(--bg-surface-subtle);
+}
+
+.waitlist-sections-table tr:hover td {
+  background-color: var(--bg-surface-subtle);
+  cursor: pointer;
+}
+
+/* Dark theme overrides for waitlist audit */
+[data-theme="dark"] .waitlist-stat-card.stat-waitlist {
+  background: linear-gradient(135deg, rgba(154, 52, 18, 0.3) 0%, var(--bg-surface) 100%);
+}
+
+[data-theme="dark"] .waitlist-stat-card.stat-unmet {
+  background: linear-gradient(135deg, rgba(153, 27, 27, 0.3) 0%, var(--bg-surface) 100%);
+}
+
+[data-theme="dark"] .waitlist-stat-card.stat-action {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.3) 0%, var(--bg-surface) 100%);
+}
+
+[data-theme="dark"] .waitlist-stat-card.stat-ftes {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, var(--bg-surface) 100%);
+}
+
+[data-theme="dark"] .waitlist-stat-card.stat-absorb {
+  background: linear-gradient(135deg, rgba(7, 89, 133, 0.3) 0%, var(--bg-surface) 100%);
+}
+
+[data-theme="dark"] .waitlist-badge.badge-actionable {
+  background-color: rgba(6, 78, 59, 0.4);
+  color: #6ee7b7;
+  border-color: #065f46;
+}
+
+[data-theme="dark"] .waitlist-badge.badge-absorb {
+  background-color: rgba(7, 89, 133, 0.4);
+  color: #7dd3fc;
+  border-color: #0284c7;
+}
+
+[data-theme="dark"] .waitlist-badge.badge-monitor {
+  background-color: rgba(113, 63, 18, 0.4);
+  color: #fde047;
+  border-color: #854d0e;
+}
+
+[data-theme="dark"] .waitlist-reason-banner.banner-actionable {
+  background-color: #064e3b;
+  border-color: #047857;
+  color: #d1fae5;
+}
+
+[data-theme="dark"] .waitlist-reason-banner.banner-absorb {
+  background-color: #082f49;
+  border-color: #0369a1;
+  color: #e0f2fe;
+}
+
+[data-theme="dark"] .waitlist-reason-banner.banner-monitor {
+  background-color: #451a03;
+  border-color: #92400e;
+  color: #fef3c7;
+}
+
 
 
 

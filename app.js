@@ -1136,6 +1136,11 @@ const appState = {
   efficiencySubLayout: 'room', // Default Efficiency grid view to Room View
   efficiencyActiveTab: 'all',  // Default to showing all Efficiency audit items
   currentEfficiencyAnalysis: null,
+  waitlistSubLayout: 'room',   // Default Waitlist grid view to Room View
+  waitlistActiveTab: 'all',    // 'all', 'actionable', 'absorb', 'monitor'
+  waitlistModalityFilter: 'all', // 'all', 'Online', 'In-Person', 'Hybrid'
+  waitlistSearchQuery: '',
+  currentWaitlistAnalysis: null,
   programCoverageSubLayout: 'room',  // Default to Room View ('day', 'room')
   programCoverageActiveTab: 'all',   // 'all', 'missing', 'scheduled', 'ge'
   programCoverageSelectedProgram: '',// Selected Program ID (e.g. 'S078 - Business Administration...')
@@ -1828,12 +1833,19 @@ function processRawDataset(rawData) {
       const rowFtesRaw = parseFloat(row['Estimated FTES']);
       const rowFtes = !isNaN(rowFtesRaw) ? rowFtesRaw : (rowHours > 0 ? (rowActive * rowHours) / 525 : 0);
 
+      const rowWaitActiveRaw = parseFloat(row['Active Students on Waitlist']);
+      const rowWaitActive = !isNaN(rowWaitActiveRaw) ? rowWaitActiveRaw : 0;
+      const rowWaitCapRaw = parseFloat(row['Waitlist Capacity']);
+      const rowWaitCapacity = !isNaN(rowWaitCapRaw) ? rowWaitCapRaw : 0;
+
       sectionMap.set(groupKey, {
         sectionUniqueId: sectionUniqueId,
         sectionName: sectionName,
         title: rowTitle,
         capacity: rowCapacity,
         activeStudents: rowActive,
+        activeWaitlist: rowWaitActive,
+        waitlistCapacity: rowWaitCapacity,
         totalHours: rowHours,
         estimatedFtes: rowFtes,
         unfilledSeats: Math.max(0, rowCapacity - rowActive),
@@ -2945,6 +2957,34 @@ function applyFiltersAndRender() {
     }
   }
 
+  // If in Waitlist Audit view, analyze waitlist demand and slice by active tab
+  if (appState.layoutMode === 'waitlist') {
+    const waitlistAnalysis = analyzeWaitlistDemand(matchedSections, filteredBlocks);
+    appState.currentWaitlistAnalysis = waitlistAnalysis;
+
+    const activeTab = appState.waitlistActiveTab || 'all';
+    let targetCohorts = waitlistAnalysis.allCohorts;
+    if (activeTab === 'actionable') {
+      targetCohorts = waitlistAnalysis.actionableCohorts;
+    } else if (activeTab === 'absorb') {
+      targetCohorts = waitlistAnalysis.absorbCohorts;
+    } else if (activeTab === 'monitor') {
+      targetCohorts = waitlistAnalysis.monitorCohorts;
+    }
+
+    if (appState.waitlistModalityFilter && appState.waitlistModalityFilter !== 'all') {
+      targetCohorts = targetCohorts.filter(c => c.modality === appState.waitlistModalityFilter);
+    }
+
+    const waitlistSecIds = new Set();
+    targetCohorts.forEach(c => {
+      c.sections.forEach(s => waitlistSecIds.add(s.sectionUniqueId));
+    });
+
+    matchedSections = matchedSections.filter(s => waitlistSecIds.has(s.sectionUniqueId));
+    filteredBlocks = filteredBlocks.filter(b => waitlistSecIds.has(b.parentSection.sectionUniqueId));
+  }
+
   // REQUIREMENT 1: If Conflict Mode is active:
   if (appState.isConflictMode) {
     if (appState.conflictsOnly) {
@@ -3151,6 +3191,7 @@ function dispatchViewRender() {
   const fasttrackContainer = document.getElementById('fasttrack-coverage-container');
   const efficiencyContainer = document.getElementById('efficiency-container');
   const programContainer = document.getElementById('program-coverage-container');
+  const waitlistContainer = document.getElementById('waitlist-coverage-container');
 
   // If no sections are loaded yet, display prominent Step 1 upload hero
   if (appState.sections.length === 0) {
@@ -3162,6 +3203,7 @@ function dispatchViewRender() {
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     return;
   }
 
@@ -3175,6 +3217,7 @@ function dispatchViewRender() {
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (stackedContainer) {
       stackedContainer.style.display = 'flex';
       renderStackedRoomMatrix();
@@ -3184,6 +3227,7 @@ function dispatchViewRender() {
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (geContainer) {
       geContainer.style.display = 'flex';
       renderGeCoverageDashboard();
@@ -3207,6 +3251,7 @@ function dispatchViewRender() {
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (eveningContainer) {
       eveningContainer.style.display = 'flex';
       renderEveningCoverageDashboard();
@@ -3230,6 +3275,7 @@ function dispatchViewRender() {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (fasttrackContainer) {
       fasttrackContainer.style.display = 'flex';
       renderFastTrackCoverageDashboard();
@@ -3253,6 +3299,7 @@ function dispatchViewRender() {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (efficiencyContainer) {
       efficiencyContainer.style.display = 'flex';
       renderEfficiencyDashboard();
@@ -3276,12 +3323,37 @@ function dispatchViewRender() {
     if (eveningContainer) eveningContainer.style.display = 'none';
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (programContainer) {
       programContainer.style.display = 'flex';
       renderProgramCoverageDashboard();
     }
     // Swap grid below coverage audit to either Day View or Room View (Default to Room View)
     if (appState.programCoverageSubLayout === 'day') {
+      if (stackedContainer) stackedContainer.style.display = 'none';
+      if (standardGrid) {
+        standardGrid.style.display = 'grid';
+        renderScheduleGrid();
+      }
+    } else {
+      if (standardGrid) standardGrid.style.display = 'none';
+      if (stackedContainer) {
+        stackedContainer.style.display = 'flex';
+        renderStackedRoomMatrix();
+      }
+    }
+  } else if (appState.layoutMode === 'waitlist') {
+    if (geContainer) geContainer.style.display = 'none';
+    if (eveningContainer) eveningContainer.style.display = 'none';
+    if (fasttrackContainer) fasttrackContainer.style.display = 'none';
+    if (efficiencyContainer) efficiencyContainer.style.display = 'none';
+    if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) {
+      waitlistContainer.style.display = 'flex';
+      renderWaitlistDashboard();
+    }
+    // Swap grid below coverage audit to either Day View or Room View (Default to Room View)
+    if (appState.waitlistSubLayout === 'day') {
       if (stackedContainer) stackedContainer.style.display = 'none';
       if (standardGrid) {
         standardGrid.style.display = 'grid';
@@ -3301,6 +3373,7 @@ function dispatchViewRender() {
     if (fasttrackContainer) fasttrackContainer.style.display = 'none';
     if (efficiencyContainer) efficiencyContainer.style.display = 'none';
     if (programContainer) programContainer.style.display = 'none';
+    if (waitlistContainer) waitlistContainer.style.display = 'none';
     if (stackedContainer) stackedContainer.style.display = 'none';
     if (standardGrid) {
       standardGrid.style.display = 'grid';
@@ -3752,6 +3825,52 @@ function getGeAreaBadgeClass(areaStr) {
 }
 
 /**
+ * Helper to render the Schedule Grid View switcher bar (Day View vs Room View)
+ * positioned directly below the audit content and directly above the schedule grid.
+ */
+function createDashboardGridViewBar(subLayoutStateKey, dashboardTitle) {
+  const bar = document.createElement('div');
+  bar.className = 'dashboard-grid-view-bar';
+  const currentSub = appState[subLayoutStateKey] || 'room';
+
+  bar.innerHTML = `
+    <div class="grid-view-bar-left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9h18M9 21V9"/>
+      </svg>
+      <div>
+        <div class="grid-view-bar-title">Schedule Grid View: ${dashboardTitle}</div>
+        <div class="grid-view-bar-desc">Toggle between Day View calendar and Room Matrix for sections matching this audit</div>
+      </div>
+    </div>
+    <div class="sub-layout-switcher">
+      <span class="sub-layout-label">Grid View:</span>
+      <div class="btn-sub-toggle-group">
+        <button type="button" class="btn-sub-layout-toggle ${currentSub === 'day' ? 'active' : ''}" data-sublayout="day" title="View scheduled classes in Day View">Day View</button>
+        <button type="button" class="btn-sub-layout-toggle ${currentSub === 'room' ? 'active' : ''}" data-sublayout="room" title="View scheduled classes in Room View">Room View</button>
+      </div>
+    </div>
+  `;
+
+  bar.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-sublayout');
+      appState[subLayoutStateKey] = mode;
+      bar.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (subLayoutStateKey === 'programCoverageSubLayout') {
+        applyFiltersAndRender();
+      } else {
+        dispatchViewRender();
+      }
+    });
+  });
+
+  return bar;
+}
+
+/**
  * REQUIREMENT 3: GENERAL EDUCATION (GE) COVERAGE AUDIT VIEW
  * Audits GE Pattern & Area offerings for the selected campus,
  * displaying coverage status, missing areas, interactive course chips,
@@ -3866,13 +3985,6 @@ function renderGeCoverageDashboard() {
           <button type="button" class="ge-pattern-tab ${activePattern === 'CHAFFEY' ? 'active' : ''}" data-pattern="CHAFFEY">Chaffey Local</button>
         </div>
       </div>
-      <div class="sub-layout-switcher" id="ge-sub-layout-switcher">
-        <span class="sub-layout-label">Grid View:</span>
-        <div class="btn-sub-toggle-group">
-          <button type="button" class="btn-sub-layout-toggle ${appState.geSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.geSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
-        </div>
-      </div>
     </div>
   `;
   container.appendChild(headerRow);
@@ -3883,16 +3995,6 @@ function renderGeCoverageDashboard() {
       appState.geActivePattern = tab.getAttribute('data-pattern');
       renderGeCoverageDashboard();
       applyFiltersAndRender();
-    });
-  });
-
-  // Sub-layout switcher listener (Day View vs Room View)
-  headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      appState.geSubLayout = btn.getAttribute('data-sublayout');
-      headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      dispatchViewRender();
     });
   });
 
@@ -4021,6 +4123,9 @@ function renderGeCoverageDashboard() {
       chip.addEventListener('click', () => showSectionModal(sec));
     }
   });
+
+  // Schedule Grid View Switcher directly above the grid below
+  container.appendChild(createDashboardGridViewBar('geSubLayout', 'General Education Coverage'));
 }
 
 /**
@@ -4119,27 +4224,8 @@ function renderEveningCoverageDashboard() {
       </h3>
       <p>Auditing classes scheduled Friday–Sunday, starting at/after 4:30 PM, or designated Evening.</p>
     </div>
-    <div class="evening-header-controls">
-      <div class="sub-layout-switcher" id="evening-sub-layout-switcher">
-        <span class="sub-layout-label">Grid View:</span>
-        <div class="btn-sub-toggle-group">
-          <button type="button" class="btn-sub-layout-toggle ${appState.eveningSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.eveningSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
-        </div>
-      </div>
-    </div>
   `;
   container.appendChild(headerRow);
-
-  // Sub-layout switcher listener
-  headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      appState.eveningSubLayout = btn.getAttribute('data-sublayout');
-      headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      dispatchViewRender();
-    });
-  });
 
   // 2. Summary KPI Cards
   const summaryBar = document.createElement('div');
@@ -4254,6 +4340,9 @@ function renderEveningCoverageDashboard() {
       chip.addEventListener('click', () => showSectionModal(sec));
     }
   });
+
+  // Schedule Grid View Switcher directly above the grid below
+  container.appendChild(createDashboardGridViewBar('eveningSubLayout', 'Evening & Weekend Coverage'));
 }
 
 /**
@@ -4481,27 +4570,8 @@ function renderFastTrackCoverageDashboard() {
       </h3>
       <p>Auditing Fast-Track 1 & 2 strategic pairings, cross-GE coverage, cohort sequencing, and unpaired offerings.</p>
     </div>
-    <div class="fasttrack-header-controls">
-      <div class="sub-layout-switcher" id="fasttrack-sub-layout-switcher">
-        <span class="sub-layout-label">Grid View:</span>
-        <div class="btn-sub-toggle-group">
-          <button type="button" class="btn-sub-layout-toggle ${appState.fasttrackSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.fasttrackSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
-        </div>
-      </div>
-    </div>
   `;
   container.appendChild(headerRow);
-
-  // Sub-layout switcher listener
-  headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      appState.fasttrackSubLayout = btn.getAttribute('data-sublayout');
-      headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      dispatchViewRender();
-    });
-  });
 
   // 2. Summary KPI Cards
   const summaryBar = document.createElement('div');
@@ -4709,6 +4779,9 @@ function renderFastTrackCoverageDashboard() {
       slot.addEventListener('click', () => showSectionModal(sec));
     }
   });
+
+  // Schedule Grid View Switcher directly above the grid below
+  container.appendChild(createDashboardGridViewBar('fasttrackSubLayout', 'Fast-Track Coverage'));
 }
 
 // --- 8B. ENROLLMENT EFFICIENCY & PRODUCTIVITY AUDIT DASHBOARD ---
@@ -4988,27 +5061,8 @@ function renderEfficiencyDashboard() {
       </h3>
       <p>Analyze institutional low-enrolled thresholds, fill rates, generated vs. lost FTES, and academic community productivity.</p>
     </div>
-    <div class="efficiency-header-controls">
-      <div class="sub-layout-switcher" id="efficiency-sub-layout-switcher">
-        <span class="sub-layout-label">Grid View:</span>
-        <div class="btn-sub-toggle-group">
-          <button type="button" class="btn-sub-layout-toggle ${appState.efficiencySubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View as Standard Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.efficiencySubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View as Stacked Room Grids">Room View</button>
-        </div>
-      </div>
-    </div>
   `;
   container.appendChild(headerRow);
-
-  // Sub-layout switcher listener
-  headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      appState.efficiencySubLayout = btn.getAttribute('data-sublayout');
-      headerRow.querySelectorAll('.btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      dispatchViewRender();
-    });
-  });
 
   // 2. Summary KPI Cards
   const lowEnrolledPct = effAnalysis.totalSections > 0
@@ -5349,6 +5403,9 @@ function renderEfficiencyDashboard() {
   }
 
   container.appendChild(cardsGrid);
+
+  // Bottom Grid View bar directly above the schedule grid
+  container.appendChild(createDashboardGridViewBar('efficiencySubLayout', 'Efficiency Audit'));
 }
 
 // ==========================================================================
@@ -5657,7 +5714,7 @@ function renderProgramCoverageDashboard() {
   const locationLabel = analysis.location;
   const isCatalogMode = Boolean(appState.programCoverageCatalogView);
 
-  // 1. HEADER ROW: Title & Sub-Layout Switcher (Campus Scope is driven directly by sidebar Location filter)
+  // 1. HEADER ROW: Title (Campus Scope is driven directly by sidebar Location filter)
   const headerRow = document.createElement('div');
   headerRow.className = 'prog-coverage-header';
 
@@ -5673,28 +5730,8 @@ function renderProgramCoverageDashboard() {
       </h3>
       <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are completable at specific campus locations or across the district.</p>
     </div>
-    <div class="prog-header-controls">
-      <!-- Grid View Switcher (Day View vs Room View - Defaulted to Room View) -->
-      <div class="sub-layout-switcher">
-        <span class="sub-layout-label">Grid View:</span>
-        <div class="btn-sub-toggle-group" id="prog-sublayout-group">
-          <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'day' ? 'active' : ''}" data-sublayout="day" title="View scheduled program courses in Day Grid">Day View</button>
-          <button type="button" class="btn-sub-layout-toggle ${appState.programCoverageSubLayout === 'room' ? 'active' : ''}" data-sublayout="room" title="View scheduled program courses in Room View">Room View</button>
-        </div>
-      </div>
-    </div>
   `;
   container.appendChild(headerRow);
-
-  // Wire Sublayout Switcher
-  headerRow.querySelectorAll('#prog-sublayout-group .btn-sub-layout-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      appState.programCoverageSubLayout = btn.getAttribute('data-sublayout');
-      headerRow.querySelectorAll('#prog-sublayout-group .btn-sub-layout-toggle').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      applyFiltersAndRender();
-    });
-  });
 
   // 2. ACTIVE PROGRAM DISPLAY & CATALOG TOGGLE BAR
   const searchBar = document.createElement('div');
@@ -5731,6 +5768,9 @@ function renderProgramCoverageDashboard() {
   } else {
     renderSingleProgramAuditView(container, single, analysis);
   }
+
+  // Schedule Grid View Switcher directly above the grid below
+  container.appendChild(createDashboardGridViewBar('programCoverageSubLayout', 'Program Coverage'));
 }
 
 /**
@@ -6230,6 +6270,518 @@ function renderCatalogMatrixView(container, analysis) {
   });
 }
 
+// ==========================================================================
+// --- 10.6 WAITLIST DEMAND & SEAT CAPACITY EXPANSION AUDIT DASHBOARD ---
+// ==========================================================================
+
+/**
+ * Analyzes active waitlists vs. open seat supply per cohort (term, campus location, modality, course).
+ *
+ * Core Business Rules:
+ * 1. Modality Categories: 'Online', 'In-Person', 'Hybrid'.
+ * 2. Group by cohort key: `${term}||${location}||${modalityCategory}||${course}`.
+ * 3. Calculate total waitlist demand: `sum(s.activeWaitlist)`.
+ * 4. Calculate total open seat supply: `sum(max(0, s.capacity - s.activeStudents))`.
+ * 5. Net Unmet Demand = `totalWaitlist - totalOpenSeats`.
+ * 6. Scenarios:
+ *    - ABSORB (`netUnmetDemand <= 0`): Open seat supply in the same modality & location is sufficient
+ *      to absorb all waitlisted students. Do NOT recommend adding sections.
+ *    - ACTIONABLE (`netUnmetDemand >= viabilityThreshold`, where threshold is `avgCapacity * 0.65`):
+ *      Existing sections are full/nearly full and unmet demand justifies adding +N sections:
+ *      `recommendedSections = Math.max(1, Math.round(netUnmetDemand / avgCapacity))`
+ *      `potentialFtes = recommendedSections * avgFtes`
+ *    - MONITOR (`0 < netUnmetDemand < viabilityThreshold`): Unmet demand exists, but is below
+ *      the threshold to fill an entire additional section. Monitor for further waitlist growth.
+ */
+function analyzeWaitlistDemand(baseSections, activeBlocks) {
+  const sections = baseSections || [];
+  const cohortsMap = new Map();
+
+  let totalWaitlistedStudents = 0;
+  let totalWaitlistedSections = 0;
+  let totalUnmetDemand = 0;
+  let totalAbsorbableWaitlist = 0;
+  let totalRecommendedSections = 0;
+  let totalPotentialFtes = 0.0;
+
+  sections.forEach(sec => {
+    const waitActive = Number(sec.activeWaitlist) || 0;
+    const waitCap = Number(sec.waitlistCapacity) || 0;
+    const act = Number(sec.activeStudents) || 0;
+    const cap = Number(sec.capacity) || 0;
+    const ftes = Number(sec.estimatedFtes) || 0;
+
+    if (waitActive > 0) {
+      totalWaitlistedSections++;
+      totalWaitlistedStudents += waitActive;
+    }
+
+    // Determine normalized modality category
+    let modality = 'In-Person';
+    const locLower = (sec.location || '').toLowerCase();
+    const modLower = (sec.modality || '').toLowerCase();
+    if (locLower.includes('online') || modLower.includes('online')) {
+      modality = 'Online';
+    } else if (modLower.includes('hybrid')) {
+      modality = 'Hybrid';
+    }
+
+    const term = sec.term || 'All';
+    const loc = sec.location || 'All';
+    const course = (sec.course || 'Unknown').trim();
+    const key = `${term}||${loc}||${modality}||${course}`;
+
+    if (!cohortsMap.has(key)) {
+      cohortsMap.set(key, {
+        key: key,
+        term: term,
+        location: loc,
+        modality: modality,
+        course: course,
+        title: sec.title || '',
+        subject: sec.subject || '',
+        acc: sec.acc || '',
+        sections: [],
+        totalWaitlist: 0,
+        totalWaitlistCapacity: 0,
+        totalEnrolled: 0,
+        totalCapacity: 0,
+        totalOpenSeats: 0,
+        totalEstimatedFtes: 0,
+        sectionsWithWaitlistCount: 0,
+        openSectionsCount: 0,
+        fullSectionsCount: 0
+      });
+    }
+
+    const c = cohortsMap.get(key);
+    c.sections.push(sec);
+    c.totalWaitlist += waitActive;
+    c.totalWaitlistCapacity += waitCap;
+    c.totalEnrolled += act;
+    c.totalCapacity += cap;
+    c.totalEstimatedFtes += ftes;
+
+    const openSeats = Math.max(0, cap - act);
+    c.totalOpenSeats += openSeats;
+
+    if (waitActive > 0) c.sectionsWithWaitlistCount++;
+    if (openSeats > 0) c.openSectionsCount++;
+    if (cap > 0 && (act / cap) >= 0.95) c.fullSectionsCount++;
+  });
+
+  const allCohorts = [];
+  const actionableCohorts = [];
+  const absorbCohorts = [];
+  const monitorCohorts = [];
+
+  cohortsMap.forEach(c => {
+    const secCount = c.sections.length;
+    c.overallFillRate = c.totalCapacity > 0 ? (c.totalEnrolled / c.totalCapacity) * 100 : 0;
+    c.avgCapacity = secCount > 0 ? Math.round(c.totalCapacity / secCount) : 30;
+    c.avgFtes = secCount > 0 ? (c.totalEstimatedFtes / secCount) : 0;
+    c.netUnmetDemand = c.totalWaitlist - c.totalOpenSeats;
+
+    // Only process cohorts with waitlisted students (or display in waitlist audit)
+    if (c.totalWaitlist === 0) {
+      c.status = 'BALANCED';
+      c.statusTier = 'balanced';
+      c.statusLabel = 'No Waitlist';
+      c.recommendation = 'Enrollment balanced with 0 waitlisted students.';
+      c.recommendedSections = 0;
+      c.potentialFtes = 0;
+      return;
+    }
+
+    if (c.netUnmetDemand <= 0) {
+      c.status = 'ABSORB';
+      c.statusTier = 'absorb';
+      c.statusLabel = 'Absorb in Open Seats';
+      c.recommendation = `Open seat supply (${c.totalOpenSeats} seats across ${c.openSectionsCount} open section${c.openSectionsCount === 1 ? '' : 's'}) is sufficient to absorb all ${c.totalWaitlist} waitlisted students in this modality and location without scheduling new sections.`;
+      c.recommendedSections = 0;
+      c.potentialFtes = 0;
+      totalAbsorbableWaitlist += c.totalWaitlist;
+      absorbCohorts.push(c);
+    } else {
+      // Net Unmet Demand > 0
+      totalUnmetDemand += c.netUnmetDemand;
+      const targetCap = c.avgCapacity > 0 ? c.avgCapacity : 30;
+      const viabilityThreshold = targetCap * 0.65; // ~65% fill needed to justify adding a section
+
+      if (c.netUnmetDemand >= viabilityThreshold) {
+        c.recommendedSections = Math.max(1, Math.round(c.netUnmetDemand / targetCap));
+        c.status = 'ACTIONABLE';
+        c.statusTier = 'actionable';
+        c.statusLabel = `Add +${c.recommendedSections} Section${c.recommendedSections > 1 ? 's' : ''}`;
+        c.recommendation = `High unmet demand (+${c.netUnmetDemand} waitlisted beyond available seats). Existing sections are nearly full (${c.overallFillRate.toFixed(0)}% fill). Recommend scheduling +${c.recommendedSections} additional section${c.recommendedSections > 1 ? 's' : ''}.`;
+        c.potentialFtes = c.recommendedSections * c.avgFtes;
+
+        totalRecommendedSections += c.recommendedSections;
+        totalPotentialFtes += c.potentialFtes;
+        actionableCohorts.push(c);
+      } else {
+        c.recommendedSections = 0;
+        c.status = 'MONITOR';
+        c.statusTier = 'monitor';
+        c.statusLabel = 'Monitor Demand';
+        c.recommendation = `Net unmet demand is +${c.netUnmetDemand} student${c.netUnmetDemand > 1 ? 's' : ''}, which is currently below the viability threshold (${Math.round(viabilityThreshold)} seats) to sustain an entire new section. Monitor waitlist growth.`;
+        c.potentialFtes = 0;
+        monitorCohorts.push(c);
+      }
+    }
+
+    allCohorts.push(c);
+  });
+
+  // Sort cohorts
+  allCohorts.sort((a, b) => b.netUnmetDemand - a.netUnmetDemand || b.totalWaitlist - a.totalWaitlist);
+  actionableCohorts.sort((a, b) => b.netUnmetDemand - a.netUnmetDemand || b.totalWaitlist - a.totalWaitlist);
+  absorbCohorts.sort((a, b) => b.totalWaitlist - a.totalWaitlist || a.course.localeCompare(b.course));
+  monitorCohorts.sort((a, b) => b.netUnmetDemand - a.netUnmetDemand || a.course.localeCompare(b.course));
+
+  return {
+    totalWaitlistedStudents,
+    totalWaitlistedSections,
+    totalUnmetDemand,
+    totalAbsorbableWaitlist,
+    totalRecommendedSections,
+    totalPotentialFtes,
+    allCohorts,
+    actionableCohorts,
+    absorbCohorts,
+    monitorCohorts
+  };
+}
+
+/**
+ * Renders the Waitlist Demand & Seat Capacity Audit Dashboard:
+ * - Scope label driven by active filters
+ * - 5 KPI summary cards (Waitlisted students, Unmet Demand, Recommended Sections, Potential FTES, Absorbable)
+ * - Navigation tab bar (All Waitlists, Action Needed, Seats Available, Monitor)
+ * - Modality filter pills (All, Online, In-Person, Hybrid)
+ * - Search input for courses/titles
+ * - Cohort cards with demand-supply gauges, recommendations, and collapsible section tables
+ * - Bottom Schedule Grid View bar (Day View vs Room View)
+ */
+function renderWaitlistDashboard() {
+  const container = document.getElementById('waitlist-coverage-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const analysis = appState.currentWaitlistAnalysis || analyzeWaitlistDemand(appState.sections, appState.scheduleBlocks);
+
+  // Construct scope label from active filters
+  const scopeParts = [];
+  if (appState.filters.term) scopeParts.push(appState.filters.term);
+  if (appState.filters.location) scopeParts.push(appState.filters.location);
+  else scopeParts.push('All Campuses');
+
+  if (appState.filters.building) scopeParts.push(`Bldg ${appState.filters.building}`);
+  if (appState.filters.room) scopeParts.push(`Room ${appState.filters.room}`);
+  if (appState.filters.subject.size > 0) scopeParts.push(`Subject: ${Array.from(appState.filters.subject).join(', ')}`);
+  if (appState.filters.course.size > 0) scopeParts.push(`Course: ${Array.from(appState.filters.course).join(', ')}`);
+  if (appState.filters.acc.size > 0) scopeParts.push(`ACC: ${Array.from(appState.filters.acc).join(', ')}`);
+  if (appState.filters.modality.size > 0) scopeParts.push(`Modality: ${Array.from(appState.filters.modality).join(', ')}`);
+  if (appState.filters.session.size > 0) scopeParts.push(`Session: ${Array.from(appState.filters.session).join(', ')}`);
+  if (appState.filters.search) scopeParts.push(`"${appState.filters.search}"`);
+
+  const scopeLabel = scopeParts.join(' • ');
+
+  // 1. Header Row
+  const headerRow = document.createElement('div');
+  headerRow.className = 'waitlist-header';
+  headerRow.innerHTML = `
+    <div class="waitlist-title">
+      <h3>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Waitlist Demand & Seat Capacity Audit: <span>${scopeLabel}</span>
+      </h3>
+      <p>Analyze section waitlists vs. open seat supply in the same location and modality to recommend viable section additions or absorption in open seats.</p>
+    </div>
+  `;
+  container.appendChild(headerRow);
+
+  // 2. Summary KPI Cards
+  const summaryBar = document.createElement('div');
+  summaryBar.className = 'waitlist-summary-bar';
+  summaryBar.innerHTML = `
+    <div class="waitlist-stat-card stat-waitlist">
+      <span class="eff-stat-card-title">Waitlisted Students</span>
+      <span class="eff-stat-card-value">${analysis.totalWaitlistedStudents.toLocaleString()}</span>
+      <span class="eff-stat-card-sub">Across ${analysis.totalWaitlistedSections} sections with waitlists</span>
+    </div>
+    <div class="waitlist-stat-card stat-unmet">
+      <span class="eff-stat-card-title">Net Unmet Demand</span>
+      <span class="eff-stat-card-value">${analysis.totalUnmetDemand.toLocaleString()}</span>
+      <span class="eff-stat-card-sub">Students waiting beyond open seat supply</span>
+    </div>
+    <div class="waitlist-stat-card stat-action">
+      <span class="eff-stat-card-title">Recommended Additions</span>
+      <span class="eff-stat-card-value" style="color:#059669;">+${analysis.totalRecommendedSections}</span>
+      <span class="eff-stat-card-sub">Viable sections to schedule across ${analysis.actionableCohorts.length} cohorts</span>
+    </div>
+    <div class="waitlist-stat-card stat-ftes">
+      <span class="eff-stat-card-title">Potential FTES Gain</span>
+      <span class="eff-stat-card-value" style="color:#2563eb;">+${analysis.totalPotentialFtes.toFixed(1)}</span>
+      <span class="eff-stat-card-sub">Estimated FTES productivity from added sections</span>
+    </div>
+    <div class="waitlist-stat-card stat-absorb">
+      <span class="eff-stat-card-title">Absorbable Waitlist</span>
+      <span class="eff-stat-card-value" style="color:#0284c7;">${analysis.totalAbsorbableWaitlist.toLocaleString()}</span>
+      <span class="eff-stat-card-sub">${analysis.absorbCohorts.length} cohorts with open seats available</span>
+    </div>
+  `;
+  container.appendChild(summaryBar);
+
+  // 3. Navigation Tabs and Filter Controls
+  const navBar = document.createElement('div');
+  navBar.className = 'waitlist-audit-nav';
+
+  const activeTab = appState.waitlistActiveTab || 'all';
+  const activeModality = appState.waitlistModalityFilter || 'all';
+
+  navBar.innerHTML = `
+    <div class="waitlist-audit-tabs">
+      <button type="button" class="waitlist-tab-btn ${activeTab === 'all' ? 'active' : ''}" data-tab="all">
+        All Waitlisted <span class="waitlist-tab-badge">${analysis.allCohorts.length}</span>
+      </button>
+      <button type="button" class="waitlist-tab-btn ${activeTab === 'actionable' ? 'active' : ''}" data-tab="actionable" style="${activeTab === 'actionable' ? 'background:#059669; border-color:#059669;' : ''}">
+        Action Needed: Add Sections <span class="waitlist-tab-badge">${analysis.actionableCohorts.length}</span>
+      </button>
+      <button type="button" class="waitlist-tab-btn ${activeTab === 'absorb' ? 'active' : ''}" data-tab="absorb" style="${activeTab === 'absorb' ? 'background:#0284c7; border-color:#0284c7;' : ''}">
+        Seats Available: Absorb <span class="waitlist-tab-badge">${analysis.absorbCohorts.length}</span>
+      </button>
+      <button type="button" class="waitlist-tab-btn ${activeTab === 'monitor' ? 'active' : ''}" data-tab="monitor" style="${activeTab === 'monitor' ? 'background:#d97706; border-color:#d97706;' : ''}">
+        Monitor Demand <span class="waitlist-tab-badge">${analysis.monitorCohorts.length}</span>
+      </button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <div class="btn-sub-toggle-group" id="waitlist-modality-group">
+        <button type="button" class="btn-sub-layout-toggle ${activeModality === 'all' ? 'active' : ''}" data-mod="all">All</button>
+        <button type="button" class="btn-sub-layout-toggle ${activeModality === 'Online' ? 'active' : ''}" data-mod="Online">Online</button>
+        <button type="button" class="btn-sub-layout-toggle ${activeModality === 'In-Person' ? 'active' : ''}" data-mod="In-Person">In-Person</button>
+        <button type="button" class="btn-sub-layout-toggle ${activeModality === 'Hybrid' ? 'active' : ''}" data-mod="Hybrid">Hybrid</button>
+      </div>
+
+      <input type="text" id="waitlist-search-input" class="form-control" placeholder="Search course or title..." value="${appState.waitlistSearchQuery || ''}" style="width: 190px; padding: 6px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);">
+    </div>
+  `;
+  container.appendChild(navBar);
+
+  // Wire Tab Buttons
+  navBar.querySelectorAll('.waitlist-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.waitlistActiveTab = btn.getAttribute('data-tab');
+      applyFiltersAndRender();
+    });
+  });
+
+  // Wire Modality Buttons
+  navBar.querySelectorAll('#waitlist-modality-group .btn-sub-layout-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.waitlistModalityFilter = btn.getAttribute('data-mod');
+      applyFiltersAndRender();
+    });
+  });
+
+  // Wire Search Input
+  navBar.querySelector('#waitlist-search-input')?.addEventListener('input', (e) => {
+    appState.waitlistSearchQuery = e.target.value.toLowerCase().trim();
+    renderWaitlistDashboard();
+  });
+
+  // 4. Cohorts Grid
+  let targetCohorts = analysis.allCohorts;
+  if (activeTab === 'actionable') targetCohorts = analysis.actionableCohorts;
+  else if (activeTab === 'absorb') targetCohorts = analysis.absorbCohorts;
+  else if (activeTab === 'monitor') targetCohorts = analysis.monitorCohorts;
+
+  if (activeModality !== 'all') {
+    targetCohorts = targetCohorts.filter(c => c.modality === activeModality);
+  }
+
+  const query = appState.waitlistSearchQuery;
+  if (query) {
+    targetCohorts = targetCohorts.filter(c =>
+      c.course.toLowerCase().includes(query) ||
+      (c.title && c.title.toLowerCase().includes(query)) ||
+      (c.subject && c.subject.toLowerCase().includes(query))
+    );
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'waitlist-cohorts-grid';
+
+  if (targetCohorts.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 36px 20px; text-align: center; background: var(--bg-surface); border: 1px dashed var(--border-color); border-radius: 10px; color: var(--text-secondary);">
+        <div style="font-size: 26px; margin-bottom: 8px;">✓</div>
+        <div style="font-weight: 700; font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">No Cohorts in Selected Category</div>
+        <div style="font-size: 12px; color: var(--text-muted);">There are no waitlist cohorts matching the active criteria under current filters.</div>
+      </div>
+    `;
+  } else {
+    targetCohorts.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'waitlist-cohort-card';
+
+      let badgeHtml = '';
+      let bannerClass = '';
+      if (c.status === 'ACTIONABLE') {
+        badgeHtml = `<span class="waitlist-badge badge-actionable">+${c.recommendedSections} Section${c.recommendedSections > 1 ? 's' : ''} Recommended</span>`;
+        bannerClass = 'banner-actionable';
+      } else if (c.status === 'ABSORB') {
+        badgeHtml = `<span class="waitlist-badge badge-absorb">Seats Available (Absorb)</span>`;
+        bannerClass = 'banner-absorb';
+      } else {
+        badgeHtml = `<span class="waitlist-badge badge-monitor">Monitor Demand</span>`;
+        bannerClass = 'banner-monitor';
+      }
+
+      // Compute visual demand vs. supply proportions
+      const totalScale = Math.max(1, c.totalWaitlist + c.totalOpenSeats);
+      const demandPct = Math.round((c.totalWaitlist / totalScale) * 100);
+      const supplyPct = Math.max(0, 100 - demandPct);
+
+      // Table rows for individual sections
+      const sectionsRowsHtml = c.sections.map(sec => {
+        const fill = Math.round(sec.fillRate * 100);
+        const meetingTimes = (sec.scheduleBlocks || []).map(b => `${DAY_MAP[b.days[0]]?.short || ''} ${b.startTimeStr}`).join(', ') || 'Online / Arr';
+        const roomStr = (sec.scheduleBlocks && sec.scheduleBlocks[0]?.building)
+          ? `${sec.scheduleBlocks[0].building} ${sec.scheduleBlocks[0].room}`
+          : (sec.location || 'Online');
+
+        return `
+          <tr data-secid="${sec.sectionUniqueId}">
+            <td style="font-weight:700; font-family:var(--font-mono);">${sec.sectionName}</td>
+            <td>${sec.facultyName || 'Staff'}</td>
+            <td>${meetingTimes}</td>
+            <td>${roomStr}</td>
+            <td><strong>${sec.activeStudents}</strong> / ${sec.capacity} (${fill}%)</td>
+            <td style="font-weight:700; color:${(sec.activeWaitlist || 0) > 0 ? '#ea580c' : 'var(--text-muted)'};">
+              ${sec.activeWaitlist || 0} ${sec.waitlistCapacity ? `(Cap ${sec.waitlistCapacity})` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="waitlist-card-header">
+          <div>
+            <span class="waitlist-course-badge">${c.course}</span>
+            ${c.title ? `<div class="waitlist-course-title">${c.title}</div>` : ''}
+            <div class="waitlist-card-meta">
+              <span class="waitlist-tag">${c.location}</span>
+              <span class="waitlist-tag" style="background:#f1f5f9; color:#0f172a;">${c.modality}</span>
+              <span class="waitlist-tag">${c.sections.length} Section${c.sections.length > 1 ? 's' : ''}</span>
+              ${c.term ? `<span class="waitlist-tag" style="font-weight:700; color:var(--chaffey-red);">${c.term}</span>` : ''}
+            </div>
+          </div>
+          <div>${badgeHtml}</div>
+        </div>
+
+        <div class="waitlist-metrics-row">
+          <div class="waitlist-metric-item">
+            <span class="waitlist-metric-lbl">Total Waitlist</span>
+            <span class="waitlist-metric-val" style="color:#ea580c;">${c.totalWaitlist}</span>
+          </div>
+          <div class="waitlist-metric-item">
+            <span class="waitlist-metric-lbl">Open Seats</span>
+            <span class="waitlist-metric-val" style="color:#059669;">${c.totalOpenSeats}</span>
+          </div>
+          <div class="waitlist-metric-item">
+            <span class="waitlist-metric-lbl">Net Unmet Demand</span>
+            <span class="waitlist-metric-val" style="color:${c.netUnmetDemand > 0 ? '#dc2626' : '#0284c7'};">
+              ${c.netUnmetDemand > 0 ? `+${c.netUnmetDemand}` : 'Balanced'}
+            </span>
+          </div>
+          <div class="waitlist-metric-item">
+            <span class="waitlist-metric-lbl">Fill Rate</span>
+            <span class="waitlist-metric-val">${c.overallFillRate.toFixed(0)}%</span>
+          </div>
+        </div>
+
+        <div class="waitlist-gauge-container">
+          <div class="waitlist-gauge-header">
+            <span>Waitlist Demand: <strong>${c.totalWaitlist}</strong></span>
+            <span>Open Seats Supply: <strong>${c.totalOpenSeats}</strong> (${c.openSectionsCount} open sec)</span>
+          </div>
+          <div class="waitlist-gauge-track">
+            <div class="waitlist-gauge-demand" style="width: ${demandPct}%;" title="Waitlist Demand: ${c.totalWaitlist} (${demandPct}%)"></div>
+            <div class="waitlist-gauge-supply" style="width: ${supplyPct}%;" title="Open Seats Supply: ${c.totalOpenSeats} (${supplyPct}%)"></div>
+          </div>
+        </div>
+
+        <div class="waitlist-reason-banner ${bannerClass}">
+          <strong>${c.status === 'ACTIONABLE' ? 'Recommendation:' : (c.status === 'ABSORB' ? 'Capacity Analysis:' : 'Observation:')}</strong>
+          ${c.recommendation}
+          ${c.potentialFtes > 0 ? `<div style="margin-top: 4px; font-weight: 700; color: #166534;">Projected FTES Yield: +${c.potentialFtes.toFixed(2)} FTES</div>` : ''}
+        </div>
+
+        <div>
+          <button type="button" class="waitlist-toggle-sections">
+            <span>View All ${c.sections.length} Section${c.sections.length > 1 ? 's' : ''}</span>
+            <span class="toggle-icon">▼</span>
+          </button>
+          <div class="waitlist-sections-collapsible" style="display:none; margin-top:8px; overflow-x:auto;">
+            <table class="waitlist-sections-table">
+              <thead>
+                <tr>
+                  <th>Section</th>
+                  <th>Faculty</th>
+                  <th>Schedule</th>
+                  <th>Room</th>
+                  <th>Enrolled / Cap</th>
+                  <th>Waitlist</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sectionsRowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Wire accordion toggle
+      const btnToggle = card.querySelector('.waitlist-toggle-sections');
+      const collapsible = card.querySelector('.waitlist-sections-collapsible');
+      const toggleIcon = card.querySelector('.toggle-icon');
+      btnToggle?.addEventListener('click', () => {
+        const isHidden = collapsible.style.display === 'none';
+        collapsible.style.display = isHidden ? 'block' : 'none';
+        toggleIcon.textContent = isHidden ? '▲' : '▼';
+        btnToggle.style.borderStyle = isHidden ? 'solid' : 'dashed';
+      });
+
+      // Wire row clicks to section modal and popovers
+      card.querySelectorAll('.waitlist-sections-table tr[data-secid]').forEach(row => {
+        const secId = row.getAttribute('data-secid');
+        const sec = c.sections.find(s => s.sectionUniqueId === secId);
+        if (sec) {
+          row.addEventListener('click', () => showSectionModal(sec));
+          row.addEventListener('mouseenter', (e) => showPopover(e, sec));
+          row.addEventListener('mousemove', (e) => positionPopover(e));
+          row.addEventListener('mouseleave', hidePopover);
+        }
+      });
+
+      grid.appendChild(card);
+    });
+  }
+
+  container.appendChild(grid);
+
+  // Bottom Grid View bar directly above the schedule grid
+  container.appendChild(createDashboardGridViewBar('waitlistSubLayout', 'Waitlist Demand Audit'));
+}
+
 /**
  * Creates an individual Schedule Tile DOM Element with dedicated Course Code row
  * preventing text smashing, and support for Stacked Classes & GE Badges
@@ -6404,9 +6956,14 @@ function showPopover(event, target) {
     </div>
   ` : '';
 
-  const enrollmentRowsHtml = (sec.capacity > 0 || sec.activeStudents > 0) ? `
+  const enrollmentRowsHtml = (sec.capacity > 0 || sec.activeStudents > 0 || (sec.activeWaitlist && sec.activeWaitlist > 0)) ? `
     <span class="popover-field-label">Enrollment:</span>
     <span class="popover-field-value"><strong>${sec.activeStudents}</strong> / ${sec.capacity} (${Math.round(sec.fillRate * 100)}% Fill)</span>
+
+    ${(sec.activeWaitlist !== undefined && sec.activeWaitlist > 0) ? `
+      <span class="popover-field-label">Waitlist:</span>
+      <span class="popover-field-value" style="font-weight:700; color:#ea580c;">${sec.activeWaitlist} student${sec.activeWaitlist > 1 ? 's' : ''} ${sec.waitlistCapacity > 0 ? `(Cap: ${sec.waitlistCapacity})` : ''}</span>
+    ` : ''}
 
     <span class="popover-field-label">Est. FTES:</span>
     <span class="popover-field-value">${sec.estimatedFtes.toFixed(2)} FTES ${sec.lostFtes > 0 ? `<span style="color:#d97706; font-size:10.5px;">(Lost: ${sec.lostFtes.toFixed(2)})</span>` : ''}</span>
@@ -6605,6 +7162,12 @@ function showSectionModal(section, activeBlock) {
         </div>
       </div>
       <div>
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">WAITLIST DEMAND</div>
+        <div style="font-size:13px; font-weight:600; color:${(section.activeWaitlist || 0) > 0 ? '#ea580c' : 'var(--text-primary)'};">
+          <strong>${section.activeWaitlist || 0}</strong> Students ${section.waitlistCapacity ? `(Cap: ${section.waitlistCapacity})` : ''}
+        </div>
+      </div>
+      <div>
         <div style="font-size:11px; color:var(--text-muted); font-weight:600;">ESTIMATED FTES</div>
         <div style="font-size:13px; font-weight:600; color:#059669;">
           ${section.estimatedFtes.toFixed(2)} FTES
@@ -6794,7 +7357,8 @@ function preparePrintHeader() {
     evening: 'Evening & Weekend Offerings Audit',
     fasttrack: 'Fast-Track Sequential Offerings Audit',
     efficiency: 'Enrollment Efficiency & FTES Productivity Audit',
-    program_coverage: 'Program of Study Coverage & Completability Audit'
+    program_coverage: 'Program of Study Coverage & Completability Audit',
+    waitlist: 'Waitlist Demand & Seat Capacity Expansion Audit'
   };
 
   const viewTitle = viewLabels[appState.layoutMode] || 'Academic Schedule Grid';
@@ -7025,6 +7589,9 @@ async function exportAsPdf() {
     } else if (mode === 'efficiency') {
       auditContainer = document.getElementById('efficiency-container');
       auditTitle = `Enrollment Efficiency & FTES Audit - ${appState.filters.location || 'All Campuses'}`;
+    } else if (mode === 'waitlist') {
+      auditContainer = document.getElementById('waitlist-coverage-container');
+      auditTitle = `Waitlist Demand & Seat Capacity Audit - ${appState.filters.location || 'All Campuses'}`;
     }
 
     const roomContainer = document.getElementById('room-matrix-stacked');
@@ -7034,7 +7601,8 @@ async function exportAsPdf() {
       (mode === 'program_coverage' && appState.programCoverageSubLayout === 'room') ||
       (mode === 'fasttrack' && appState.fasttrackSubLayout === 'room') ||
       (mode === 'evening' && appState.eveningSubLayout === 'room') ||
-      (mode === 'efficiency' && appState.efficiencySubLayout === 'room');
+      (mode === 'efficiency' && appState.efficiencySubLayout === 'room') ||
+      (mode === 'waitlist' && appState.waitlistSubLayout === 'room');
 
     const visibleRoomCards = isRoomModeActive && roomContainer && roomContainer.style.display !== 'none'
       ? Array.from(roomContainer.querySelectorAll('.room-matrix-card'))
@@ -7176,7 +7744,7 @@ function exportAsCsv() {
   const headers = [
     'Section Unique ID', 'Term', 'Course', 'Course Title', 'Section Name', 'Subject', 'ACC', 'Faculty Name',
     'Location', 'Building', 'Room', 'Day', 'Start Time', 'End Time',
-    'Capacity', 'Active Students', 'Fill Rate %', 'Estimated FTES', 'Lost FTES', 'Low Enrolled Alert',
+    'Capacity', 'Active Students', 'Active Waitlist', 'Waitlist Capacity', 'Fill Rate %', 'Estimated FTES', 'Lost FTES', 'Low Enrolled Alert',
     'Instruction Type', 'General Ed Pattern', 'General Ed Area', 'Applicable Programs', 'Section Traits',
     'Is Stacked', 'Is Conflict'
   ];
@@ -7204,6 +7772,8 @@ function exportAsCsv() {
       `"${b.endTimeStr}"`,
       sec.capacity,
       sec.activeStudents,
+      sec.activeWaitlist || 0,
+      sec.waitlistCapacity || 0,
       `"${fillPct}"`,
       sec.estimatedFtes.toFixed(2),
       sec.lostFtes.toFixed(2),
@@ -7313,6 +7883,9 @@ function setupEventListeners() {
         appState.programCoverageActiveTab = 'all';
         appState.programCoverageSelectedProgram = '';
         appState.programCoverageCatalogView = false;
+        appState.waitlistActiveTab = 'all';
+        appState.waitlistModalityFilter = 'all';
+        appState.waitlistSearchQuery = '';
 
         const searchInput = document.getElementById('filter-search');
         if (searchInput) searchInput.value = '';
@@ -7606,6 +8179,10 @@ function resetAllFilters() {
   appState.programCoverageSubLayout = 'room';
   appState.programCoverageSelectedProgram = '';
   appState.programCoverageCatalogView = false;
+  appState.waitlistActiveTab = 'all';
+  appState.waitlistModalityFilter = 'all';
+  appState.waitlistSearchQuery = '';
+  appState.waitlistSubLayout = 'room';
 
   // Reset term to earliest available term in dataset (default)
   const allDatasetTerms = sortTerms(Array.from(new Set(appState.sections.map(s => s.term).filter(Boolean))));
