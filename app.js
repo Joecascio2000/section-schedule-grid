@@ -2063,15 +2063,108 @@ function getSectionStackSubject(sec) {
 }
 
 /**
- * Helper to parse academic date strings (e.g., 'Aug 17, 2026') into epoch timestamps.
+ * Helper to parse academic date values (strings like 'Aug 17, 2026', ISO dates, Date objects,
+ * or numeric Excel serial dates) into epoch timestamps.
  */
 function parseDateToTimestamp(dateVal) {
-  if (!dateVal) return null;
-  if (dateVal instanceof Date) return dateVal.getTime();
+  if (dateVal === null || dateVal === undefined || dateVal === '') return null;
+  if (dateVal instanceof Date) {
+    return isNaN(dateVal.getTime()) ? null : dateVal.getTime();
+  }
+  if (typeof dateVal === 'number') {
+    if (dateVal > 20000 && dateVal < 80000) {
+      return Math.round((dateVal - 25569) * 86400 * 1000);
+    }
+    return null;
+  }
   const str = String(dateVal).trim();
   if (!str) return null;
+  if (/^\d{5}(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    if (num > 20000 && num < 80000) {
+      return Math.round((num - 25569) * 86400 * 1000);
+    }
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const isoTs = Date.parse(`${str}T00:00:00Z`);
+    return isNaN(isoTs) ? null : isoTs;
+  }
   const ts = Date.parse(str);
   return isNaN(ts) ? null : ts;
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Formats an academic date cell (string, Date, or Excel serial number) cleanly.
+ */
+function formatScheduleDate(dateVal, compact = false) {
+  if (dateVal === null || dateVal === undefined) return '';
+  const str = String(dateVal).trim();
+  if (!str) return '';
+
+  if (typeof dateVal === 'number' || /^\d{5}(\.\d+)?$/.test(str)) {
+    const num = typeof dateVal === 'number' ? dateVal : parseFloat(str);
+    if (num > 20000 && num < 80000) {
+      const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(d.getTime())) {
+        const m = SHORT_MONTHS[d.getUTCMonth()];
+        const day = d.getUTCDate();
+        return compact ? `${m} ${day}` : `${m} ${day}, ${d.getUTCFullYear()}`;
+      }
+    }
+  }
+
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const yr = parseInt(isoMatch[1], 10);
+    const mo = parseInt(isoMatch[2], 10) - 1;
+    const dy = parseInt(isoMatch[3], 10);
+    const m = SHORT_MONTHS[mo];
+    if (m && dy >= 1 && dy <= 31) {
+      return compact ? `${m} ${dy}` : `${m} ${dy}, ${yr}`;
+    }
+  }
+
+  if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
+    const m = SHORT_MONTHS[dateVal.getMonth()];
+    const day = dateVal.getDate();
+    return compact ? `${m} ${day}` : `${m} ${day}, ${dateVal.getFullYear()}`;
+  }
+
+  const ts = Date.parse(str);
+  if (!isNaN(ts)) {
+    const d = new Date(ts);
+    const m = SHORT_MONTHS[d.getMonth()];
+    const day = d.getDate();
+    return compact ? `${m} ${day}` : `${m} ${day}, ${d.getFullYear()}`;
+  }
+
+  return str;
+}
+
+/**
+ * Formats a section or block's Start & End Date span(s) for tooltips, modals, and chips.
+ */
+function formatSectionDateRange(block, candidateBlocks = [], compact = false) {
+  const blocksToCheck = (block && (block.startDate || block.endDate))
+    ? [block]
+    : (candidateBlocks || []);
+  const ranges = [];
+  const seen = new Set();
+
+  blocksToCheck.forEach(b => {
+    const sStr = formatScheduleDate(b?.startDate, compact);
+    const eStr = formatScheduleDate(b?.endDate, compact);
+    if (!sStr && !eStr) return;
+    const label = (sStr && eStr) ? `${sStr} – ${eStr}` : (sStr || eStr);
+    if (!seen.has(label)) {
+      seen.add(label);
+      ranges.push(label);
+    }
+  });
+
+  return ranges.length > 0 ? ranges.join('; ') : 'N/A';
 }
 
 /**
@@ -6120,7 +6213,12 @@ function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOp
 
     const timedBlocks = [];
     timedCourses.forEach(item => {
+      const weeksNum = parseFloat(item.section?.numberOfWeeks);
+      const isShortSession = !isNaN(weeksNum) && weeksNum > 0 && weeksNum < 16;
       (item.option.timedBlocks || []).forEach(tb => {
+        const sCompact = formatScheduleDate(tb.startDate, true);
+        const eCompact = formatScheduleDate(tb.endDate, true);
+        const dateCompactStr = (sCompact && eCompact) ? `${sCompact}–${eCompact}` : (sCompact || eCompact);
         timedBlocks.push({
           course: item.course,
           section: item.section,
@@ -6131,6 +6229,12 @@ function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOp
           end: tb.end,
           startTimeStr: tb.startTimeStr,
           endTimeStr: tb.endTimeStr,
+          startDate: tb.startDate || '',
+          endDate: tb.endDate || '',
+          startDateTs: tb.startDateTs ?? null,
+          endDateTs: tb.endDateTs ?? null,
+          dateCompactStr,
+          isShortSession,
           campus: tb.campus,
           building: tb.building,
           room: tb.room,
@@ -6143,7 +6247,7 @@ function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOp
       });
     });
 
-    // Resolve side-by-side placement on same day (only happens for sequential FT1 + FT2)
+    // Resolve side-by-side placement on same day (for sequential FT1+FT2 or short-term non-overlapping date courses)
     const dayChains = [];
     const activeDays = [1, 2, 3, 4, 5, 6, 7];
 
@@ -6152,6 +6256,9 @@ function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOp
         .filter(b => b.day === day)
         .sort((a, b) => {
           if (a.start !== b.start) return a.start - b.start;
+          if (a.startDateTs !== null && b.startDateTs !== null && a.startDateTs !== b.startDateTs) {
+            return a.startDateTs - b.startDateTs;
+          }
           const ftA = a.ftType === 'FT1' ? 0 : (a.ftType === 'FT2' ? 1 : 2);
           const ftB = b.ftType === 'FT1' ? 0 : (b.ftType === 'FT2' ? 1 : 2);
           return ftA - ftB;
@@ -6159,7 +6266,7 @@ function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOp
 
       if (dayBlocks.length === 0) return;
 
-      // Assign side-by-side sub-columns for FT1/FT2 time-of-day overlaps
+      // Assign side-by-side sub-columns for non-overlapping-date time-of-day overlaps
       const cols = [];
       dayBlocks.forEach(blk => {
         let placed = -1;
@@ -6190,8 +6297,10 @@ function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOp
         let connector = null;
         if (next) {
           const isFtSeq = ((blk.ftType === 'FT1' && next.ftType === 'FT2') || (blk.ftType === 'FT2' && next.ftType === 'FT1')) && next.start < blk.end;
-          if (isFtSeq) {
-            connector = { type: 'ft_seq', label: '⚡ Sequential 8-Wk Chain' };
+          const hasNonOverlappingDates = blk.endDateTs !== null && next.startDateTs !== null &&
+            (blk.endDateTs < next.startDateTs || next.endDateTs < blk.startDateTs);
+          if (isFtSeq || (hasNonOverlappingDates && next.start < blk.end)) {
+            connector = { type: 'ft_seq', label: isFtSeq ? '⚡ Sequential 8-Wk Chain' : '📅 Sequential Dates' };
           } else {
             const gap = Math.max(0, next.start - blk.end);
             connector = {
@@ -7734,6 +7843,9 @@ function renderStudentScheduleSimulatorView(container, single) {
                 const widthPct = 100 / (blk.subCols || 1);
                 const leftPct = (blk.subCol || 0) * widthPct;
                 const ftTag = blk.ftType ? `<span class="sim-blk-ft">${blk.ftType}</span>` : '';
+                const dateTag = (!blk.ftType && (blk.subCols > 1 || blk.isShortSession) && blk.dateCompactStr)
+                  ? `<span class="sim-blk-dates" title="Session Dates">${escapeHtml(blk.dateCompactStr)}</span>`
+                  : '';
                 const altTag = blk.equivalentCount > 1 ? `<span class="sim-blk-alt" title="${blk.equivalentCount} equivalent sections in this timeslot">×${blk.equivalentCount}</span>` : '';
                 const locText = blk.isVirtual
                   ? 'Online'
@@ -7745,7 +7857,7 @@ function renderStudentScheduleSimulatorView(container, single) {
                        style="top:${topPx}px; height:${heightPx}px; left:calc(${leftPct}% + 2px); width:calc(${widthPct}% - 4px);">
                     <div class="sim-blk-top">
                       <span class="sim-blk-course">${escapeHtml(blk.course)}</span>
-                      <span class="sim-blk-badges">${ftTag}${altTag}</span>
+                      <span class="sim-blk-badges">${ftTag}${dateTag}${altTag}</span>
                     </div>
                     <div class="sim-blk-time">${escapeHtml(blk.startTimeStr)}–${escapeHtml(blk.endTimeStr)}</div>
                     ${heightPx >= 38 ? `<div class="sim-blk-loc">${escapeHtml(locText)}${single.isDistrictWide && !blk.isVirtual && blk.campus ? ` • ${escapeHtml(blk.campus.replace(' Campus', ''))}` : ''}</div>` : ''}
@@ -7778,6 +7890,9 @@ function renderStudentScheduleSimulatorView(container, single) {
                   : ([it.building, it.room].filter(Boolean).join(' ') || it.campus);
                 const campusTag = (!it.isVirtual && single.isDistrictWide && it.campus) ? ` · ${it.campus.replace(' Campus', '')}` : '';
                 const ftBadge = it.ftType ? ` <span class="sim-chip-ft">${it.ftType}</span>` : '';
+                const dateBadge = ((it.subCols > 1 || it.isShortSession) && it.dateCompactStr)
+                  ? ` <span class="sim-chip-dates">${escapeHtml(it.dateCompactStr)}</span>`
+                  : '';
                 const altBadge = it.equivalentCount > 1 ? ` <span class="sim-chip-alt">+${it.equivalentCount - 1} alt</span>` : '';
                 const connHtml = it.connector
                   ? `<span class="sim-chain-arrow ${it.connector.type === 'ft_seq' ? 'conn-ft' : (it.connector.type === 'tight' ? 'conn-tight' : '')}">
@@ -7786,7 +7901,7 @@ function renderStudentScheduleSimulatorView(container, single) {
                   : '';
                 return `
                   <button type="button" class="sim-chain-chip sim-color-${it.colorIdx}" data-secid="${it.section.sectionUniqueId}">
-                    <strong>${escapeHtml(it.course)}</strong>${ftBadge}
+                    <strong>${escapeHtml(it.course)}</strong>${ftBadge}${dateBadge}
                     <span>${escapeHtml(it.startTimeStr)}–${escapeHtml(it.endTimeStr)}</span>
                     <span class="sim-chip-loc">${escapeHtml(roomStr)}${escapeHtml(campusTag)}</span>${altBadge}
                   </button>${connHtml}
@@ -9063,6 +9178,7 @@ function showPopover(event, target) {
 
   const meetingTypeStr = block ? block.instructionType : (candidateBlocks.map(b => b.instructionType).join(', ') || 'Class Meeting');
   const timeDayStr = block && block.day ? `${DAY_MAP[block.day]?.name || ''}: ${block.startTimeStr} – ${block.endTimeStr}` : (candidateBlocks.map(b => `${(b.days || []).map(d => DAY_MAP[d]?.short || d).join('/')} ${b.startTimeStr}-${b.endTimeStr}`).join('; ') || 'TBA');
+  const datesStr = formatSectionDateRange(isBlock ? block : null, candidateBlocks.length > 0 ? candidateBlocks : (sec.scheduleBlocks || []));
   const locationStr = block && block.building ? `${sec.location} – ${block.building} ${block.room}` : (candidateBlocks.length > 0 && candidateBlocks[0].building ? `${sec.location} – ${candidateBlocks[0].building} ${candidateBlocks[0].room}` : `${sec.location}`);
 
   const geInfo = formatSectionGeInfo(sec);
@@ -9119,6 +9235,9 @@ function showPopover(event, target) {
 
       <span class="popover-field-label">Time & Day:</span>
       <span class="popover-field-value">${timeDayStr}</span>
+
+      <span class="popover-field-label">Dates:</span>
+      <span class="popover-field-value">${escapeHtml(datesStr)}</span>
 
       <span class="popover-field-label">Location:</span>
       <span class="popover-field-value">${locationStr}</span>
@@ -9202,6 +9321,7 @@ function showSectionModal(section, activeBlock) {
 
   const blocksHtml = blocksToDisplay.map((blk, idx) => {
     const daysStr = blk.days.map(d => DAY_MAP[d]?.name || d).join(', ');
+    const blkDatesStr = formatSectionDateRange(blk, []);
     return `
       <div class="block-card">
         <div>
@@ -9209,6 +9329,11 @@ function showSectionModal(section, activeBlock) {
           <div style="color:var(--text-secondary); font-size:12px; margin-top:3px;">
             ${daysStr} &bull; ${blk.startTimeStr} – ${blk.endTimeStr}
           </div>
+          ${blkDatesStr !== 'N/A' ? `
+            <div style="color:var(--text-secondary); font-size:11.5px; margin-top:2px;">
+              Dates: ${escapeHtml(blkDatesStr)}
+            </div>
+          ` : ''}
           <div style="color:var(--chaffey-blue); font-size:12px; font-weight:600; margin-top:2px;">
             Location: ${blk.building} ${blk.room} ${blk.buildingDesc ? `(${blk.buildingDesc})` : ''}
           </div>
