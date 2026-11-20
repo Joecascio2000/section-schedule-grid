@@ -2288,8 +2288,16 @@ function matchesOtherFilters(sec, excludeDimension = null) {
     modality, session, traits
   } = appState.filters;
 
-  if (excludeDimension !== 'term' && term) {
-    if ((sec.term || '').trim().toLowerCase() !== term.toLowerCase()) return false;
+  if (excludeDimension !== 'term') {
+    if (term) {
+      if ((sec.term || '').trim().toLowerCase() !== term.toLowerCase()) return false;
+    } else if (
+      appState.layoutMode === 'program_coverage' &&
+      appState.programCoverageSelectedTerms instanceof Set &&
+      appState.programCoverageSelectedTerms.size > 0
+    ) {
+      if (!appState.programCoverageSelectedTerms.has(sec.term)) return false;
+    }
   }
 
   if (search) {
@@ -2409,7 +2417,7 @@ function matchesOtherFilters(sec, excludeDimension = null) {
 function hasAnyActiveFiltersExcept(dim) {
   const f = appState.filters;
   if (f.search) return true;
-  if (dim !== 'term' && f.term) return true;
+  if (dim !== 'term' && (f.term || (appState.layoutMode === 'program_coverage' && appState.programCoverageSelectedTerms instanceof Set && appState.programCoverageSelectedTerms.size > 0))) return true;
   if (dim !== 'location' && f.location) return true;
   if (dim !== 'building' && f.building) return true;
   if (dim !== 'room' && f.room) return true;
@@ -2555,8 +2563,8 @@ function populateFilterControls() {
     // Academic Term Dropdown (Main Filter)
     const termSelect = document.getElementById('filter-term');
     if (termSelect) {
+      const allDatasetTerms = new Set(appState.sections.map(s => s.term).filter(Boolean));
       if (appState.filters.term && !terms.has(appState.filters.term)) {
-        const allDatasetTerms = new Set(appState.sections.map(s => s.term).filter(Boolean));
         if (!allDatasetTerms.has(appState.filters.term)) {
           const sortedAll = sortTerms(Array.from(allDatasetTerms));
           appState.filters.term = sortedAll[0] || '';
@@ -2564,11 +2572,29 @@ function populateFilterControls() {
         }
       }
       const currentTerm = appState.filters.term;
-      const sortedTerms = sortTerms(terms);
-      const termKey = sortedTerms.join('|') + '::' + currentTerm;
+      const displayTerms = new Set(terms);
+      if (currentTerm && allDatasetTerms.has(currentTerm)) {
+        displayTerms.add(currentTerm);
+      }
+      const sortedTerms = sortTerms(displayTerms);
+      const customTerms = (
+        appState.layoutMode === 'program_coverage' &&
+        !currentTerm &&
+        appState.programCoverageSelectedTerms instanceof Set &&
+        appState.programCoverageSelectedTerms.size > 1
+      ) ? sortTerms(Array.from(appState.programCoverageSelectedTerms)) : [];
+
+      const termKey = sortedTerms.join('|') + '::' + currentTerm + '::' + customTerms.join(',');
       if (termSelect._lastKey !== termKey) {
         termSelect._lastKey = termKey;
         termSelect.innerHTML = '<option value="">All Terms</option>';
+        if (customTerms.length > 1) {
+          const customOpt = document.createElement('option');
+          customOpt.value = '__custom_terms__';
+          customOpt.textContent = `${customTerms.join(', ')} (${customTerms.length} Terms)`;
+          customOpt.selected = true;
+          termSelect.appendChild(customOpt);
+        }
         sortedTerms.forEach(t => {
           const opt = document.createElement('option');
           opt.value = t;
@@ -3097,7 +3123,26 @@ function renderActiveFilterPills() {
       appState.filters.term = '';
       appState.programCoverageSelectedTerms = null;
       const termSelect = document.getElementById('filter-term');
-      if (termSelect) termSelect.value = '';
+      if (termSelect) {
+        termSelect._lastKey = null;
+        termSelect.value = '';
+      }
+      populateFilterControls();
+      applyFiltersAndRender();
+    });
+  } else if (
+    appState.layoutMode === 'program_coverage' &&
+    appState.programCoverageSelectedTerms instanceof Set &&
+    appState.programCoverageSelectedTerms.size > 1
+  ) {
+    const customList = sortTerms(Array.from(appState.programCoverageSelectedTerms));
+    addPill('Terms', customList.join(', '), () => {
+      appState.programCoverageSelectedTerms = null;
+      const termSelect = document.getElementById('filter-term');
+      if (termSelect) {
+        termSelect._lastKey = null;
+        termSelect.value = '';
+      }
       populateFilterControls();
       applyFiltersAndRender();
     });
@@ -7072,11 +7117,30 @@ function renderProgramCoverageDashboard() {
   `;
   container.appendChild(searchBar);
 
+  // Sync Semesters in Scope selector -> sidebar Academic Term filter
+  function syncSidebarTermFromScope(selectedSet) {
+    const ordered = allTerms.filter(t => selectedSet.has(t));
+    if (ordered.length === 0 || ordered.length >= allTerms.length) {
+      appState.filters.term = '';
+      appState.programCoverageSelectedTerms = null;
+    } else if (ordered.length === 1) {
+      appState.filters.term = ordered[0];
+      appState.programCoverageSelectedTerms = null;
+    } else {
+      appState.filters.term = '';
+      appState.programCoverageSelectedTerms = new Set(ordered);
+    }
+
+    const termSelect = document.getElementById('filter-term');
+    if (termSelect) termSelect._lastKey = null;
+    populateFilterControls();
+    applyFiltersAndRender();
+  }
+
   // Wire Semester Scope Pills
   searchBar.querySelectorAll('.prog-term-pill[data-term-action="all"]').forEach(btn => {
     btn.addEventListener('click', () => {
-      appState.programCoverageSelectedTerms = new Set(allTerms);
-      applyFiltersAndRender();
+      syncSidebarTermFromScope(new Set(allTerms));
     });
   });
 
@@ -7095,8 +7159,7 @@ function renderProgramCoverageDashboard() {
       } else {
         nextSet.add(termVal);
       }
-      appState.programCoverageSelectedTerms = nextSet;
-      applyFiltersAndRender();
+      syncSidebarTermFromScope(nextSet);
     });
   });
 
@@ -10094,8 +10157,10 @@ function setupEventListeners() {
   const termSelect = document.getElementById('filter-term');
   if (termSelect) {
     termSelect.addEventListener('change', (e) => {
+      if (e.target.value === '__custom_terms__') return;
       appState.filters.term = e.target.value;
       appState.programCoverageSelectedTerms = null;
+      termSelect._lastKey = null;
       populateFilterControls();
       applyFiltersAndRender();
     });
