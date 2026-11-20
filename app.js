@@ -1142,10 +1142,16 @@ const appState = {
   waitlistSearchQuery: '',
   currentWaitlistAnalysis: null,
   programCoverageSubLayout: 'room',  // Default to Room View ('day', 'room')
-  programCoverageActiveTab: 'all',   // 'all', 'missing', 'scheduled', 'ge'
+  programCoverageActiveTab: 'chains',// 'chains', 'all', 'missing', 'scheduled', 'ge'
   programCoverageSelectedProgram: '',// Selected Program ID (e.g. 'S078 - Business Administration...')
+  programCoverageSelectedTerms: null,// null = follow sidebar Term filter; Set = custom selected terms in Program Coverage
+  programCoverageActivePathway: 'optimal', // 'optimal', 'daytime', 'evening', 'alternate'
+  programCoverageMaxPerTerm: 0,      // 0 = No Limit (conflicts only), or max courses per semester
+  programCoverageTravelBuffer: 30,   // Minutes required between physical meetings at different campuses
   programCoverageCatalogSearch: '',  // Search query in catalog view
   programCoverageDegreeFilter: 'all',// 'all', 'associate', 'certificate'
+  programCoverageCatalogStatusFilter: 'all', // 'all', 'conflict_limited', 'full_offered', 'full_completable', etc.
+  programCoverageCatalogSort: 'offering_desc', // 'offering_desc', 'completable_desc', 'gap_desc', 'courses_desc', 'title_asc'
   currentProgramCoverageAnalysis: null,
   geActivePattern: 'CALGETC', // Active pattern for GE Coverage audit
   geShowMissingOnly: false,
@@ -1424,6 +1430,15 @@ function formatDayEveningLabel(val) {
   return val;
 }
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // --- 3. TIME PARSING & FORMATTING UTILITIES ---
 
 function parseTimeToMinutes(val) {
@@ -1657,6 +1672,11 @@ function parseScheduleDays(daysRaw) {
   if (daysRaw === null || daysRaw === undefined) return [];
   const str = String(daysRaw).trim();
   if (!str) return [];
+
+  // Fallback if Excel/CSV coercion stripped comma from e.g. "1,3" -> 13 or "2,4" -> 24
+  if (!str.includes(',') && /^[1-7]{2,7}$/.test(str)) {
+    return Array.from(new Set(str.split('').map(d => parseInt(d, 10))));
+  }
 
   return str.split(',')
     .map(d => parseInt(d.trim(), 10))
@@ -2725,6 +2745,7 @@ function renderCheckboxList(containerId, items, selectedSet, badgeId, labelForma
         if (containerId === 'list-program') {
           appState.programCoverageSelectedProgram = item;
           appState.programCoverageCatalogView = false;
+          appState.programCoverageActivePathway = 'optimal';
         }
       } else {
         selectedSet.delete(item);
@@ -2733,6 +2754,7 @@ function renderCheckboxList(containerId, items, selectedSet, badgeId, labelForma
             appState.programCoverageSelectedProgram = selectedSet.size > 0
               ? Array.from(selectedSet)[selectedSet.size - 1]
               : '';
+            appState.programCoverageActivePathway = 'optimal';
           }
         }
       }
@@ -2886,7 +2908,7 @@ function applyFiltersAndRender() {
     }
   }
 
-  // If in Program Coverage view, analyze program completability and slice if in Day/Room grid view
+  // If in Program Coverage view, analyze program offerings & student schedule completability and slice if in Day/Room grid view
   if (appState.layoutMode === 'program_coverage') {
     let activeProgId = '';
     if (appState.filters.program.size > 0) {
@@ -2906,17 +2928,35 @@ function applyFiltersAndRender() {
       appState.programCoverageSelectedProgram = activeProgId;
     }
 
-    const termSections = appState.filters.term
-      ? appState.sections.filter(s => s.term === appState.filters.term)
-      : appState.sections;
-    const progAnalysis = analyzeProgramCoverage(activeProgId, appState.filters.location, termSections);
-    appState.currentProgramCoverageAnalysis = progAnalysis;
+    const progAnalysis = getOrComputeProgramCoverageAnalysis(activeProgId);
 
     // If Day View or Room View is toggled beneath the coverage audit
     if (appState.programCoverageSubLayout === 'day' || appState.programCoverageSubLayout === 'room') {
-      const activeTab = appState.programCoverageActiveTab || 'all';
+      const activeTab = appState.programCoverageActiveTab || 'chains';
       const targetCourses = new Set();
+      let usePathwaySecIds = null;
       if (progAnalysis && progAnalysis.single) {
+        if (activeTab === 'chains' && progAnalysis.single.simulation) {
+          const pathways = progAnalysis.single.simulation.pathways || {};
+          const chosenKey = appState.programCoverageActivePathway || 'optimal';
+          const activePathway = pathways[chosenKey] || pathways.optimal;
+          if (activePathway && Array.isArray(activePathway.assigned) && activePathway.assigned.length > 0) {
+            const secIdSet = new Set();
+            let hasPhysicalOrTimed = false;
+            activePathway.assigned.forEach(item => {
+              if (item.section && item.section.sectionUniqueId) {
+                secIdSet.add(item.section.sectionUniqueId);
+                if (!item.isAsync && item.section.scheduleBlocks && item.section.scheduleBlocks.some(b => b.days && b.days.length > 0 && b.startMinutes !== null)) {
+                  hasPhysicalOrTimed = true;
+                }
+              }
+            });
+            if (hasPhysicalOrTimed && secIdSet.size > 0) {
+              usePathwaySecIds = secIdSet;
+            }
+          }
+        }
+        if (!usePathwaySecIds) {
         if (activeTab === 'scheduled') {
           progAnalysis.single.scheduledCourses.forEach(c => {
             targetCourses.add(c.course);
@@ -2944,9 +2984,24 @@ function applyFiltersAndRender() {
             }
           });
         }
+        }
       }
 
-      if (targetCourses.size > 0) {
+      if (usePathwaySecIds) {
+        const hasCustomTerms = appState.programCoverageSelectedTerms instanceof Set && appState.programCoverageSelectedTerms.size > 0;
+        if (hasCustomTerms) {
+          matchedSections = appState.sections.filter(s => usePathwaySecIds.has(s.sectionUniqueId));
+          filteredBlocks = appState.scheduleBlocks.filter(b => {
+            if (!usePathwaySecIds.has(b.parentSection.sectionUniqueId)) return false;
+            if (building && b.building.toLowerCase() !== building.toLowerCase()) return false;
+            if (room && b.room.toLowerCase() !== room.toLowerCase()) return false;
+            return true;
+          });
+        } else {
+          matchedSections = matchedSections.filter(s => usePathwaySecIds.has(s.sectionUniqueId));
+          filteredBlocks = filteredBlocks.filter(b => usePathwaySecIds.has(b.parentSection.sectionUniqueId));
+        }
+      } else if (targetCourses.size > 0) {
         matchedSections = matchedSections.filter(s => targetCourses.has(s.course));
         const matchedSecIds = new Set(matchedSections.map(s => s.sectionUniqueId));
         filteredBlocks = filteredBlocks.filter(b => matchedSecIds.has(b.parentSection.sectionUniqueId));
@@ -3040,6 +3095,7 @@ function renderActiveFilterPills() {
   if (appState.filters.term) {
     addPill('Term', appState.filters.term, () => {
       appState.filters.term = '';
+      appState.programCoverageSelectedTerms = null;
       const termSelect = document.getElementById('filter-term');
       if (termSelect) termSelect.value = '';
       populateFilterControls();
@@ -3123,6 +3179,7 @@ function renderActiveFilterPills() {
         appState.programCoverageSelectedProgram = appState.filters.program.size > 0
           ? Array.from(appState.filters.program)[appState.filters.program.size - 1]
           : '';
+        appState.programCoverageActivePathway = 'optimal';
       }
       populateFilterControls();
       applyFiltersAndRender();
@@ -5409,18 +5466,1147 @@ function renderEfficiencyDashboard() {
 }
 
 // ==========================================================================
-// --- 10.5 PROGRAM COVERAGE & COMPLETABILITY AUDIT DASHBOARD ---
+// --- 10.5 PROGRAM CORE OFFERINGS & STUDENT SCHEDULE SIMULATOR ---
 // ==========================================================================
 
 /**
- * Analyzes program completability and course offerings at a given location scope.
- * Evaluates required major courses (scheduled vs missing) and GE breadth coverage for Associate degrees.
+ * Resolves the active semester list and scope sections for Program Coverage.
+ * Respects sidebar Term filter unless custom semester pills are toggled inside Program Coverage,
+ * and respects schedule-characteristic sidebar filters (modality, dayEvening, session, traits).
  */
-function analyzeProgramCoverage(programId, location, scopeSections) {
+function getProgramCoverageScopeTermsAndSections() {
+  const allSections = appState.sections || [];
+  const allTerms = sortTerms(Array.from(new Set(allSections.map(s => s.term).filter(Boolean))));
+
+  let activeTerms = [];
+  if (appState.programCoverageSelectedTerms instanceof Set && appState.programCoverageSelectedTerms.size > 0) {
+    if (allTerms.length > 0) {
+      activeTerms = allTerms.filter(t => appState.programCoverageSelectedTerms.has(t));
+    } else {
+      activeTerms = ['Current Term'];
+    }
+  }
+
+  if (activeTerms.length === 0) {
+    if (appState.filters.term) {
+      activeTerms = [appState.filters.term];
+    } else {
+      activeTerms = allTerms.length > 0 ? [...allTerms] : ['Current Term'];
+    }
+  }
+
+  const activeTermSet = new Set(activeTerms);
+  const { modality, dayEvening, session, traits } = appState.filters;
+
+  const scopeSections = allSections.filter(sec => {
+    if (allTerms.length > 0 && !activeTermSet.has(sec.term)) return false;
+    if (modality.size > 0 && !modality.has(sec.modality)) return false;
+    if (dayEvening.size > 0 && !dayEvening.has(sec.dayOrEvening)) return false;
+    if (session.size > 0 && !session.has(sec.calendarSession)) return false;
+    if (traits.size > 0 && !Array.from(traits).some(t => sec.sectionTraits.includes(t))) return false;
+    return true;
+  });
+
+  const extraFiltersKey = [
+    Array.from(modality).sort().join(','),
+    Array.from(dayEvening).sort().join(','),
+    Array.from(session).sort().join(','),
+    Array.from(traits).sort().join(',')
+  ].join('|');
+
+  return { allTerms, activeTerms, scopeSections, extraFiltersKey };
+}
+
+/**
+ * Normalizes a schedule section into structured timed meeting blocks and an async flag
+ * for single-student schedule chaining simulation.
+ */
+function normalizeSectionForSimulation(sec) {
+  const term = String(sec.term || 'Current Term').trim() || 'Current Term';
+  const campus = String(sec.location || '').trim();
+  const isEvening = isEveningSection(sec);
+  const ftType = getFastTrackSessionType(sec);
+  const timedBlocks = [];
+
+  (sec.scheduleBlocks || []).forEach(b => {
+    const days = Array.isArray(b.days) ? b.days : [];
+    if (days.length === 0) return;
+    if (b.startMinutes === null || b.startMinutes === undefined) return;
+    if (b.endMinutes === null || b.endMinutes === undefined) return;
+    if (b.endMinutes <= b.startMinutes) return;
+
+    const isVirtual = isVirtualRoomOrOnline({ ...b, parentSection: sec });
+    const startDateTs = parseDateToTimestamp(b.startDate);
+    const endDateTs = parseDateToTimestamp(b.endDate);
+    const startTimeStr = b.startTimeStr || formatMinutesToAmPm(b.startMinutes);
+    const endTimeStr = b.endTimeStr || formatMinutesToAmPm(b.endMinutes);
+
+    days.forEach(day => {
+      timedBlocks.push({
+        day,
+        start: b.startMinutes,
+        end: b.endMinutes,
+        startTimeStr,
+        endTimeStr,
+        startDate: b.startDate || '',
+        endDate: b.endDate || '',
+        startDateTs,
+        endDateTs,
+        ftType,
+        isVirtual,
+        campus: isVirtual ? 'Online' : campus,
+        building: b.building || '',
+        room: b.room || '',
+        instructionType: b.instructionType || ''
+      });
+    });
+  });
+
+  timedBlocks.sort((a, b) => {
+    if (a.day !== b.day) return a.day - b.day;
+    if (a.start !== b.start) return a.start - b.start;
+    return a.end - b.end;
+  });
+
+  const isAsync = timedBlocks.length === 0;
+  const signature = isAsync
+    ? `${term}|ASYNC`
+    : `${term}|` + timedBlocks.map(t =>
+        `${t.day}:${t.start}-${t.end}:${t.ftType || ''}:${t.startDateTs !== null ? t.startDateTs : ''}-${t.endDateTs !== null ? t.endDateTs : ''}:${t.isVirtual ? 'V' : t.campus}`
+      ).join(';');
+
+  return {
+    section: sec,
+    term,
+    campus,
+    isEvening,
+    ftType,
+    timedBlocks,
+    isAsync,
+    signature
+  };
+}
+
+/**
+ * Picks the best representative section among equivalent sections sharing the same schedule slot.
+ */
+function pickRepresentativeSection(sections) {
+  if (!sections || sections.length === 0) return null;
+  if (sections.length === 1) return sections[0];
+  return [...sections].sort((a, b) => {
+    const aOpen = (a.capacity || 0) > (a.activeStudents || 0) ? 1 : 0;
+    const bOpen = (b.capacity || 0) > (b.activeStudents || 0) ? 1 : 0;
+    if (bOpen !== aOpen) return bOpen - aOpen;
+    if ((b.capacity || 0) !== (a.capacity || 0)) return (b.capacity || 0) - (a.capacity || 0);
+    return String(a.sectionName || '').localeCompare(String(b.sectionName || ''));
+  })[0];
+}
+
+/**
+ * Groups offered sections of a course into deduplicated schedule SlotOptions.
+ */
+function buildCourseSlotOptions(courseCode, sections, normalizedSectionMap) {
+  if (!sections || sections.length === 0) return [];
+  const slotGroups = new Map();
+
+  sections.forEach(sec => {
+    let norm = normalizedSectionMap ? normalizedSectionMap.get(sec.sectionUniqueId) : null;
+    if (!norm) {
+      norm = normalizeSectionForSimulation(sec);
+      if (normalizedSectionMap) normalizedSectionMap.set(sec.sectionUniqueId, norm);
+    }
+
+    if (!slotGroups.has(norm.signature)) {
+      slotGroups.set(norm.signature, {
+        optionKey: `${courseCode}::${norm.signature}`,
+        course: courseCode,
+        term: norm.term,
+        isAsync: norm.isAsync,
+        isEvening: norm.isEvening,
+        ftType: norm.ftType,
+        timedBlocks: norm.timedBlocks,
+        signature: norm.signature,
+        sections: []
+      });
+    }
+    slotGroups.get(norm.signature).sections.push(sec);
+  });
+
+  const options = [];
+  slotGroups.forEach(opt => {
+    opt.representativeSection = pickRepresentativeSection(opt.sections);
+    opt.isEvening = opt.sections.some(s => isEveningSection(s));
+    options.push(opt);
+  });
+
+  options.sort((a, b) => {
+    if (a.isAsync !== b.isAsync) return a.isAsync ? -1 : 1;
+    const ka = getTermSortKey(a.term);
+    const kb = getTermSortKey(b.term);
+    if (ka !== kb) {
+      if (typeof ka === 'number' && typeof kb === 'number') return ka - kb;
+      return String(ka).localeCompare(String(kb));
+    }
+    const dayA = a.timedBlocks[0]?.day ?? 9;
+    const dayB = b.timedBlocks[0]?.day ?? 9;
+    if (dayA !== dayB) return dayA - dayB;
+    return (a.timedBlocks[0]?.start ?? 0) - (b.timedBlocks[0]?.start ?? 0);
+  });
+
+  return options;
+}
+
+/**
+ * Determines whether two SlotOptions conflict for a single student.
+ * Handles direct time overlap, Fast-Track 1 -> Fast-Track 2 sequential date non-overlap,
+ * online asynchronous flexibility, and physical inter-campus travel buffer.
+ */
+function checkSlotOptionConflict(optA, optB, travelBufferMins = 30) {
+  if (!optA || !optB) return { conflict: false };
+  if (optA.term !== optB.term) return { conflict: false };
+  if (optA.isAsync || optB.isAsync) return { conflict: false };
+
+  const blocksA = optA.timedBlocks || [];
+  const blocksB = optB.timedBlocks || [];
+
+  for (let i = 0; i < blocksA.length; i++) {
+    const a = blocksA[i];
+    for (let j = 0; j < blocksB.length; j++) {
+      const b = blocksB[j];
+      if (a.day !== b.day) continue;
+
+      // Date-span overlap check (supports Fast-Track 1 -> Fast-Track 2 sequential chaining)
+      if (a.startDateTs !== null && a.endDateTs !== null && b.startDateTs !== null && b.endDateTs !== null) {
+        if ((a.ftType === 'FT1' && b.ftType === 'FT2' && a.endDateTs <= b.startDateTs) ||
+            (b.ftType === 'FT1' && a.ftType === 'FT2' && b.endDateTs <= a.startDateTs)) {
+          continue;
+        }
+        if (a.endDateTs < b.startDateTs || b.endDateTs < a.startDateTs) {
+          continue;
+        }
+      } else if ((a.ftType === 'FT1' && b.ftType === 'FT2') || (a.ftType === 'FT2' && b.ftType === 'FT1')) {
+        continue;
+      }
+
+      // Direct meeting time overlap
+      if (a.start < b.end && b.start < a.end) {
+        return {
+          conflict: true,
+          reason: 'time_overlap',
+          day: a.day,
+          blockA: a,
+          blockB: b,
+          gapMins: 0
+        };
+      }
+
+      // Physical inter-campus travel buffer
+      if (travelBufferMins > 0 && !a.isVirtual && !b.isVirtual && a.campus && b.campus &&
+          a.campus.toLowerCase() !== b.campus.toLowerCase()) {
+        const gapMins = a.end <= b.start ? (b.start - a.end) : (a.start - b.end);
+        if (gapMins < travelBufferMins) {
+          return {
+            conflict: true,
+            reason: 'campus_travel',
+            day: a.day,
+            blockA: a,
+            blockB: b,
+            gapMins
+          };
+        }
+      }
+    }
+  }
+
+  return { conflict: false };
+}
+
+/**
+ * Exact Branch-and-Bound solver for a connected component of courses (or full set when term-capped).
+ */
+function solveScheduleComponent(entries, cap, nodeLimit, penalizedOptionKeys, travelBufferMins, termToIdx, numTerms) {
+  const N = entries.length;
+  if (N === 0) return [];
+
+  // Flatten options and assign compact IDs for O(1) conflict matrix lookup
+  const compCourses = [];
+  let flatIdCounter = 0;
+
+  entries.forEach(entry => {
+    const optsMeta = entry.options.map(opt => {
+      const flatId = flatIdCounter++;
+      const termIdx = termToIdx.has(opt.term) ? termToIdx.get(opt.term) : 0;
+      const penalty = (penalizedOptionKeys && penalizedOptionKeys.has(opt.optionKey)) ? 1 : 0;
+      return {
+        flatId,
+        opt,
+        termIdx,
+        penalty,
+        conflictDegree: 0
+      };
+    });
+    compCourses.push({
+      course: entry.course,
+      opts: optsMeta
+    });
+  });
+
+  const totalOpts = flatIdCounter;
+  const conflictMatrix = new Uint8Array(totalOpts * totalOpts);
+
+  for (let c1 = 0; c1 < N; c1++) {
+    const opts1 = compCourses[c1].opts;
+    for (let c2 = c1 + 1; c2 < N; c2++) {
+      const opts2 = compCourses[c2].opts;
+      for (let i = 0; i < opts1.length; i++) {
+        const m1 = opts1[i];
+        for (let j = 0; j < opts2.length; j++) {
+          const m2 = opts2[j];
+          if (m1.termIdx !== m2.termIdx) continue;
+          if (checkSlotOptionConflict(m1.opt, m2.opt, travelBufferMins).conflict) {
+            conflictMatrix[m1.flatId * totalOpts + m2.flatId] = 1;
+            conflictMatrix[m2.flatId * totalOpts + m1.flatId] = 1;
+            m1.conflictDegree++;
+            m2.conflictDegree++;
+          }
+        }
+      }
+    }
+  }
+
+  // Sort options within each course: non-penalized first, fewest conflicts, chronological term, earliest start
+  compCourses.forEach(c => {
+    c.totalDegree = c.opts.reduce((sum, o) => sum + o.conflictDegree, 0);
+    c.opts.sort((a, b) => {
+      if (a.penalty !== b.penalty) return a.penalty - b.penalty;
+      if (a.conflictDegree !== b.conflictDegree) return a.conflictDegree - b.conflictDegree;
+      if (a.termIdx !== b.termIdx) return a.termIdx - b.termIdx;
+      if (a.opt.isAsync !== b.opt.isAsync) return a.opt.isAsync ? -1 : 1;
+      return (a.opt.timedBlocks[0]?.start ?? 0) - (b.opt.timedBlocks[0]?.start ?? 0);
+    });
+  });
+
+  // Order courses by MRV (fewest options first, highest conflict degree first)
+  compCourses.sort((a, b) => {
+    if (a.opts.length !== b.opts.length) return a.opts.length - b.opts.length;
+    return b.totalDegree - a.totalDegree;
+  });
+
+  // Greedy Seed Solution
+  const seedTermCounts = new Array(Math.max(1, numTerms)).fill(0);
+  const seedChosen = [];
+  const seedChoices = new Array(N).fill(null);
+  let seedPenalty = 0;
+
+  for (let i = 0; i < N; i++) {
+    const opts = compCourses[i].opts;
+    for (let k = 0; k < opts.length; k++) {
+      const m = opts[k];
+      if (seedTermCounts[m.termIdx] >= cap) continue;
+      let ok = true;
+      for (let p = 0; p < seedChosen.length; p++) {
+        if (conflictMatrix[seedChosen[p].flatId * totalOpts + m.flatId]) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        seedChosen.push(m);
+        seedChoices[i] = m;
+        seedTermCounts[m.termIdx]++;
+        seedPenalty += m.penalty;
+        break;
+      }
+    }
+  }
+
+  let bestCount = seedChosen.length;
+  let bestPenalty = seedPenalty;
+  let bestChoices = seedChoices.slice();
+
+  const hasPenaltyPref = Boolean(penalizedOptionKeys && penalizedOptionKeys.size > 0);
+  const maxPossibleByTerms = cap === Infinity ? N : Math.min(N, cap * Math.max(1, numTerms));
+  if (bestCount === maxPossibleByTerms && (!hasPenaltyPref || bestPenalty === 0)) {
+    return bestChoices.map((m, idx) => m ? { course: compCourses[idx].course, option: m.opt } : null).filter(Boolean);
+  }
+
+  // Exact Branch-and-Bound DFS
+  const termCounts = new Array(Math.max(1, numTerms)).fill(0);
+  const currentChosen = [];
+  const currentChoices = new Array(N).fill(null);
+  let nodesVisited = 0;
+  let hitLimit = false;
+
+  function remainingCapSlots() {
+    if (cap === Infinity) return N;
+    let rem = 0;
+    for (let t = 0; t < termCounts.length; t++) {
+      if (termCounts[t] < cap) rem += (cap - termCounts[t]);
+    }
+    return rem;
+  }
+
+  function dfs(idx, chosenCount, currPenalty) {
+    if (hitLimit) return;
+    nodesVisited++;
+    if (nodesVisited >= nodeLimit) {
+      hitLimit = true;
+      return;
+    }
+
+    if (idx === N) {
+      if (chosenCount > bestCount || (chosenCount === bestCount && currPenalty < bestPenalty)) {
+        bestCount = chosenCount;
+        bestPenalty = currPenalty;
+        bestChoices = currentChoices.slice();
+      }
+      return;
+    }
+
+    const remCourses = N - idx;
+    const remCap = cap === Infinity ? remCourses : Math.min(remCourses, remainingCapSlots());
+    const upper = chosenCount + remCap;
+
+    if (hasPenaltyPref) {
+      if (upper < bestCount) return;
+      if (upper === bestCount && currPenalty >= bestPenalty) return;
+    } else {
+      if (upper <= bestCount) return;
+    }
+
+    const opts = compCourses[idx].opts;
+    for (let k = 0; k < opts.length; k++) {
+      const m = opts[k];
+      if (termCounts[m.termIdx] >= cap) continue;
+      let ok = true;
+      for (let p = 0; p < currentChosen.length; p++) {
+        if (conflictMatrix[currentChosen[p].flatId * totalOpts + m.flatId]) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok) continue;
+
+      termCounts[m.termIdx]++;
+      currentChosen.push(m);
+      currentChoices[idx] = m;
+      dfs(idx + 1, chosenCount + 1, currPenalty + m.penalty);
+      currentChoices[idx] = null;
+      currentChosen.pop();
+      termCounts[m.termIdx]--;
+
+      if (hitLimit) return;
+    }
+
+    // Branch: skip course idx
+    const skipUpper = chosenCount + (cap === Infinity ? (remCourses - 1) : Math.min(remCourses - 1, remainingCapSlots()));
+    if (skipUpper > bestCount || (hasPenaltyPref && skipUpper === bestCount && currPenalty < bestPenalty)) {
+      dfs(idx + 1, chosenCount, currPenalty);
+    }
+  }
+
+  dfs(0, 0, 0);
+
+  const result = [];
+  for (let i = 0; i < N; i++) {
+    if (bestChoices[i]) {
+      result.push({
+        course: compCourses[i].course,
+        option: bestChoices[i].opt
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * Formats minutes-gap label for sequential same-day chained courses.
+ */
+function formatChainGapLabel(gapMins) {
+  if (gapMins <= 0) return 'Back-to-back (0m)';
+  if (gapMins >= 60) {
+    const hrs = Math.floor(gapMins / 60);
+    const mins = gapMins % 60;
+    return mins > 0 ? `${hrs}h ${mins}m break` : `${hrs}h break`;
+  }
+  return `${gapMins}m break`;
+}
+
+/**
+ * Builds rich diagnostics, term-by-term weekly grids, day chains, and conflict explanations
+ * for a single simulated student schedule pathway.
+ */
+function buildPathwayDetails(assignments, allCourseEntries, filteredTerms, simOptions, termToIdx) {
+  const travelBufferMins = simOptions?.travelBufferMins ?? 30;
+  const maxCoursesPerTerm = simOptions?.maxCoursesPerTerm ?? 0;
+  const cap = maxCoursesPerTerm > 0 ? maxCoursesPerTerm : Infinity;
+
+  const assignedMap = new Map();
+  const termCounts = new Array(Math.max(1, filteredTerms.length)).fill(0);
+
+  // Sort assigned courses chronologically by term, timed before async, earliest day/start, course code
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    const tA = termToIdx.has(a.option.term) ? termToIdx.get(a.option.term) : 0;
+    const tB = termToIdx.has(b.option.term) ? termToIdx.get(b.option.term) : 0;
+    if (tA !== tB) return tA - tB;
+    if (a.option.isAsync !== b.option.isAsync) return a.option.isAsync ? 1 : -1;
+    const dA = a.option.timedBlocks[0]?.day ?? 9;
+    const dB = b.option.timedBlocks[0]?.day ?? 9;
+    if (dA !== dB) return dA - dB;
+    const sA = a.option.timedBlocks[0]?.start ?? 0;
+    const sB = b.option.timedBlocks[0]?.start ?? 0;
+    if (sA !== sB) return sA - sB;
+    return a.course.localeCompare(b.course);
+  });
+
+  const assigned = sortedAssignments.map((a, idx) => {
+    const tIdx = termToIdx.has(a.option.term) ? termToIdx.get(a.option.term) : 0;
+    termCounts[tIdx] = (termCounts[tIdx] || 0) + 1;
+    const item = {
+      course: a.course,
+      option: a.option,
+      section: a.option.representativeSection,
+      equivalentCount: a.option.sections.length,
+      term: a.option.term,
+      termIndex: tIdx,
+      isAsync: a.option.isAsync,
+      colorIdx: idx % 8
+    };
+    assignedMap.set(a.course, item);
+    return item;
+  });
+
+  // Diagnose blocked courses (offered courses that couldn't be chained in this pathway)
+  const blocked = [];
+  allCourseEntries.forEach(entry => {
+    if (assignedMap.has(entry.course)) return;
+
+    if (!entry.options || entry.options.length === 0) {
+      blocked.push({
+        course: entry.course,
+        options: entry.allOptions || [],
+        conflictType: 'pathway_filter',
+        conflictingCourses: [],
+        blockReason: 'No sections offered matching this schedule profile (e.g., Daytime vs. Evening/Weekend).',
+        suggestion: 'Switch to Max Core Path or adjust time-of-day flexibility.'
+      });
+      return;
+    }
+
+    let termCapBlockedOpt = null;
+    let bestConflictChoice = null;
+
+    entry.options.forEach(opt => {
+      const tIdx = termToIdx.has(opt.term) ? termToIdx.get(opt.term) : 0;
+      const sameTermAssigned = assigned.filter(a => a.term === opt.term);
+      const conflicts = [];
+
+      sameTermAssigned.forEach(a => {
+        const res = checkSlotOptionConflict(opt, a.option, travelBufferMins);
+        if (res.conflict) {
+          conflicts.push({ assignedItem: a, detail: res });
+        }
+      });
+
+      if (conflicts.length === 0 && termCounts[tIdx] >= cap) {
+        if (!termCapBlockedOpt) termCapBlockedOpt = opt;
+      } else if (conflicts.length > 0) {
+        if (!bestConflictChoice || conflicts.length < bestConflictChoice.conflicts.length) {
+          bestConflictChoice = { opt, conflicts };
+        }
+      }
+    });
+
+    if (termCapBlockedOpt) {
+      blocked.push({
+        course: entry.course,
+        options: entry.options,
+        conflictType: 'term_load_cap',
+        conflictingCourses: [],
+        blockReason: `Exceeds semester load cap (max ${cap} courses reached in ${termCapBlockedOpt.term}).`,
+        suggestion: `Increase Max / Semester above ${cap} or include an additional semester in scope.`
+      });
+    } else if (bestConflictChoice) {
+      const firstConf = bestConflictChoice.conflicts[0];
+      const otherCourse = firstConf.assignedItem.course;
+      const d = firstConf.detail;
+      const dayShort = DAY_MAP[d.day]?.short || `Day ${d.day}`;
+      const confCourseList = Array.from(new Set(bestConflictChoice.conflicts.map(c => c.assignedItem.course)));
+
+      if (d.reason === 'campus_travel') {
+        const locA = d.blockA.campus || 'Campus A';
+        const locB = d.blockB.campus || 'Campus B';
+        blocked.push({
+          course: entry.course,
+          options: entry.options,
+          conflictType: 'campus_travel',
+          conflictingCourses: confCourseList,
+          blockReason: `Campus travel conflict on ${dayShort} (${bestConflictChoice.opt.term}): ${d.gapMins}m gap between ${locA} and ${locB} (${otherCourse}) is under ${travelBufferMins}m buffer.`,
+          suggestion: `Offer ${entry.course} online, at ${locB}, or with at least a ${travelBufferMins}m gap.`
+        });
+      } else {
+        const timeSpan = `${d.blockA.startTimeStr} – ${d.blockA.endTimeStr}`;
+        blocked.push({
+          course: entry.course,
+          options: entry.options,
+          conflictType: 'time_overlap',
+          conflictingCourses: confCourseList,
+          blockReason: `Overlaps on ${dayShort} ${timeSpan} (${bestConflictChoice.opt.term}) with ${confCourseList.join(', ')}.`,
+          suggestion: `Add a section of ${entry.course} outside ${dayShort} ${timeSpan} or offer in another semester.`
+        });
+      }
+    } else {
+      blocked.push({
+        course: entry.course,
+        options: entry.options,
+        conflictType: 'time_overlap',
+        conflictingCourses: [],
+        blockReason: 'No conflict-free slot available within current pathway constraints.',
+        suggestion: 'Add an alternate section timeslot or expand semester scope.'
+      });
+    }
+  });
+
+  // Build term-by-term weekly timetable & chain flow
+  const termSchedules = filteredTerms.map((term, termIndex) => {
+    const termCourses = assigned.filter(a => a.term === term);
+    const asyncCourses = termCourses.filter(a => a.isAsync);
+    const timedCourses = termCourses.filter(a => !a.isAsync);
+
+    const timedBlocks = [];
+    timedCourses.forEach(item => {
+      (item.option.timedBlocks || []).forEach(tb => {
+        timedBlocks.push({
+          course: item.course,
+          section: item.section,
+          equivalentCount: item.equivalentCount,
+          term,
+          day: tb.day,
+          start: tb.start,
+          end: tb.end,
+          startTimeStr: tb.startTimeStr,
+          endTimeStr: tb.endTimeStr,
+          campus: tb.campus,
+          building: tb.building,
+          room: tb.room,
+          ftType: tb.ftType || item.option.ftType,
+          isVirtual: tb.isVirtual,
+          colorIdx: item.colorIdx,
+          subCol: 0,
+          subCols: 1
+        });
+      });
+    });
+
+    // Resolve side-by-side placement on same day (only happens for sequential FT1 + FT2)
+    const dayChains = [];
+    const activeDays = [1, 2, 3, 4, 5, 6, 7];
+
+    activeDays.forEach(day => {
+      const dayBlocks = timedBlocks
+        .filter(b => b.day === day)
+        .sort((a, b) => {
+          if (a.start !== b.start) return a.start - b.start;
+          const ftA = a.ftType === 'FT1' ? 0 : (a.ftType === 'FT2' ? 1 : 2);
+          const ftB = b.ftType === 'FT1' ? 0 : (b.ftType === 'FT2' ? 1 : 2);
+          return ftA - ftB;
+        });
+
+      if (dayBlocks.length === 0) return;
+
+      // Assign side-by-side sub-columns for FT1/FT2 time-of-day overlaps
+      const cols = [];
+      dayBlocks.forEach(blk => {
+        let placed = -1;
+        for (let c = 0; c < cols.length; c++) {
+          const last = cols[c][cols[c].length - 1];
+          if (blk.start >= last.end) {
+            cols[c].push(blk);
+            placed = c;
+            break;
+          }
+        }
+        if (placed === -1) {
+          cols.push([blk]);
+          placed = cols.length - 1;
+        }
+        blk.subCol = placed;
+      });
+      if (cols.length > 1) {
+        dayBlocks.forEach(blk => {
+          const overlapsAny = dayBlocks.some(other => other !== blk && blk.start < other.end && other.start < blk.end);
+          blk.subCols = overlapsAny ? cols.length : 1;
+          if (!overlapsAny) blk.subCol = 0;
+        });
+      }
+
+      const chainItems = dayBlocks.map((blk, idx) => {
+        const next = dayBlocks[idx + 1] || null;
+        let connector = null;
+        if (next) {
+          const isFtSeq = ((blk.ftType === 'FT1' && next.ftType === 'FT2') || (blk.ftType === 'FT2' && next.ftType === 'FT1')) && next.start < blk.end;
+          if (isFtSeq) {
+            connector = { type: 'ft_seq', label: '⚡ Sequential 8-Wk Chain' };
+          } else {
+            const gap = Math.max(0, next.start - blk.end);
+            connector = {
+              type: gap === 0 ? 'tight' : 'gap',
+              label: formatChainGapLabel(gap)
+            };
+          }
+        }
+        return {
+          ...blk,
+          connector
+        };
+      });
+
+      dayChains.push({
+        day,
+        dayName: DAY_MAP[day]?.name || `Day ${day}`,
+        dayShort: DAY_MAP[day]?.short || `D${day}`,
+        items: chainItems
+      });
+    });
+
+    // Identify Fast-Track sequential pairs chained within this term
+    const ft1List = timedCourses.filter(c => c.option.ftType === 'FT1');
+    const ft2List = timedCourses.filter(c => c.option.ftType === 'FT2');
+    const fastTrackChains = [];
+    if (ft1List.length > 0 && ft2List.length > 0) {
+      ft1List.forEach((c1, i) => {
+        const c2 = ft2List[i] || ft2List[0];
+        if (c2) {
+          fastTrackChains.push({
+            ft1Course: c1.course,
+            ft2Course: c2.course
+          });
+        }
+      });
+    }
+
+    let minHour = 8;
+    let maxHour = 18;
+    if (timedBlocks.length > 0) {
+      const earliest = Math.min(...timedBlocks.map(b => b.start));
+      const latest = Math.max(...timedBlocks.map(b => b.end));
+      minHour = Math.max(6, Math.floor(earliest / 60));
+      maxHour = Math.min(23, Math.ceil(latest / 60));
+      if (maxHour < minHour + 2) maxHour = Math.min(23, minHour + 2);
+    }
+
+    return {
+      term,
+      termIndex,
+      courses: termCourses,
+      timedCoursesCount: timedCourses.length,
+      asyncCourses,
+      timedBlocks,
+      dayChains,
+      fastTrackChains,
+      minHour,
+      maxHour
+    };
+  });
+
+  return {
+    chainableCount: assigned.length,
+    assigned,
+    blocked,
+    termSchedules
+  };
+}
+
+/**
+ * Solves for the maximum conflict-free chainable course set for a single student across filteredTerms.
+ */
+function solveStudentSchedule(courseSlotEntries, filteredTerms, simOptions = {}) {
+  const termsList = (filteredTerms && filteredTerms.length > 0) ? filteredTerms : ['Current Term'];
+  const termToIdx = new Map();
+  termsList.forEach((t, idx) => termToIdx.set(t, idx));
+
+  const travelBufferMins = simOptions.travelBufferMins ?? 30;
+  const maxCoursesPerTerm = simOptions.maxCoursesPerTerm ?? 0;
+  const cap = maxCoursesPerTerm > 0 ? maxCoursesPerTerm : Infinity;
+  const nodeLimit = simOptions.nodeLimit ?? 3000;
+  const penalizedOptionKeys = simOptions.penalizedOptionKeys || null;
+  const includeDetails = Boolean(simOptions.includeDetails);
+
+  const validEntries = (courseSlotEntries || []).filter(e => e.options && e.options.length > 0);
+  let assignments = [];
+
+  if (validEntries.length > 0) {
+    if (cap === Infinity) {
+      const fixedAssignments = [];
+      const termCounts = new Array(Math.max(1, termsList.length)).fill(0);
+      const remainingTimed = [];
+
+      // 1. Pre-assign courses with an online asynchronous option (always conflict-free when uncapped)
+      validEntries.forEach(entry => {
+        const asyncOpts = entry.options.filter(o => o.isAsync);
+        if (asyncOpts.length > 0) {
+          asyncOpts.sort((a, b) => {
+            const pA = (penalizedOptionKeys && penalizedOptionKeys.has(a.optionKey)) ? 1 : 0;
+            const pB = (penalizedOptionKeys && penalizedOptionKeys.has(b.optionKey)) ? 1 : 0;
+            if (pA !== pB) return pA - pB;
+            const idxA = termToIdx.has(a.term) ? termToIdx.get(a.term) : 0;
+            const idxB = termToIdx.has(b.term) ? termToIdx.get(b.term) : 0;
+            if (termCounts[idxA] !== termCounts[idxB]) return termCounts[idxA] - termCounts[idxB];
+            return idxA - idxB;
+          });
+          const chosen = asyncOpts[0];
+          const chosenTermIdx = termToIdx.has(chosen.term) ? termToIdx.get(chosen.term) : 0;
+          termCounts[chosenTermIdx]++;
+          fixedAssignments.push({ course: entry.course, option: chosen });
+        } else {
+          remainingTimed.push(entry);
+        }
+      });
+
+      // 2. Pre-assign timed courses that have at least one option conflict-free against ALL other timed courses
+      const coreTimed = [];
+      remainingTimed.forEach((entry, i) => {
+        let safeOptions = [];
+        for (let k = 0; k < entry.options.length; k++) {
+          const opt = entry.options[k];
+          let hasAnyConflict = false;
+          for (let j = 0; j < remainingTimed.length; j++) {
+            if (i === j) continue;
+            const otherOpts = remainingTimed[j].options;
+            for (let m = 0; m < otherOpts.length; m++) {
+              if (opt.term === otherOpts[m].term && checkSlotOptionConflict(opt, otherOpts[m], travelBufferMins).conflict) {
+                hasAnyConflict = true;
+                break;
+              }
+            }
+            if (hasAnyConflict) break;
+          }
+          if (!hasAnyConflict) safeOptions.push(opt);
+        }
+
+        if (safeOptions.length > 0) {
+          safeOptions.sort((a, b) => {
+            const pA = (penalizedOptionKeys && penalizedOptionKeys.has(a.optionKey)) ? 1 : 0;
+            const pB = (penalizedOptionKeys && penalizedOptionKeys.has(b.optionKey)) ? 1 : 0;
+            if (pA !== pB) return pA - pB;
+            const idxA = termToIdx.has(a.term) ? termToIdx.get(a.term) : 0;
+            const idxB = termToIdx.has(b.term) ? termToIdx.get(b.term) : 0;
+            return idxA - idxB;
+          });
+          fixedAssignments.push({ course: entry.course, option: safeOptions[0] });
+        } else {
+          coreTimed.push(entry);
+        }
+      });
+
+      // 3. Decompose remaining core courses into connected conflict components
+      const coreLen = coreTimed.length;
+      const visited = new Uint8Array(coreLen);
+      const adj = Array.from({ length: coreLen }, () => []);
+
+      for (let i = 0; i < coreLen; i++) {
+        for (let j = i + 1; j < coreLen; j++) {
+          let edge = false;
+          const oA = coreTimed[i].options;
+          const oB = coreTimed[j].options;
+          for (let x = 0; x < oA.length && !edge; x++) {
+            for (let y = 0; y < oB.length; y++) {
+              if (oA[x].term === oB[y].term && checkSlotOptionConflict(oA[x], oB[y], travelBufferMins).conflict) {
+                edge = true;
+                break;
+              }
+            }
+          }
+          if (edge) {
+            adj[i].push(j);
+            adj[j].push(i);
+          }
+        }
+      }
+
+      const compAssignments = [];
+      for (let i = 0; i < coreLen; i++) {
+        if (visited[i]) continue;
+        const queue = [i];
+        visited[i] = 1;
+        const compEntries = [];
+        while (queue.length > 0) {
+          const u = queue.shift();
+          compEntries.push(coreTimed[u]);
+          adj[u].forEach(v => {
+            if (!visited[v]) {
+              visited[v] = 1;
+              queue.push(v);
+            }
+          });
+        }
+
+        if (compEntries.length === 1) {
+          const singleEntry = compEntries[0];
+          const sorted = [...singleEntry.options].sort((a, b) => {
+            const pA = (penalizedOptionKeys && penalizedOptionKeys.has(a.optionKey)) ? 1 : 0;
+            const pB = (penalizedOptionKeys && penalizedOptionKeys.has(b.optionKey)) ? 1 : 0;
+            return pA - pB;
+          });
+          compAssignments.push({ course: singleEntry.course, option: sorted[0] });
+        } else {
+          const solved = solveScheduleComponent(compEntries, Infinity, nodeLimit, penalizedOptionKeys, travelBufferMins, termToIdx, termsList.length);
+          solved.forEach(s => compAssignments.push(s));
+        }
+      }
+
+      assignments = [...fixedAssignments, ...compAssignments];
+    } else {
+      // Term-capped mode couples courses across terms
+      assignments = solveScheduleComponent(validEntries, cap, nodeLimit, penalizedOptionKeys, travelBufferMins, termToIdx, termsList.length);
+    }
+  }
+
+  if (!includeDetails) {
+    return { chainableCount: assignments.length };
+  }
+
+  return buildPathwayDetails(assignments, courseSlotEntries, termsList, simOptions, termToIdx);
+}
+
+/**
+ * Identifies clusters of 2+ required courses whose only offered sections collide with one another,
+ * creating structural schedule bottlenecks where at most 1 course in the group can be completed.
+ */
+function computeConflictBottleneckClusters(courseEntries, travelBufferMins) {
+  const n = courseEntries.length;
+  if (n < 2) return [];
+
+  const mutualConflictAdj = Array.from({ length: n }, () => []);
+  const pairInfo = new Map();
+
+  for (let i = 0; i < n; i++) {
+    const optsA = courseEntries[i].options || [];
+    if (optsA.length === 0) continue;
+    for (let j = i + 1; j < n; j++) {
+      const optsB = courseEntries[j].options || [];
+      if (optsB.length === 0) continue;
+
+      let allConflict = true;
+      let sampleConflict = null;
+      for (let x = 0; x < optsA.length && allConflict; x++) {
+        for (let y = 0; y < optsB.length; y++) {
+          const res = checkSlotOptionConflict(optsA[x], optsB[y], travelBufferMins);
+          if (!res.conflict) {
+            allConflict = false;
+            break;
+          }
+          if (!sampleConflict) {
+            sampleConflict = { res, term: optsA[x].term };
+          }
+        }
+      }
+
+      if (allConflict && sampleConflict) {
+        mutualConflictAdj[i].push(j);
+        mutualConflictAdj[j].push(i);
+        pairInfo.set(`${i}:${j}`, sampleConflict);
+      }
+    }
+  }
+
+  const visited = new Uint8Array(n);
+  const clusters = [];
+
+  for (let i = 0; i < n; i++) {
+    if (visited[i] || mutualConflictAdj[i].length === 0) continue;
+    const queue = [i];
+    visited[i] = 1;
+    const idxs = [];
+    while (queue.length > 0) {
+      const u = queue.shift();
+      idxs.push(u);
+      mutualConflictAdj[u].forEach(v => {
+        if (!visited[v]) {
+          visited[v] = 1;
+          queue.push(v);
+        }
+      });
+    }
+
+    if (idxs.length >= 2) {
+      let isClique = true;
+      for (let a = 0; a < idxs.length && isClique; a++) {
+        for (let b = a + 1; b < idxs.length; b++) {
+          if (!mutualConflictAdj[idxs[a]].includes(idxs[b])) {
+            isClique = false;
+            break;
+          }
+        }
+      }
+
+      const firstPair = pairInfo.get(`${Math.min(idxs[0], idxs[1])}:${Math.max(idxs[0], idxs[1])}`);
+      const d = firstPair?.res;
+      const termStr = firstPair?.term || '';
+      const dayShort = d ? (DAY_MAP[d.day]?.short || `Day ${d.day}`) : '';
+      let windowLabel = termStr;
+      if (d && d.blockA && d.blockB) {
+        if (d.reason === 'campus_travel') {
+          windowLabel = `${dayShort} • ${d.blockA.campus} ↔ ${d.blockB.campus} (<${travelBufferMins}m gap)${termStr ? ` (${termStr})` : ''}`;
+        } else {
+          const overlapStart = Math.max(d.blockA.start, d.blockB.start);
+          const overlapEnd = Math.min(d.blockA.end, d.blockB.end);
+          windowLabel = `${dayShort} ${formatMinutesToAmPm(overlapStart)} – ${formatMinutesToAmPm(overlapEnd)}${termStr ? ` (${termStr})` : ''}`;
+        }
+      }
+
+      clusters.push({
+        courses: idxs.map(k => courseEntries[k].course).sort(),
+        windowLabel,
+        isClique,
+        reason: d?.reason || 'time_overlap'
+      });
+    }
+  }
+
+  return clusters;
+}
+
+/**
+ * Generates candidate student pathways (Max Core, Daytime, Evening/Weekend, Alternate Track)
+ * for a single program.
+ */
+function generateProgramPathways(scheduledCourses, filteredTerms, simOptions, normalizedSectionMap) {
+  const baseEntries = scheduledCourses.map(item => {
+    const options = buildCourseSlotOptions(item.course, item.sections, normalizedSectionMap);
+    return {
+      course: item.course,
+      options,
+      allOptions: options
+    };
+  });
+
+  const optimal = solveStudentSchedule(baseEntries, filteredTerms, {
+    ...simOptions,
+    nodeLimit: 25000,
+    includeDetails: true
+  });
+
+  const daytimeEntries = baseEntries.map(e => ({
+    course: e.course,
+    options: e.options.filter(o => !o.isEvening || o.isAsync),
+    allOptions: e.allOptions
+  }));
+  const daytime = solveStudentSchedule(daytimeEntries, filteredTerms, {
+    ...simOptions,
+    nodeLimit: 15000,
+    includeDetails: true
+  });
+
+  const eveningEntries = baseEntries.map(e => ({
+    course: e.course,
+    options: e.options.filter(o => o.isEvening || o.isAsync),
+    allOptions: e.allOptions
+  }));
+  const evening = solveStudentSchedule(eveningEntries, filteredTerms, {
+    ...simOptions,
+    nodeLimit: 15000,
+    includeDetails: true
+  });
+
+  const pathways = {
+    optimal: { key: 'optimal', label: 'Max Core Path', icon: '🏆', ...optimal },
+    daytime: { key: 'daytime', label: 'Daytime Block', icon: '☀️', ...daytime },
+    evening: { key: 'evening', label: 'Evening / Weekend', icon: '🌙', ...evening }
+  };
+
+  // Generate Alternate Track if distinct non-overlapping slot choices exist
+  if (optimal.assigned && optimal.assigned.length > 0) {
+    const optOptionKeys = new Set(optimal.assigned.map(a => a.option.optionKey));
+    const altResult = solveStudentSchedule(baseEntries, filteredTerms, {
+      ...simOptions,
+      nodeLimit: 15000,
+      penalizedOptionKeys: optOptionKeys,
+      includeDetails: true
+    });
+
+    const altOptionKeys = new Set((altResult.assigned || []).map(a => a.option.optionKey));
+    let diffCount = 0;
+    altOptionKeys.forEach(k => {
+      if (!optOptionKeys.has(k)) diffCount++;
+    });
+
+    if (diffCount > 0 && altResult.chainableCount > 0 && altResult.chainableCount >= Math.ceil(optimal.chainableCount * 0.5)) {
+      pathways.alternate = { key: 'alternate', label: 'Alternate Track', icon: '🔀', ...altResult };
+    }
+  }
+
+  const conflictClusters = computeConflictBottleneckClusters(baseEntries, simOptions?.travelBufferMins ?? 30);
+
+  return {
+    pathways,
+    conflictClusters
+  };
+}
+
+/**
+ * Memoized retrieval of Program Coverage & Simulation analysis so applyFiltersAndRender()
+ * and renderProgramCoverageDashboard() never compute the catalog simulation twice.
+ */
+function getOrComputeProgramCoverageAnalysis(programId) {
+  const { allTerms, activeTerms, scopeSections, extraFiltersKey } = getProgramCoverageScopeTermsAndSections();
+  const simOptions = {
+    travelBufferMins: Number(appState.programCoverageTravelBuffer ?? 30),
+    maxCoursesPerTerm: Number(appState.programCoverageMaxPerTerm ?? 0)
+  };
+
+  const cacheKey = [
+    programId || '',
+    appState.filters.location || '',
+    activeTerms.join('|'),
+    extraFiltersKey,
+    simOptions.maxCoursesPerTerm,
+    simOptions.travelBufferMins,
+    appState.programs.size
+  ].join('::');
+
+  const prev = appState.currentProgramCoverageAnalysis;
+  if (prev && prev._cacheKey === cacheKey && prev._sectionsRef === appState.sections) {
+    return prev;
+  }
+
+  const analysis = analyzeProgramCoverage(
+    programId,
+    appState.filters.location,
+    scopeSections,
+    activeTerms,
+    simOptions,
+    allTerms
+  );
+  analysis._cacheKey = cacheKey;
+  analysis._sectionsRef = appState.sections;
+  appState.currentProgramCoverageAnalysis = analysis;
+  return analysis;
+}
+
+/**
+ * Analyzes program core course offerings AND simulated single-student schedule completability
+ * across the active location and semester scope.
+ */
+function analyzeProgramCoverage(programId, location, scopeSections, activeTermsOverride = null, simOptionsOverride = null, allTermsOverride = null) {
   const allSections = scopeSections || appState.sections || [];
   const locFilter = (location || '').trim().toLowerCase();
   const isDistrictWide = !locFilter || locFilter === 'all' || locFilter.includes('all');
   const locationLabel = isDistrictWide ? 'District-Wide' : location;
+
+  const activeTerms = (activeTermsOverride && activeTermsOverride.length > 0)
+    ? activeTermsOverride
+    : sortTerms(Array.from(new Set(allSections.map(s => s.term).filter(Boolean))));
+  const effectiveTerms = activeTerms.length > 0 ? activeTerms : ['Current Term'];
+
+  const allAvailableTerms = (allTermsOverride && allTermsOverride.length > 0)
+    ? allTermsOverride
+    : sortTerms(Array.from(new Set((appState.sections || []).map(s => s.term).filter(Boolean))));
+
+  const simOptions = {
+    travelBufferMins: simOptionsOverride?.travelBufferMins ?? Number(appState.programCoverageTravelBuffer ?? 30),
+    maxCoursesPerTerm: simOptionsOverride?.maxCoursesPerTerm ?? Number(appState.programCoverageMaxPerTerm ?? 0)
+  };
 
   // Filter sections by location if specified
   const campusSections = !isDistrictWide
@@ -5431,9 +6617,11 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
       })
     : allSections;
 
-  // Build course-to-sections map for the target campus
+  // Build course-to-sections map and pre-normalize sections once
   const campusCourseSecMap = new Map();
+  const normalizedSectionMap = new Map();
   campusSections.forEach(sec => {
+    normalizedSectionMap.set(sec.sectionUniqueId, normalizeSectionForSimulation(sec));
     const c = (sec.course || '').trim().toUpperCase();
     if (!c) return;
     if (!campusCourseSecMap.has(c)) {
@@ -5442,7 +6630,7 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     campusCourseSecMap.get(c).push(sec);
   });
 
-  // Build district-wide course-to-sections map (to show other campus offerings for missing courses)
+  // Build district-wide course-to-sections map (to show other campus offerings for unoffered courses)
   const districtCourseSecMap = new Map();
   allSections.forEach(sec => {
     const c = (sec.course || '').trim().toUpperCase();
@@ -5452,6 +6640,17 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     }
     districtCourseSecMap.get(c).push(sec);
   });
+
+  // Lazily memoize SlotOptions per normalized program course requirement across all programs
+  const courseSlotOptionsCache = new Map();
+  function getCachedSlotOptionsForCourse(courseReq) {
+    const key = String(courseReq || '').trim().toUpperCase();
+    if (courseSlotOptionsCache.has(key)) return courseSlotOptionsCache.get(key);
+    const secs = getMatchingScheduledSectionsForProgramCourse(key, campusCourseSecMap);
+    const opts = secs.length > 0 ? buildCourseSlotOptions(key, secs, normalizedSectionMap) : [];
+    courseSlotOptionsCache.set(key, opts);
+    return opts;
+  }
 
   // Single program deep dive if programId is provided and exists
   let singleAnalysis = null;
@@ -5504,7 +6703,9 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
         capacity: totalCap,
         fillRate: totalCap > 0 ? (totalAct / totalCap) : 0,
         modalities: Array.from(modalities),
-        rooms: Array.from(rooms)
+        rooms: Array.from(rooms),
+        isChainedInOptimal: false,
+        optimalBlockReason: ''
       };
 
       if (secs.length > 0) {
@@ -5517,39 +6718,90 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     const totalRequired = reqCourses.length;
     const scheduledCount = scheduledCourses.length;
     const missingCount = missingCourses.length;
-    const completeness = totalRequired > 0 ? Math.round((scheduledCount / totalRequired) * 100) : 0;
+    const offeringRate = totalRequired > 0 ? Math.round((scheduledCount / totalRequired) * 100) : 0;
 
-    let statusTier = 'incomplete';
-    let statusLabel = '';
+    let offeringStatusTier = 'incomplete';
+    let offeringStatusLabel = '';
     if (isDistrictWide) {
-      if (completeness === 100) {
-        statusTier = 'completable';
-        statusLabel = 'Completable across District';
-      } else if (completeness >= 75) {
-        statusTier = 'near';
-        statusLabel = `Near Completable across District (Needs ${missingCount} course${missingCount > 1 ? 's' : ''})`;
-      } else if (completeness >= 50) {
-        statusTier = 'partial';
-        statusLabel = `Partially Completable across District (${scheduledCount}/${totalRequired} courses)`;
+      if (offeringRate === 100) {
+        offeringStatusTier = 'completable';
+        offeringStatusLabel = '100% Core Offered (District-Wide)';
+      } else if (offeringRate >= 75) {
+        offeringStatusTier = 'near';
+        offeringStatusLabel = `High Core Offering (${scheduledCount}/${totalRequired} Offered)`;
+      } else if (offeringRate >= 50) {
+        offeringStatusTier = 'partial';
+        offeringStatusLabel = `Partial Core Offering (${scheduledCount}/${totalRequired} Offered)`;
       } else {
-        statusTier = 'incomplete';
-        statusLabel = `Low Coverage across District (${missingCount} missing course${missingCount > 1 ? 's' : ''})`;
+        offeringStatusTier = 'incomplete';
+        offeringStatusLabel = `Low Core Offering (${missingCount} Unoffered)`;
       }
     } else {
-      if (completeness === 100) {
-        statusTier = 'completable';
-        statusLabel = `Fully Completable at ${locationLabel}`;
-      } else if (completeness >= 75) {
-        statusTier = 'near';
-        statusLabel = `Near Completable at ${locationLabel} (Needs ${missingCount} course${missingCount > 1 ? 's' : ''})`;
-      } else if (completeness >= 50) {
-        statusTier = 'partial';
-        statusLabel = `Partially Completable at ${locationLabel} (${scheduledCount}/${totalRequired} courses)`;
+      if (offeringRate === 100) {
+        offeringStatusTier = 'completable';
+        offeringStatusLabel = `100% Core Offered at ${locationLabel}`;
+      } else if (offeringRate >= 75) {
+        offeringStatusTier = 'near';
+        offeringStatusLabel = `High Core Offering at ${locationLabel} (${scheduledCount}/${totalRequired})`;
+      } else if (offeringRate >= 50) {
+        offeringStatusTier = 'partial';
+        offeringStatusLabel = `Partial Core Offering at ${locationLabel} (${scheduledCount}/${totalRequired})`;
       } else {
-        statusTier = 'incomplete';
-        statusLabel = `Low Coverage at ${locationLabel} (${missingCount} missing course${missingCount > 1 ? 's' : ''})`;
+        offeringStatusTier = 'incomplete';
+        offeringStatusLabel = `Low Core Offering at ${locationLabel} (${missingCount} Unoffered)`;
       }
     }
+
+    // Run Student Schedule Simulation & Pathway Chainability
+    const simResult = generateProgramPathways(scheduledCourses, effectiveTerms, simOptions, normalizedSectionMap);
+    const optimalPath = simResult.pathways.optimal;
+    const chainableCount = optimalPath.chainableCount;
+    const completableRate = totalRequired > 0 ? Math.round((chainableCount / totalRequired) * 100) : 0;
+    const overlapBlockedCount = Math.max(0, scheduledCount - chainableCount);
+    const overlapLossPct = Math.max(0, offeringRate - completableRate);
+
+    const optimalAssignedSet = new Set((optimalPath.assigned || []).map(a => a.course));
+    const optimalBlockedMap = new Map((optimalPath.blocked || []).map(b => [b.course, b]));
+    scheduledCourses.forEach(item => {
+      item.isChainedInOptimal = optimalAssignedSet.has(item.course);
+      const blk = optimalBlockedMap.get(item.course);
+      item.optimalBlockReason = blk ? blk.blockReason : '';
+    });
+
+    let completableTier = 'incomplete';
+    let completableStatusLabel = '';
+    const termCount = effectiveTerms.length;
+    const termWord = `${termCount} Term${termCount > 1 ? 's' : ''}`;
+
+    if (completableRate === 100) {
+      completableTier = 'completable';
+      completableStatusLabel = `100% Student Completable (${termWord})`;
+    } else if (offeringRate === 100 && completableRate < 100) {
+      completableTier = completableRate >= 75 ? 'near' : (completableRate >= 50 ? 'partial' : 'incomplete');
+      completableStatusLabel = `Conflict-Limited (${chainableCount}/${totalRequired} Chainable)`;
+    } else if (completableRate >= 75) {
+      completableTier = 'near';
+      completableStatusLabel = `Near Completable (${chainableCount}/${totalRequired} Chainable)`;
+    } else if (completableRate >= 50) {
+      completableTier = 'partial';
+      completableStatusLabel = `Partially Completable (${chainableCount}/${totalRequired} Chainable)`;
+    } else {
+      completableTier = 'incomplete';
+      completableStatusLabel = `Low Completability (${chainableCount}/${totalRequired} Chainable)`;
+    }
+
+    const simulation = {
+      chainableCount,
+      completableRate,
+      overlapBlockedCount,
+      overlapLossPct,
+      completableTier,
+      completableStatusLabel,
+      pathways: simResult.pathways,
+      conflictClusters: simResult.conflictClusters,
+      activeTerms: effectiveTerms,
+      simOptions
+    };
 
     // General Education Breadth Analysis for Associate Degrees
     let geAudit = null;
@@ -5618,9 +6870,13 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
       totalRequired: totalRequired,
       scheduledCount: scheduledCount,
       missingCount: missingCount,
-      completeness: completeness,
-      statusTier: statusTier,
-      statusLabel: statusLabel,
+      offeringRate: offeringRate,
+      completeness: offeringRate,
+      statusTier: offeringStatusTier,
+      offeringStatusTier: offeringStatusTier,
+      statusLabel: offeringStatusLabel,
+      offeringStatusLabel: offeringStatusLabel,
+      simulation: simulation,
       geAudit: geAudit,
       campusSectionsCount: campusSections.length,
       locationLabel: locationLabel,
@@ -5628,23 +6884,44 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     };
   }
 
-  // Multi-program Catalog Matrix Analysis (ranking all 202 active programs)
+  // Multi-program Catalog Matrix Analysis (Offering Rate + Simulated Student Completability)
   const catalogList = [];
   appState.programs.forEach(p => {
     const reqs = Array.from(p.courses || []);
     let sched = 0;
+    const courseEntries = [];
+
     reqs.forEach(c => {
-      const matchingSecs = getMatchingScheduledSectionsForProgramCourse(c, campusCourseSecMap);
-      if (matchingSecs.length > 0) sched++;
+      const opts = getCachedSlotOptionsForCourse(c);
+      if (opts.length > 0) {
+        sched++;
+        courseEntries.push({ course: c, options: opts });
+      }
     });
+
     const tot = reqs.length;
     const miss = Math.max(0, tot - sched);
-    const score = tot > 0 ? Math.round((sched / tot) * 100) : 0;
+    const offeringRate = tot > 0 ? Math.round((sched / tot) * 100) : 0;
 
-    let tier = 'incomplete';
-    if (score === 100) tier = 'completable';
-    else if (score >= 75) tier = 'near';
-    else if (score >= 50) tier = 'partial';
+    let offeringTier = 'incomplete';
+    if (offeringRate === 100) offeringTier = 'completable';
+    else if (offeringRate >= 75) offeringTier = 'near';
+    else if (offeringRate >= 50) offeringTier = 'partial';
+
+    const simFast = solveStudentSchedule(courseEntries, effectiveTerms, {
+      ...simOptions,
+      nodeLimit: 3000,
+      includeDetails: false
+    });
+    const chainableCourses = simFast.chainableCount;
+    const overlapBlockedCourses = Math.max(0, sched - chainableCourses);
+    const completableRate = tot > 0 ? Math.round((chainableCourses / tot) * 100) : 0;
+    const overlapLossPct = Math.max(0, offeringRate - completableRate);
+
+    let completableTier = 'incomplete';
+    if (completableRate === 100) completableTier = 'completable';
+    else if (completableRate >= 75) completableTier = 'near';
+    else if (completableRate >= 50) completableTier = 'partial';
 
     catalogList.push({
       id: p.id,
@@ -5653,15 +6930,26 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
       isAssociate: p.isAssociate,
       totalCourses: tot,
       scheduledCourses: sched,
+      offeredCourses: sched,
       missingCourses: miss,
-      completeness: score,
-      statusTier: tier
+      unofferedCourses: miss,
+      offeringRate: offeringRate,
+      completeness: offeringRate,
+      offeringTier: offeringTier,
+      statusTier: offeringTier,
+      chainableCourses: chainableCourses,
+      overlapBlockedCourses: overlapBlockedCourses,
+      completableRate: completableRate,
+      completableTier: completableTier,
+      overlapLossPct: overlapLossPct,
+      isConflictLimited: sched > chainableCourses
     });
   });
 
-  // Sort catalog by completeness descending, then title
+  // Default sort by offeringRate descending, then completableRate descending, then title
   catalogList.sort((a, b) => {
-    if (b.completeness !== a.completeness) return b.completeness - a.completeness;
+    if (b.offeringRate !== a.offeringRate) return b.offeringRate - a.offeringRate;
+    if (b.completableRate !== a.completableRate) return b.completableRate - a.completableRate;
     return a.title.localeCompare(b.title);
   });
 
@@ -5670,15 +6958,15 @@ function analyzeProgramCoverage(programId, location, scopeSections) {
     catalog: catalogList,
     location: locationLabel,
     isDistrictWide: isDistrictWide,
-    campusSectionsCount: campusSections.length
+    campusSectionsCount: campusSections.length,
+    activeTerms: effectiveTerms,
+    allTerms: allAvailableTerms,
+    simOptions: simOptions
   };
 }
 
 /**
- * Renders the Program Coverage & Completability Audit Dashboard.
- * Includes executive hero completability card, KPI summary bar, sub-tabs for
- * missing vs scheduled courses, GE breadth analysis, interactive section inspect rows,
- * and an all-programs catalog matrix.
+ * Renders the Program Core Offerings & Student Schedule Completability Audit Dashboard.
  */
 function renderProgramCoverageDashboard() {
   const container = document.getElementById('program-coverage-container');
@@ -5704,17 +6992,16 @@ function renderProgramCoverageDashboard() {
     appState.programCoverageSelectedProgram = activeProgId;
   }
 
-  const termSections = appState.filters.term
-    ? appState.sections.filter(s => s.term === appState.filters.term)
-    : appState.sections;
-  const analysis = analyzeProgramCoverage(activeProgId, appState.filters.location, termSections);
-  appState.currentProgramCoverageAnalysis = analysis;
-
+  const analysis = getOrComputeProgramCoverageAnalysis(activeProgId);
   const single = analysis.single;
   const locationLabel = analysis.location;
   const isCatalogMode = Boolean(appState.programCoverageCatalogView);
+  const activeTerms = analysis.activeTerms || [];
+  const allTerms = analysis.allTerms || [];
+  const termCount = activeTerms.length || 1;
+  const termSummaryText = `${termCount} Semester${termCount > 1 ? 's' : ''}: ${activeTerms.join(', ')}`;
 
-  // 1. HEADER ROW: Title (Campus Scope is driven directly by sidebar Location filter)
+  // 1. HEADER ROW
   const headerRow = document.createElement('div');
   headerRow.className = 'prog-coverage-header';
 
@@ -5725,36 +7012,93 @@ function renderProgramCoverageDashboard() {
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
         </svg>
-        Program Coverage & Completability Audit: <span>${locationLabel}</span>
-        ${appState.filters.term ? `<span style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-left: 8px; padding: 2px 8px; border-radius: 4px; background: var(--bg-surface-subtle); border: 1px solid var(--border-color);">${appState.filters.term}</span>` : ''}
+        Program Core Offerings &amp; Student Completability: <span>${escapeHtml(locationLabel)}</span>
+        <span class="prog-term-badge">${escapeHtml(termSummaryText)}</span>
       </h3>
-      <p>Audit curriculum offerings & General Education breadth to determine whether academic programs are completable at specific campus locations or across the district.</p>
+      <p>Measure <strong>Core Course Offerings</strong> separately from <strong>Simulated Student Completability</strong> (maximum conflict-free chainable courses a single student can complete in the filtered semester${termCount > 1 ? 's' : ''}).</p>
     </div>
   `;
   container.appendChild(headerRow);
 
-  // 2. ACTIVE PROGRAM DISPLAY & CATALOG TOGGLE BAR
+  // 2. ACTIVE PROGRAM BAR, SEMESTER SCOPE PILLS & CATALOG TOGGLE
   const searchBar = document.createElement('div');
-  searchBar.style.cssText = 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;';
-  
+  searchBar.className = 'prog-controls-bar';
+
   const totalProgramsCount = appState.programs.size > 0 ? appState.programs.size : 202;
+  const activeTermSet = new Set(activeTerms);
+  const allTermsSelected = allTerms.length > 0 && allTerms.every(t => activeTermSet.has(t));
+
+  let termPillsHtml = '';
+  if (allTerms.length > 1) {
+    termPillsHtml = `
+      <div class="prog-term-scope-group" title="Select which semesters are included in the single-student schedule simulation">
+        <span class="prog-term-scope-label">Semesters in Scope:</span>
+        <div class="prog-term-pills">
+          <button type="button" class="prog-term-pill ${allTermsSelected ? 'active' : ''}" data-term-action="all">
+            All (${allTerms.length})
+          </button>
+          ${allTerms.map(t => `
+            <button type="button" class="prog-term-pill ${activeTermSet.has(t) ? 'active' : ''}" data-term-val="${escapeHtml(t)}">
+              ${escapeHtml(t)}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    termPillsHtml = `
+      <div class="prog-term-scope-group">
+        <span class="prog-term-scope-label">Simulation Scope:</span>
+        <span class="prog-term-pill active" style="cursor:default;">${escapeHtml(activeTerms[0] || 'Current Term')}</span>
+      </div>
+    `;
+  }
 
   searchBar.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
+    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px; flex-wrap: wrap;">
       <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Active Program:</span>
-      <span style="font-size: 13.5px; font-weight: 700; color: var(--chaffey-red); background: var(--bg-surface); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 8px;">
+      <span class="prog-active-program-pill">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        ${activeProgId || 'No program selected (choose from filters on left)'}
+        ${escapeHtml(activeProgId || 'No program selected (choose from filters on left)')}
       </span>
     </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      ${termPillsHtml}
       <button type="button" id="btn-toggle-catalog-view" class="btn btn-secondary" style="font-size: 12px; font-weight: 700; padding: 6px 12px;">
         ${isCatalogMode ? '← Back to Program Audit' : `Browse All ${totalProgramsCount} Programs`}
       </button>
     </div>
   `;
   container.appendChild(searchBar);
+
+  // Wire Semester Scope Pills
+  searchBar.querySelectorAll('.prog-term-pill[data-term-action="all"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.programCoverageSelectedTerms = new Set(allTerms);
+      applyFiltersAndRender();
+    });
+  });
+
+  searchBar.querySelectorAll('.prog-term-pill[data-term-val]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const termVal = btn.getAttribute('data-term-val');
+      if (!termVal) return;
+      const nextSet = new Set(activeTerms);
+      if (nextSet.has(termVal)) {
+        if (nextSet.size > 1) {
+          nextSet.delete(termVal);
+        } else {
+          // Keep at least 1 semester active
+          return;
+        }
+      } else {
+        nextSet.add(termVal);
+      }
+      appState.programCoverageSelectedTerms = nextSet;
+      applyFiltersAndRender();
+    });
+  });
 
   // Wire Catalog Toggle Button
   searchBar.querySelector('#btn-toggle-catalog-view')?.addEventListener('click', () => {
@@ -5774,63 +7118,101 @@ function renderProgramCoverageDashboard() {
 }
 
 /**
- * Renders the Single Program Completability Audit View (Hero card, KPIs, tabs, course cards).
+ * Renders the Single Program Core Offerings & Student Schedule Simulator View.
  */
 function renderSingleProgramAuditView(container, single, fullAnalysis) {
   const prog = single.program;
   const isAssociate = prog.isAssociate;
   const locationLabel = single.locationLabel;
+  const sim = single.simulation;
+  const termCount = (sim.activeTerms || []).length || 1;
+  const termWord = `${termCount} Semester${termCount > 1 ? 's' : ''}`;
 
-  // 1. EXECUTIVE HERO COMPLETABILITY CARD
+  // 1. EXECUTIVE HERO DUAL-METRIC CARD
   const heroCard = document.createElement('div');
   heroCard.className = 'prog-hero-card';
 
-  let fillGradientClass = 'fill-danger';
-  if (single.completeness === 100) fillGradientClass = 'fill-success';
-  else if (single.completeness >= 65) fillGradientClass = 'fill-warning';
+  let offeringFillClass = 'fill-danger';
+  if (single.offeringRate === 100) offeringFillClass = 'fill-success';
+  else if (single.offeringRate >= 65) offeringFillClass = 'fill-warning';
+
+  let compFillColor = '#dc2626';
+  if (sim.completableRate === 100) compFillColor = '#059669';
+  else if (sim.completableRate >= 75) compFillColor = '#0284c7';
+  else if (sim.completableRate >= 50) compFillColor = '#d97706';
+
+  const blockedCoursesList = (sim.pathways?.optimal?.blocked || []).map(b => b.course);
+  const missingCodes = single.missingCourses.map(c => c.course).join(', ');
+  const blockedCodes = blockedCoursesList.join(', ');
+  const scopePhrase = single.isDistrictWide ? 'across the district' : `at ${locationLabel}`;
 
   let recommendationText = '';
-  if (single.missingCourses.length === 0) {
-    if (single.isDistrictWide) {
-      recommendationText = `<strong>Completable across District!</strong> All ${single.totalRequired} required major courses are scheduled across the district.`;
-    } else {
-      recommendationText = `<strong>Fully Completable at ${locationLabel}!</strong> All ${single.totalRequired} required major courses are scheduled at this campus. Students can complete all degree requirements locally without traveling.`;
-    }
+  let bannerStyle = '';
+  if (single.missingCount === 0 && sim.overlapBlockedCount === 0) {
+    recommendationText = `<strong>100% Core Offered &amp; 100% Student Completable!</strong> All ${single.totalRequired} required core courses are offered ${scopePhrase} and can be chained by a single student across ${termWord} with zero time or campus conflicts.`;
+    bannerStyle = 'background-color: rgba(5, 150, 105, 0.08); border-color: rgba(5, 150, 105, 0.3); color: #065f46;';
+  } else if (single.missingCount === 0 && sim.overlapBlockedCount > 0) {
+    recommendationText = `<strong>100% Core Offered, but Conflict-Limited (${sim.completableRate}% Student Completable):</strong> All ${single.totalRequired} core courses are offered ${scopePhrase}, yet a single student can chain at most <strong>${sim.chainableCount}</strong> in ${termWord}. Schedule overlaps block <strong>${sim.overlapBlockedCount} course${sim.overlapBlockedCount > 1 ? 's' : ''}</strong> (<strong>${blockedCodes}</strong>). Add a non-overlapping section or distribute offerings across additional semesters.`;
+    bannerStyle = 'background-color: rgba(217, 119, 6, 0.1); border-color: rgba(217, 119, 6, 0.35); color: #92400e;';
+  } else if (single.missingCount > 0 && sim.overlapBlockedCount > 0) {
+    recommendationText = `<strong>Dual Bottleneck (${single.offeringRate}% Core Offered → ${sim.completableRate}% Student Completable):</strong> (1) <strong>${single.missingCount} Unoffered Core Course${single.missingCount > 1 ? 's' : ''}</strong> ${scopePhrase}: <strong>${missingCodes}</strong>. (2) <strong>${sim.overlapBlockedCount} Offered Course${sim.overlapBlockedCount > 1 ? 's' : ''} Blocked by Overlap</strong>: <strong>${blockedCodes}</strong>.`;
   } else {
-    const missingCodes = single.missingCourses.map(c => c.course).join(', ');
-    if (single.isDistrictWide) {
-      recommendationText = `<strong>Action Required to Enable 100% Degree Completability:</strong> Schedule sections for the following ${single.missingCount} missing course${single.missingCount > 1 ? 's' : ''} in the district: <strong>${missingCodes}</strong>. Consider offering in 8-week Fast-Track sequential pairs or evening/hybrid slots to maximize room utilization.`;
-    } else {
-      recommendationText = `<strong>Action Required to Enable 100% Degree Completability:</strong> Schedule sections for the following ${single.missingCount} missing course${single.missingCount > 1 ? 's' : ''} at ${locationLabel}: <strong>${missingCodes}</strong>. Consider offering in 8-week Fast-Track sequential pairs or evening/hybrid slots to maximize room utilization.`;
-    }
+    recommendationText = `<strong>Unoffered Core Courses (${single.offeringRate}% Offered • ${sim.completableRate}% Completable):</strong> All ${single.scheduledCount} offered courses chain cleanly without overlap, but <strong>${single.missingCount} core course${single.missingCount > 1 ? 's' : ''}</strong> ${single.missingCount > 1 ? 'are' : 'is'} not scheduled ${scopePhrase}: <strong>${missingCodes}</strong>.`;
   }
 
   heroCard.innerHTML = `
     <div class="prog-hero-top">
       <div class="prog-hero-name">
-        <span>${prog.title}</span>
+        <span>${escapeHtml(prog.title)}</span>
         <span class="prog-badge-degree ${isAssociate ? 'prog-badge-associate' : 'prog-badge-cert'}">
           ${isAssociate ? 'Associate Degree' : 'Certificate of Achievement'}
         </span>
-        <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">(${prog.code})</span>
+        <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">(${escapeHtml(prog.code)})</span>
       </div>
-      <div>
-        <span class="prog-hero-status-pill status-${single.statusTier}">
-          ${single.statusLabel}
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span class="prog-hero-status-pill status-${single.offeringStatusTier}" title="Share of required core courses with at least 1 section offered">
+          ${escapeHtml(single.offeringStatusLabel)}
+        </span>
+        <span class="prog-hero-status-pill status-${sim.completableTier}" title="Maximum share a single student can complete without time or campus conflicts">
+          ${escapeHtml(sim.completableStatusLabel)}
         </span>
       </div>
     </div>
 
-    <!-- Progress Bar -->
-    <div class="prog-progress-wrapper">
-      <div class="prog-progress-bar-bg">
-        <div class="prog-progress-bar-fill ${fillGradientClass}" style="width: ${single.completeness}%;"></div>
+    <!-- Dual Comparison Bars: Core Offering vs. Simulated Student Completability -->
+    <div class="prog-dual-bars">
+      <div class="prog-bar-row">
+        <div class="prog-bar-label-col">
+          <span class="prog-bar-title">Core Course Offerings</span>
+          <span class="prog-bar-sub">${single.scheduledCount} / ${single.totalRequired} courses offered</span>
+        </div>
+        <div class="prog-progress-bar-bg">
+          <div class="prog-progress-bar-fill ${offeringFillClass}" style="width: ${single.offeringRate}%;"></div>
+        </div>
+        <span class="prog-progress-label">${single.offeringRate}%</span>
       </div>
-      <span class="prog-progress-label">${single.completeness}%</span>
+
+      <div class="prog-bar-row">
+        <div class="prog-bar-label-col">
+          <span class="prog-bar-title">Student Completability (${escapeHtml(termWord)})</span>
+          <span class="prog-bar-sub">${sim.chainableCount} / ${single.totalRequired} conflict-free chainable</span>
+        </div>
+        <div class="prog-stacked-bar" title="Green/Blue = Chainable (${sim.chainableCount}), Amber Stripes = Offered but Blocked by Overlap (${sim.overlapBlockedCount}), Gray = Unoffered (${single.missingCount})">
+          <div class="seg-chainable" style="width: ${sim.completableRate}%; background-color: ${compFillColor};"></div>
+          ${sim.overlapLossPct > 0 ? `<div class="seg-overlap-blocked" style="width: ${sim.overlapLossPct}%;"></div>` : ''}
+        </div>
+        <span class="prog-progress-label" style="color: ${compFillColor};">${sim.completableRate}%</span>
+      </div>
+
+      <div class="prog-bar-legend">
+        <span class="prog-legend-item"><span class="legend-swatch swatch-chainable" style="background:${compFillColor};"></span> <strong>${sim.chainableCount}</strong> Chainable Conflict-Free</span>
+        <span class="prog-legend-item ${sim.overlapBlockedCount > 0 ? 'legend-warn' : ''}"><span class="legend-swatch swatch-overlap"></span> <strong>${sim.overlapBlockedCount}</strong> Blocked by Overlap</span>
+        <span class="prog-legend-item"><span class="legend-swatch swatch-unoffered"></span> <strong>${single.missingCount}</strong> Unoffered</span>
+      </div>
     </div>
 
     <!-- Recommendation Box -->
-    <div class="prog-action-box" style="margin-top: 4px; ${single.missingCourses.length === 0 ? 'background-color: rgba(5, 150, 105, 0.08); border-color: rgba(5, 150, 105, 0.3); color: #065f46;' : ''}">
+    <div class="prog-action-box" style="margin-top: 2px; ${bannerStyle}">
       ${recommendationText}
     </div>
   `;
@@ -5847,43 +7229,47 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
     totalSections += c.sectionCount;
   });
 
+  const dayPathCount = sim.pathways?.daytime?.chainableCount ?? 0;
+  const evePathCount = sim.pathways?.evening?.chainableCount ?? 0;
+  const asyncOfferedCount = single.scheduledCourses.filter(c => c.sections.some(s => normalizeSectionForSimulation(s).isAsync)).length;
+
   summaryBar.innerHTML = `
-    <div class="prog-stat-card ${single.completeness === 100 ? 'opt-card' : 'highlight-card'}">
-      <span class="prog-stat-title">Major Completeness</span>
-      <span class="prog-stat-value">${single.completeness}%</span>
-      <span class="prog-stat-sub">${single.scheduledCount} of ${single.totalRequired} required courses scheduled</span>
+    <div class="prog-stat-card ${single.offeringRate === 100 ? 'opt-card' : 'highlight-card'}">
+      <span class="prog-stat-title">Core Course Offerings</span>
+      <span class="prog-stat-value">${single.offeringRate}%</span>
+      <span class="prog-stat-sub">${single.scheduledCount} of ${single.totalRequired} core courses offered</span>
+    </div>
+
+    <div class="prog-stat-card ${sim.completableRate === 100 ? 'opt-card' : (sim.overlapBlockedCount > 0 ? 'warn-card' : 'highlight-card')}">
+      <span class="prog-stat-title">Student Completable</span>
+      <span class="prog-stat-value" style="color: ${compFillColor};">${sim.completableRate}%</span>
+      <span class="prog-stat-sub">${sim.chainableCount} of ${single.totalRequired} chainable in ${escapeHtml(termWord)}${sim.overlapBlockedCount > 0 ? ` (-${sim.overlapLossPct}% overlap)` : ''}</span>
     </div>
 
     <div class="prog-stat-card ${single.missingCount > 0 ? 'alert-card' : 'opt-card'}">
-      <span class="prog-stat-title">Missing Major Courses</span>
+      <span class="prog-stat-title">Unoffered Core Courses</span>
       <span class="prog-stat-value" style="color: ${single.missingCount > 0 ? 'var(--chaffey-red)' : '#059669'};">${single.missingCount}</span>
-      <span class="prog-stat-sub">${single.missingCount > 0 ? 'Action items to add to schedule' : '0 missing - 100% scheduled'}</span>
+      <span class="prog-stat-sub">${single.missingCount > 0 ? '0 sections scheduled in scope' : '0 unoffered - 100% offered'}</span>
     </div>
 
     ${isAssociate && single.geAudit ? `
       <div class="prog-stat-card opt-card">
         <span class="prog-stat-title">GE Breadth Coverage</span>
         <span class="prog-stat-value">${single.geAudit.coveredCount} / ${single.geAudit.totalAreas}</span>
-        <span class="prog-stat-sub">${single.geAudit.completeness}% CalGETC areas covered at ${locationLabel}</span>
+        <span class="prog-stat-sub">${single.geAudit.completeness}% CalGETC areas covered</span>
       </div>
     ` : `
       <div class="prog-stat-card">
-        <span class="prog-stat-title">Curriculum Type</span>
-        <span class="prog-stat-value" style="font-size: 16px;">Certificate</span>
-        <span class="prog-stat-sub">Major requirements only (no GE)</span>
+        <span class="prog-stat-title">Pathway Flexibility</span>
+        <span class="prog-stat-value" style="font-size: 16px;">Day ${dayPathCount} • Eve ${evePathCount}</span>
+        <span class="prog-stat-sub">${asyncOfferedCount} course${asyncOfferedCount !== 1 ? 's' : ''} with Online Async options</span>
       </div>
     `}
 
     <div class="prog-stat-card">
       <span class="prog-stat-title">Student Enrollment</span>
       <span class="prog-stat-value">${totalActive}</span>
-      <span class="prog-stat-sub">Enrolled in ${totalSections} program sections</span>
-    </div>
-
-    <div class="prog-stat-card">
-      <span class="prog-stat-title">${single.isDistrictWide ? 'Location Scope' : 'Campus Scope'}</span>
-      <span class="prog-stat-value" style="font-size: 16px;">${locationLabel}</span>
-      <span class="prog-stat-sub">${single.isDistrictWide ? `${single.campusSectionsCount} total district sections` : `${single.campusSectionsCount} total sections at campus`}</span>
+      <span class="prog-stat-sub">${totalSections} sections • ${escapeHtml(locationLabel)}</span>
     </div>
   `;
   container.appendChild(summaryBar);
@@ -5892,18 +7278,22 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
   const navRow = document.createElement('div');
   navRow.className = 'prog-audit-nav';
 
-  const currentTab = appState.programCoverageActiveTab || 'all';
+  let currentTab = appState.programCoverageActiveTab || 'chains';
+  if (currentTab === 'ge' && !(isAssociate && single.geAudit)) currentTab = 'chains';
 
   navRow.innerHTML = `
     <div class="prog-audit-tabs">
+      <button type="button" class="prog-tab-btn ${currentTab === 'chains' ? 'active' : ''}" data-tab="chains">
+        📅 Schedule Chains &amp; Simulator <span class="prog-tab-badge">${sim.chainableCount}/${single.totalRequired}</span>
+      </button>
       <button type="button" class="prog-tab-btn ${currentTab === 'all' ? 'active' : ''}" data-tab="all">
-        All Required Courses <span class="prog-tab-badge">${single.totalRequired}</span>
+        All Core Courses <span class="prog-tab-badge">${single.totalRequired}</span>
       </button>
       <button type="button" class="prog-tab-btn ${currentTab === 'missing' ? 'active' : ''}" data-tab="missing" style="${single.missingCount > 0 ? 'color: #dc2626;' : ''}">
-        Missing Courses <span class="prog-tab-badge" style="${single.missingCount > 0 ? 'background-color: #fee2e2; color: #dc2626;' : ''}">${single.missingCount}</span>
+        Unoffered Courses <span class="prog-tab-badge" style="${single.missingCount > 0 ? 'background-color: #fee2e2; color: #dc2626;' : ''}">${single.missingCount}</span>
       </button>
       <button type="button" class="prog-tab-btn ${currentTab === 'scheduled' ? 'active' : ''}" data-tab="scheduled">
-        Scheduled Courses <span class="prog-tab-badge">${single.scheduledCount}</span>
+        Offered Courses <span class="prog-tab-badge">${single.scheduledCount}</span>
       </button>
       ${isAssociate && single.geAudit ? `
         <button type="button" class="prog-tab-btn ${currentTab === 'ge' ? 'active' : ''}" data-tab="ge">
@@ -5913,26 +7303,30 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
     </div>
     <div>
       <span style="font-size: 11.5px; color: var(--text-muted);">
-        Click any scheduled section to open details modal
+        Click any scheduled block or section row to inspect details
       </span>
     </div>
   `;
   container.appendChild(navRow);
 
-  // Wire Tab Clicks
+  // Wire Tab Clicks (re-slice bottom Day/Room schedule grid too!)
   navRow.querySelectorAll('.prog-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       appState.programCoverageActiveTab = btn.getAttribute('data-tab');
-      renderProgramCoverageDashboard();
+      applyFiltersAndRender();
     });
   });
 
-  // 4. CARDS GRID
+  // 4. TAB CONTENT
+  if (currentTab === 'chains') {
+    renderStudentScheduleSimulatorView(container, single);
+    return;
+  }
+
   const cardsGrid = document.createElement('div');
   cardsGrid.className = 'prog-cards-grid';
 
   if (currentTab === 'ge' && isAssociate && single.geAudit) {
-    // Render GE Breadth Area Cards
     single.geAudit.areas.forEach(area => {
       const isAreaCovered = area.isCovered && !area.unfulfilledByConflict;
       const card = document.createElement('div');
@@ -5944,19 +7338,19 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
       } else if (isAreaCovered) {
         statusTag = `<span class="prog-course-status status-scheduled-tag">✓ COVERED (${area.sectionCount} secs)</span>`;
       } else {
-        statusTag = `<span class="prog-course-status status-missing-tag">⚠ MISSING AT CAMPUS</span>`;
+        statusTag = `<span class="prog-course-status status-missing-tag">⚠ UNOFFERED AT CAMPUS</span>`;
       }
 
       card.innerHTML = `
         <div class="prog-course-header">
-          <div class="prog-course-code">Area ${area.code}: ${area.name}</div>
+          <div class="prog-course-code">Area ${escapeHtml(area.code)}: ${escapeHtml(area.name)}</div>
           ${statusTag}
         </div>
-        <div style="font-size: 12px; color: var(--text-muted);">${area.desc}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">${escapeHtml(area.desc)}</div>
 
         ${area.unfulfilledByConflict ? `
           <div class="prog-action-box" style="margin-top: 6px;">
-            <strong>Action Required:</strong> ${area.conflictReason}
+            <strong>Action Required:</strong> ${escapeHtml(area.conflictReason)}
           </div>
           <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 6px;">
             <strong>Scheduled Sections (Shared with 3A):</strong>
@@ -5964,21 +7358,21 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
           <div class="prog-sections-list">
             ${area.sections.slice(0, 4).map(sec => `
               <div class="prog-section-row" data-secid="${sec.sectionUniqueId}">
-                <span><strong>${sec.course}</strong> (${sec.sectionName})</span>
-                <span>${sec.facultyName || 'Staff'} • ${sec.activeStudents}/${sec.capacity}</span>
+                <span><strong>${escapeHtml(sec.course)}</strong> (${escapeHtml(sec.sectionName)})</span>
+                <span>${escapeHtml(sec.facultyName || 'Staff')} • ${sec.activeStudents}/${sec.capacity}</span>
               </div>
             `).join('')}
           </div>
         ` : isAreaCovered ? `
           <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px;">
-            <strong>Fulfilling Courses:</strong> ${area.courses.join(', ')}
-            ${area.sharedCourseNote ? `<span style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:2px;">ℹ ${area.sharedCourseNote}</span>` : ''}
+            <strong>Fulfilling Courses:</strong> ${escapeHtml(area.courses.join(', '))}
+            ${area.sharedCourseNote ? `<span style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:2px;">ℹ ${escapeHtml(area.sharedCourseNote)}</span>` : ''}
           </div>
           <div class="prog-sections-list">
             ${area.sections.slice(0, 4).map(sec => `
               <div class="prog-section-row" data-secid="${sec.sectionUniqueId}">
-                <span><strong>${sec.course}</strong> (${sec.sectionName})</span>
-                <span>${sec.facultyName || 'Staff'} • ${sec.activeStudents}/${sec.capacity}</span>
+                <span><strong>${escapeHtml(sec.course)}</strong> (${escapeHtml(sec.sectionName)})</span>
+                <span>${escapeHtml(sec.facultyName || 'Staff')} • ${sec.activeStudents}/${sec.capacity}</span>
               </div>
             `).join('')}
             ${area.sections.length > 4 ? `
@@ -5987,7 +7381,7 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
           </div>
         ` : `
           <div class="prog-action-box" style="margin-top: 6px;">
-            Action Required: 0 sections satisfying CalGETC Area ${area.code} are scheduled at ${locationLabel}. Students must complete this requirement at another campus or online.
+            Action Required: 0 sections satisfying CalGETC Area ${escapeHtml(area.code)} are offered at ${escapeHtml(locationLabel)}. Students must complete this requirement at another campus or online.
           </div>
         `}
       `;
@@ -6006,14 +7400,13 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
       cardsGrid.appendChild(card);
     });
   } else {
-    // Render Major Course Cards (Missing and/or Scheduled)
+    // Render Major Core Course Cards (Unoffered and/or Offered)
     let coursesToDisplay = [];
     if (currentTab === 'missing') {
       coursesToDisplay = single.missingCourses;
     } else if (currentTab === 'scheduled') {
       coursesToDisplay = single.scheduledCourses;
     } else {
-      // 'all': Show missing courses first as action items, followed by scheduled courses
       coursesToDisplay = [...single.missingCourses, ...single.scheduledCourses];
     }
 
@@ -6022,14 +7415,14 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
       emptyMsg.style.cssText = 'grid-column: 1 / -1; padding: 30px; text-align: center; font-size: 14px; color: var(--text-muted); background: var(--bg-surface-subtle); border-radius: 8px; border: 1px dashed var(--border-color);';
       emptyMsg.textContent = currentTab === 'missing'
         ? (single.isDistrictWide
-            ? `No missing courses! All required major courses for ${prog.title} are scheduled across the district.`
-            : `No missing courses! All required major courses for ${prog.title} are scheduled at ${locationLabel}.`)
-        : `No scheduled courses in this view.`;
+            ? `No unoffered courses! All required core courses for ${prog.title} are offered across the district.`
+            : `No unoffered courses! All required core courses for ${prog.title} are offered at ${locationLabel}.`)
+        : `No offered courses in this view.`;
       cardsGrid.appendChild(emptyMsg);
     } else {
       coursesToDisplay.forEach(item => {
         const card = document.createElement('div');
-        card.className = `prog-course-card ${item.isScheduled ? 'card-scheduled' : 'card-missing'}`;
+        card.className = `prog-course-card ${item.isScheduled ? (item.isChainedInOptimal ? 'card-scheduled' : 'card-conflict-blocked') : 'card-missing'}`;
 
         const fillPct = Math.round(item.fillRate * 100);
         const isAbcdWorkExp = item.course.endsWith('ABCD');
@@ -6040,40 +7433,55 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
           ? Array.from(new Set(item.sections.map(s => s.course))).join(', ')
           : '';
 
+        const chainStatusPill = item.isScheduled
+          ? (item.isChainedInOptimal
+              ? `<span class="prog-course-status status-chained-tag">🔗 Chained in Optimal Path</span>`
+              : `<span class="prog-course-status status-overlap-tag">⚠ Blocked by Overlap</span>`)
+          : '';
+
         card.innerHTML = `
           <div class="prog-course-header">
-            <div class="prog-course-code">${item.course}${abcdNote}</div>
-            <span class="prog-course-status ${item.isScheduled ? 'status-scheduled-tag' : 'status-missing-tag'}">
-              ${item.isScheduled ? `✓ ${item.sectionCount} Section${item.sectionCount > 1 ? 's' : ''} Scheduled` : '⚠ NOT SCHEDULED'}
-            </span>
+            <div class="prog-course-code">${escapeHtml(item.course)}${abcdNote}</div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              ${chainStatusPill}
+              <span class="prog-course-status ${item.isScheduled ? 'status-scheduled-tag' : 'status-missing-tag'}">
+                ${item.isScheduled ? `✓ ${item.sectionCount} Section${item.sectionCount > 1 ? 's' : ''} Offered` : '⚠ NOT OFFERED'}
+              </span>
+            </div>
           </div>
 
           ${item.isScheduled ? `
+            ${!item.isChainedInOptimal && item.optimalBlockReason ? `
+              <div class="prog-overlap-reason-box">
+                <strong>Schedule Bottleneck:</strong> ${escapeHtml(item.optimalBlockReason)}
+              </div>
+            ` : ''}
             ${scheduledVariantList ? `
               <div style="font-size: 11.5px; color: #065f46; font-weight: 600; margin-top: 2px;">
-                ✓ Requirement satisfied by scheduled course${item.sections.length > 1 ? 's' : ''}: <strong>${scheduledVariantList}</strong>
+                ✓ Requirement satisfied by offered course${item.sections.length > 1 ? 's' : ''}: <strong>${escapeHtml(scheduledVariantList)}</strong>
               </div>
             ` : ''}
             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
               <span><strong>Enrolled:</strong> ${item.activeStudents} / ${item.capacity} (${fillPct}% fill)</span>
-              <span><strong>Modalities:</strong> ${item.modalities.join(', ') || 'In-Person'}</span>
+              <span><strong>Modalities:</strong> ${escapeHtml(item.modalities.join(', ') || 'In-Person')}</span>
             </div>
 
             <div class="prog-sections-list">
               ${item.sections.map(sec => {
                 const b = sec.scheduleBlocks[0] || {};
-                const daysStr = b.daysRaw || 'TBA';
-                const timeStr = b.startTimeStr ? `${b.startTimeStr} - ${b.endTimeStr}` : 'TBA';
+                const daysStr = b.daysRaw ? b.days.map(d => DAY_MAP[d]?.short || d).join('/') : 'TBA';
+                const timeStr = b.startTimeStr ? `${b.startTimeStr} - ${b.endTimeStr}` : 'Async / TBA';
                 const roomStr = b.room ? `${b.building} ${b.room}` : 'TBA';
+                const termPrefix = sec.term ? `[${sec.term}] ` : '';
                 return `
                   <div class="prog-section-row" data-secid="${sec.sectionUniqueId}">
                     <div>
-                      <div><strong>${sec.sectionName}</strong> (#${sec.sectionUniqueId})</div>
-                      <div style="font-size: 10.5px; color: var(--text-muted);">${daysStr} ${timeStr} • ${roomStr}</div>
+                      <div><strong>${escapeHtml(sec.sectionName)}</strong> (#${escapeHtml(sec.sectionUniqueId)})</div>
+                      <div style="font-size: 10.5px; color: var(--text-muted);">${escapeHtml(termPrefix)}${escapeHtml(daysStr)} ${escapeHtml(timeStr)} • ${escapeHtml(roomStr)}</div>
                     </div>
                     <div style="text-align: right;">
                       <div style="font-weight: 700; color: ${sec.isLowEnrolled ? 'var(--chaffey-red)' : 'var(--text-primary)'};">${sec.activeStudents}/${sec.capacity}</div>
-                      <div style="font-size: 10px; color: var(--text-muted);">${sec.facultyName || 'Staff'}</div>
+                      <div style="font-size: 10px; color: var(--text-muted);">${escapeHtml(sec.facultyName || 'Staff')}</div>
                     </div>
                   </div>
                 `;
@@ -6082,30 +7490,29 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
 
             ${item.otherOfferings && item.otherOfferings.length > 0 ? `
               <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; padding: 4px 8px; background: var(--bg-surface-subtle); border-radius: 4px; border: 1px solid var(--border-color);">
-                <strong>Also offered at other locations:</strong> ${item.otherOfferings.map(o => `${o.location} (${o.count} section${o.count > 1 ? 's' : ''})`).join(' • ')}
+                <strong>Also offered at other locations:</strong> ${item.otherOfferings.map(o => `${escapeHtml(o.location)} (${o.count} section${o.count > 1 ? 's' : ''})`).join(' • ')}
               </div>
             ` : ''}
           ` : `
             <div class="prog-action-box">
-              <strong>Action Item:</strong> 0 sections of ${item.course} are scheduled ${single.isDistrictWide ? 'in the district' : `at ${locationLabel}`}. To enable students to complete the ${prog.title}${single.isDistrictWide ? '' : ' locally'}, schedule at least one section of this course.
+              <strong>Action Item:</strong> 0 sections of ${escapeHtml(item.course)} are offered ${single.isDistrictWide ? 'in the district' : `at ${escapeHtml(locationLabel)}`} during the selected semester(s).
             </div>
 
             ${item.otherOfferings.length > 0 ? `
               <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 6px;">
                 <strong>Offered at other district locations:</strong>
                 <ul style="margin: 4px 0 0 16px; padding: 0;">
-                  ${item.otherOfferings.map(o => `<li>${o.location}: <strong>${o.count} section${o.count > 1 ? 's' : ''}</strong></li>`).join('')}
+                  ${item.otherOfferings.map(o => `<li>${escapeHtml(o.location)}: <strong>${o.count} section${o.count > 1 ? 's' : ''}</strong></li>`).join('')}
                 </ul>
               </div>
             ` : `
               <div style="font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 4px;">
-                Note: This course is currently not offered anywhere in the district for this term.
+                Note: This course is currently not offered anywhere in the district for the selected semester(s).
               </div>
             `}
           `}
         `;
 
-        // Wire section modal & popover on scheduled section rows
         if (item.isScheduled) {
           card.querySelectorAll('.prog-section-row').forEach(row => {
             const secId = row.getAttribute('data-secid');
@@ -6128,56 +7535,544 @@ function renderSingleProgramAuditView(container, single, fullAnalysis) {
 }
 
 /**
- * Renders the All-Programs Catalog Matrix View, ranking all 202 active programs by completability.
+ * Renders the Single-Student Schedule Simulator & Chainable Course Blocks view.
+ */
+function renderStudentScheduleSimulatorView(container, single) {
+  const sim = single.simulation;
+  const pathways = sim.pathways || {};
+  const pathwayList = ['optimal', 'daytime', 'evening', 'alternate']
+    .map(k => pathways[k])
+    .filter(Boolean);
+
+  let activePathwayKey = appState.programCoverageActivePathway || 'optimal';
+  if (!pathways[activePathwayKey]) {
+    activePathwayKey = 'optimal';
+    appState.programCoverageActivePathway = 'optimal';
+  }
+  const activePathway = pathways[activePathwayKey] || pathways.optimal;
+  const totalReq = single.totalRequired || 0;
+
+  // Map every section ID in this pathway for instant popover/modal attachment
+  const secLookup = new Map();
+  (activePathway.assigned || []).forEach(a => {
+    if (a.section) secLookup.set(a.section.sectionUniqueId, a.section);
+  });
+  single.scheduledCourses.forEach(item => {
+    (item.sections || []).forEach(s => secLookup.set(s.sectionUniqueId, s));
+  });
+
+  // 1. SIMULATOR TOOLBAR (Pathway Archetypes + Simulation Constraints)
+  const toolbar = document.createElement('div');
+  toolbar.className = 'sim-toolbar';
+
+  const maxPerTerm = Number(appState.programCoverageMaxPerTerm ?? 0);
+  const travelBuffer = Number(appState.programCoverageTravelBuffer ?? 30);
+
+  toolbar.innerHTML = `
+    <div class="sim-pathway-group">
+      <span class="sim-toolbar-label">Student Pathway:</span>
+      <div class="sim-pathway-pills">
+        ${pathwayList.map(p => `
+          <button type="button" class="sim-pathway-btn ${p.key === activePathwayKey ? 'active' : ''}" data-pathway="${p.key}">
+            <span>${p.icon} ${escapeHtml(p.label)}</span>
+            <span class="sim-pathway-badge">${p.chainableCount}/${totalReq}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="sim-controls-group">
+      <label class="sim-control-item">
+        <span>Max / Semester:</span>
+        <select id="sim-max-per-term" class="sim-select">
+          <option value="0" ${maxPerTerm === 0 ? 'selected' : ''}>No Limit (Conflicts Only)</option>
+          <option value="5" ${maxPerTerm === 5 ? 'selected' : ''}>5 Courses (Full-Time)</option>
+          <option value="4" ${maxPerTerm === 4 ? 'selected' : ''}>4 Courses</option>
+          <option value="3" ${maxPerTerm === 3 ? 'selected' : ''}>3 Courses (Part-Time)</option>
+          <option value="2" ${maxPerTerm === 2 ? 'selected' : ''}>2 Courses</option>
+        </select>
+      </label>
+
+      <label class="sim-control-item" title="${single.isDistrictWide ? 'Minimum gap required when chaining physical classes at different campuses' : 'Applies when viewing All Locations (District-Wide) across multiple physical campuses'}">
+        <span>Campus Travel:</span>
+        <select id="sim-travel-buffer" class="sim-select" ${single.isDistrictWide ? '' : 'disabled'}>
+          <option value="30" ${travelBuffer === 30 ? 'selected' : ''}>30 min Buffer</option>
+          <option value="15" ${travelBuffer === 15 ? 'selected' : ''}>15 min Buffer</option>
+          <option value="0" ${travelBuffer === 0 ? 'selected' : ''}>0 min (No Buffer)</option>
+          <option value="45" ${travelBuffer === 45 ? 'selected' : ''}>45 min Buffer</option>
+        </select>
+      </label>
+    </div>
+  `;
+  container.appendChild(toolbar);
+
+  // Wire Pathway Switcher & Constraints
+  toolbar.querySelectorAll('.sim-pathway-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.programCoverageActivePathway = btn.getAttribute('data-pathway');
+      applyFiltersAndRender();
+    });
+  });
+
+  toolbar.querySelector('#sim-max-per-term')?.addEventListener('change', (e) => {
+    appState.programCoverageMaxPerTerm = parseInt(e.target.value, 10) || 0;
+    applyFiltersAndRender();
+  });
+
+  toolbar.querySelector('#sim-travel-buffer')?.addEventListener('change', (e) => {
+    appState.programCoverageTravelBuffer = parseInt(e.target.value, 10) || 0;
+    applyFiltersAndRender();
+  });
+
+  // 2. TERM-BY-TERM CHAINABLE SCHEDULE CARDS
+  const termsGrid = document.createElement('div');
+  termsGrid.className = 'sim-terms-grid';
+
+  const termSchedules = activePathway.termSchedules || [];
+
+  termSchedules.forEach((ts, tIdx) => {
+    const termCard = document.createElement('div');
+    termCard.className = 'sim-term-card';
+
+    const activeDays = [1, 2, 3, 4, 5, 6, 7].filter(d => ts.timedBlocks.some(b => b.day === d));
+    const displayDays = activeDays.length > 0 ? activeDays : [1, 2, 3, 4, 5];
+    const minHour = ts.minHour;
+    const maxHour = ts.maxHour;
+    const totalHours = Math.max(2, maxHour - minHour);
+    const pxPerHour = 36;
+    const totalGridHeight = totalHours * pxPerHour;
+    const minTotalMinutes = minHour * 60;
+
+    // Build hour labels and horizontal guide lines
+    const hourTicks = [];
+    for (let h = minHour; h <= maxHour; h++) {
+      const label = h === 0 ? '12a' : (h < 12 ? `${h}a` : (h === 12 ? '12p' : `${h - 12}p`));
+      hourTicks.push({ h, label, topPx: (h - minHour) * pxPerHour });
+    }
+
+    const timetableHtml = ts.timedBlocks.length > 0 ? `
+      <div class="sim-mini-timetable">
+        <div class="sim-tt-header">
+          <div class="sim-tt-time-corner">TIME</div>
+          ${displayDays.map(d => `<div class="sim-tt-day-head">${DAY_MAP[d]?.short || d}</div>`).join('')}
+        </div>
+        <div class="sim-tt-body" style="height: ${totalGridHeight}px;">
+          <div class="sim-tt-time-axis" style="height: ${totalGridHeight}px;">
+            ${hourTicks.slice(0, -1).map(tk => `
+              <div class="sim-tt-time-tick" style="top: ${tk.topPx}px; height: ${pxPerHour}px;">${tk.label}</div>
+            `).join('')}
+          </div>
+          <div class="sim-tt-days-wrap" style="grid-template-columns: repeat(${displayDays.length}, minmax(88px, 1fr)); height: ${totalGridHeight}px;">
+            ${displayDays.map(d => {
+              const dayBlks = ts.timedBlocks.filter(b => b.day === d);
+              const blocksHtml = dayBlks.map(blk => {
+                const topPx = Math.max(0, ((blk.start - minTotalMinutes) / 60) * pxPerHour);
+                const heightPx = Math.max(24, ((blk.end - blk.start) / 60) * pxPerHour - 2);
+                const widthPct = 100 / (blk.subCols || 1);
+                const leftPct = (blk.subCol || 0) * widthPct;
+                const ftTag = blk.ftType ? `<span class="sim-blk-ft">${blk.ftType}</span>` : '';
+                const altTag = blk.equivalentCount > 1 ? `<span class="sim-blk-alt" title="${blk.equivalentCount} equivalent sections in this timeslot">×${blk.equivalentCount}</span>` : '';
+                const locText = blk.isVirtual
+                  ? 'Online'
+                  : [blk.building, blk.room].filter(Boolean).join(' ') || blk.campus;
+
+                return `
+                  <div class="sim-course-block sim-color-${blk.colorIdx}"
+                       data-secid="${blk.section.sectionUniqueId}"
+                       style="top:${topPx}px; height:${heightPx}px; left:calc(${leftPct}% + 2px); width:calc(${widthPct}% - 4px);">
+                    <div class="sim-blk-top">
+                      <span class="sim-blk-course">${escapeHtml(blk.course)}</span>
+                      <span class="sim-blk-badges">${ftTag}${altTag}</span>
+                    </div>
+                    <div class="sim-blk-time">${escapeHtml(blk.startTimeStr)}–${escapeHtml(blk.endTimeStr)}</div>
+                    ${heightPx >= 38 ? `<div class="sim-blk-loc">${escapeHtml(locText)}${single.isDistrictWide && !blk.isVirtual && blk.campus ? ` • ${escapeHtml(blk.campus.replace(' Campus', ''))}` : ''}</div>` : ''}
+                  </div>
+                `;
+              }).join('');
+
+              return `
+                <div class="sim-tt-day-col" style="height: ${totalGridHeight}px;">
+                  ${hourTicks.slice(0, -1).map(tk => `<div class="sim-tt-hour-line" style="top:${tk.topPx}px;"></div>`).join('')}
+                  ${blocksHtml}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    ` : '';
+
+    const dayChainsHtml = ts.dayChains.length > 0 ? `
+      <div class="sim-day-chains">
+        <div class="sim-section-subhead">Daily Chainable Sequence</div>
+        ${ts.dayChains.map(dc => `
+          <div class="sim-chain-row">
+            <span class="sim-chain-day">${escapeHtml(dc.dayShort)}</span>
+            <div class="sim-chain-items">
+              ${dc.items.map(it => {
+                const roomStr = it.isVirtual
+                  ? 'Online Sync'
+                  : ([it.building, it.room].filter(Boolean).join(' ') || it.campus);
+                const campusTag = (!it.isVirtual && single.isDistrictWide && it.campus) ? ` · ${it.campus.replace(' Campus', '')}` : '';
+                const ftBadge = it.ftType ? ` <span class="sim-chip-ft">${it.ftType}</span>` : '';
+                const altBadge = it.equivalentCount > 1 ? ` <span class="sim-chip-alt">+${it.equivalentCount - 1} alt</span>` : '';
+                const connHtml = it.connector
+                  ? `<span class="sim-chain-arrow ${it.connector.type === 'ft_seq' ? 'conn-ft' : (it.connector.type === 'tight' ? 'conn-tight' : '')}">
+                       <span class="sim-conn-label">${escapeHtml(it.connector.label)}</span> ➔
+                     </span>`
+                  : '';
+                return `
+                  <button type="button" class="sim-chain-chip sim-color-${it.colorIdx}" data-secid="${it.section.sectionUniqueId}">
+                    <strong>${escapeHtml(it.course)}</strong>${ftBadge}
+                    <span>${escapeHtml(it.startTimeStr)}–${escapeHtml(it.endTimeStr)}</span>
+                    <span class="sim-chip-loc">${escapeHtml(roomStr)}${escapeHtml(campusTag)}</span>${altBadge}
+                  </button>${connHtml}
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+        ${ts.fastTrackChains.length > 0 ? `
+          <div class="sim-ft-summary-strip">
+            ⚡ <strong>8-Week Sequential Fast-Track Chain:</strong> ${ts.fastTrackChains.map(fc => `${escapeHtml(fc.ft1Course)} (FT1) ➔ ${escapeHtml(fc.ft2Course)} (FT2)`).join(' • ')}
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
+
+    const asyncStripHtml = ts.asyncCourses.length > 0 ? `
+      <div class="sim-async-strip">
+        <div class="sim-section-subhead">Flexible / Online Asynchronous (Fits Any Schedule Slot)</div>
+        <div class="sim-async-list">
+          ${ts.asyncCourses.map(ac => `
+            <button type="button" class="sim-async-chip sim-color-${ac.colorIdx}" data-secid="${ac.section.sectionUniqueId}">
+              <span>🌐 <strong>${escapeHtml(ac.course)}</strong></span>
+              <span class="sim-async-meta">${escapeHtml(ac.section.sectionName)}${ac.equivalentCount > 1 ? ` (+${ac.equivalentCount - 1} alt)` : ''}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    termCard.innerHTML = `
+      <div class="sim-term-header">
+        <div class="sim-term-title-group">
+          <span class="sim-term-badge">Semester ${tIdx + 1}</span>
+          <h4>${escapeHtml(ts.term)}</h4>
+        </div>
+        <div class="sim-term-meta-pills">
+          <span class="sim-meta-pill pill-count">${ts.courses.length} Course${ts.courses.length !== 1 ? 's' : ''} Chained</span>
+          <span class="sim-meta-pill">${ts.timedCoursesCount} Timed • ${ts.asyncCourses.length} Async</span>
+          ${ts.fastTrackChains.length > 0 ? `<span class="sim-meta-pill pill-ft">⚡ FT1→FT2 Chain</span>` : ''}
+        </div>
+      </div>
+
+      ${ts.courses.length === 0 ? `
+        <div class="sim-empty-term">
+          No required courses from the <strong>${escapeHtml(activePathway.label)}</strong> pathway fall in ${escapeHtml(ts.term)}.
+        </div>
+      ` : `
+        ${timetableHtml}
+        ${dayChainsHtml}
+        ${asyncStripHtml}
+      `}
+    `;
+
+    // Wire popover + modal on all timetable blocks, day chain chips, and async chips
+    termCard.querySelectorAll('[data-secid]').forEach(el => {
+      const secId = el.getAttribute('data-secid');
+      const sec = secLookup.get(secId);
+      if (sec) {
+        el.addEventListener('click', () => showSectionModal(sec));
+        el.addEventListener('mouseenter', (e) => showPopover(e, sec));
+        el.addEventListener('mousemove', (e) => positionPopover(e));
+        el.addEventListener('mouseleave', hidePopover);
+      }
+    });
+
+    termsGrid.appendChild(termCard);
+  });
+
+  container.appendChild(termsGrid);
+
+  // 3. CONFLICT BOTTLENECKS, BLOCKED COURSES & UNOFFERED DIAGNOSTICS
+  const diagPanel = document.createElement('div');
+  diagPanel.className = 'sim-diagnostics-panel';
+
+  const blockedList = activePathway.blocked || [];
+  const clusters = sim.conflictClusters || [];
+  const missingList = single.missingCourses || [];
+
+  if (blockedList.length === 0 && missingList.length === 0) {
+    diagPanel.innerHTML = `
+      <div class="sim-all-clear-card">
+        <span style="font-size: 22px;">✓</span>
+        <div>
+          <strong>Zero Schedule Bottlenecks in ${escapeHtml(activePathway.label)}!</strong>
+          <div style="font-size: 12px; margin-top: 2px;">All ${totalReq} core courses are offered and chain cleanly into a conflict-free schedule across ${(sim.activeTerms || []).join(', ')}.</div>
+        </div>
+      </div>
+    `;
+  } else {
+    let clustersHtml = '';
+    if (clusters.length > 0) {
+      clustersHtml = `
+        <div class="sim-diag-section">
+          <div class="sim-diag-heading">🔥 Structural Schedule Bottleneck Clusters</div>
+          <div class="sim-bottlenecks-grid">
+            ${clusters.map(cl => `
+              <div class="sim-bottleneck-card">
+                <div class="sim-bottleneck-window">${escapeHtml(cl.windowLabel)}</div>
+                <div class="sim-bottleneck-courses">
+                  ${cl.courses.map(c => `<span class="sim-bottleneck-chip">${escapeHtml(c)}</span>`).join('')}
+                </div>
+                <div class="sim-bottleneck-note">
+                  All offered sections of these ${cl.courses.length} courses collide in this window — a student can take at most ${cl.isClique ? '1' : 'a subset'} in the selected semester(s).
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    let blockedHtml = '';
+    if (blockedList.length > 0) {
+      blockedHtml = `
+        <div class="sim-diag-section">
+          <div class="sim-diag-heading">⚠ Offered Courses Blocked from ${escapeHtml(activePathway.label)} (${blockedList.length})</div>
+          <div class="sim-blocked-grid">
+            ${blockedList.map(blk => {
+              let typeLabel = 'Time Overlap';
+              let badgeCls = 'badge-overlap';
+              if (blk.conflictType === 'campus_travel') {
+                typeLabel = 'Campus Travel';
+                badgeCls = 'badge-travel';
+              } else if (blk.conflictType === 'term_load_cap') {
+                typeLabel = 'Semester Cap';
+                badgeCls = 'badge-cap';
+              } else if (blk.conflictType === 'pathway_filter') {
+                typeLabel = 'Pathway Filter';
+                badgeCls = 'badge-filter';
+              }
+
+              const offeredSlotsSummary = (blk.options || []).slice(0, 3).map(o => {
+                if (o.isAsync) return `${o.term}: Online Async`;
+                const tb = o.timedBlocks[0];
+                if (!tb) return o.term;
+                const daysStr = Array.from(new Set(o.timedBlocks.map(b => DAY_MAP[b.day]?.short || b.day))).join('/');
+                return `${o.term}: ${daysStr} ${tb.startTimeStr}–${tb.endTimeStr}`;
+              }).join(' • ');
+
+              return `
+                <div class="sim-blocked-card">
+                  <div class="sim-blocked-top">
+                    <span class="sim-blocked-course">${escapeHtml(blk.course)}</span>
+                    <span class="sim-blocked-badge ${badgeCls}">${typeLabel}</span>
+                  </div>
+                  ${offeredSlotsSummary ? `<div class="sim-blocked-slots"><strong>Offered:</strong> ${escapeHtml(offeredSlotsSummary)}${(blk.options || []).length > 3 ? ` (+${blk.options.length - 3} more)` : ''}</div>` : ''}
+                  <div class="sim-blocked-reason">${escapeHtml(blk.blockReason)}</div>
+                  <div class="sim-blocked-tip">💡 ${escapeHtml(blk.suggestion)}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    let missingHtml = '';
+    if (missingList.length > 0) {
+      missingHtml = `
+        <div class="sim-diag-section">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div class="sim-diag-heading" style="margin-bottom:0;">✕ Unoffered Core Courses (${missingList.length})</div>
+            <button type="button" id="btn-jump-unoffered-tab" class="btn btn-secondary" style="font-size:11px; padding:4px 10px; font-weight:700;">
+              Inspect Unoffered Courses Details →
+            </button>
+          </div>
+          <div class="sim-unoffered-pills">
+            ${missingList.map(m => `<span class="sim-unoffered-pill">${escapeHtml(m.course)}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    diagPanel.innerHTML = `${clustersHtml}${blockedHtml}${missingHtml}`;
+
+    diagPanel.querySelector('#btn-jump-unoffered-tab')?.addEventListener('click', () => {
+      appState.programCoverageActiveTab = 'missing';
+      applyFiltersAndRender();
+    });
+  }
+
+  container.appendChild(diagPanel);
+}
+
+/**
+ * Renders the All-Programs Catalog Matrix View with Core Offering vs. Simulated Student Completability,
+ * interactive distribution charts, and focus-preserving live search.
  */
 function renderCatalogMatrixView(container, analysis) {
   const catalog = analysis.catalog || [];
   const locationLabel = analysis.location;
+  const activeTerms = analysis.activeTerms || [];
+  const termCount = activeTerms.length || 1;
+  const termWord = `${termCount} Term${termCount > 1 ? 's' : ''}`;
 
   const catalogBox = document.createElement('div');
   catalogBox.style.cssText = 'display: flex; flex-direction: column; gap: 14px;';
 
-  // Catalog Filters & Counts
   const filterDegree = appState.programCoverageDegreeFilter || 'all';
-  const searchTerm = (appState.programCoverageCatalogSearch || '').toLowerCase().trim();
+  const statusFilter = appState.programCoverageCatalogStatusFilter || 'all';
+  const sortMode = appState.programCoverageCatalogSort || 'offering_desc';
 
-  let filteredCatalog = catalog;
+  let degreeCatalog = catalog;
   if (filterDegree === 'associate') {
-    filteredCatalog = filteredCatalog.filter(p => p.isAssociate);
+    degreeCatalog = catalog.filter(p => p.isAssociate);
   } else if (filterDegree === 'certificate') {
-    filteredCatalog = filteredCatalog.filter(p => !p.isAssociate);
+    degreeCatalog = catalog.filter(p => !p.isAssociate);
   }
 
-  if (searchTerm) {
-    filteredCatalog = filteredCatalog.filter(p =>
-      p.title.toLowerCase().includes(searchTerm) ||
-      p.code.toLowerCase().includes(searchTerm) ||
-      p.id.toLowerCase().includes(searchTerm)
-    );
-  }
-
+  const degTotal = degreeCatalog.length;
   const assocCount = catalog.filter(p => p.isAssociate).length;
   const certCount = catalog.filter(p => !p.isAssociate).length;
 
+  // Compute aggregate catalog metrics & chart distributions over active degree scope
+  let fullOffered = 0, highOffered = 0, partialOffered = 0, lowOffered = 0;
+  let fullComp = 0, nearComp = 0, partialComp = 0, lowComp = 0;
+  let conflictLimitedCount = 0;
+  let sumOffering = 0, sumCompletable = 0;
+
+  degreeCatalog.forEach(p => {
+    sumOffering += p.offeringRate;
+    sumCompletable += p.completableRate;
+    if (p.isConflictLimited) conflictLimitedCount++;
+
+    if (p.offeringRate === 100) fullOffered++;
+    else if (p.offeringRate >= 75) highOffered++;
+    else if (p.offeringRate >= 50) partialOffered++;
+    else lowOffered++;
+
+    if (p.completableRate === 100) fullComp++;
+    else if (p.completableRate >= 75) nearComp++;
+    else if (p.completableRate >= 50) partialComp++;
+    else lowComp++;
+  });
+
+  const avgOff = degTotal > 0 ? Math.round(sumOffering / degTotal) : 0;
+  const avgComp = degTotal > 0 ? Math.round(sumCompletable / degTotal) : 0;
+  const avgGap = Math.max(0, avgOff - avgComp);
+  const fullOffPct = degTotal > 0 ? Math.round((fullOffered / degTotal) * 100) : 0;
+  const fullCompPct = degTotal > 0 ? Math.round((fullComp / degTotal) * 100) : 0;
+
+  function makeChartBarRow(label, count, filterKey, fillCls) {
+    const pct = degTotal > 0 ? Math.round((count / degTotal) * 100) : 0;
+    return `
+      <button type="button" class="prog-chart-row ${statusFilter === filterKey ? 'active' : ''}" data-status-filter="${filterKey}" title="Click to filter table to ${escapeHtml(label)}">
+        <span class="prog-chart-lbl">${escapeHtml(label)}</span>
+        <span class="prog-chart-track">
+          <span class="prog-chart-fill ${fillCls}" style="width: ${pct}%;"></span>
+        </span>
+        <span class="prog-chart-val">${count} <span class="prog-chart-pct">(${pct}%)</span></span>
+      </button>
+    `;
+  }
+
   catalogBox.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <!-- Executive Catalog KPI Summary Cards -->
+    <div class="prog-catalog-summary-row">
+      <div class="prog-stat-card opt-card">
+        <span class="prog-stat-title">100% Core Offered</span>
+        <span class="prog-stat-value">${fullOffered} <span style="font-size:13px; font-weight:600; color:var(--text-muted);">/ ${degTotal}</span></span>
+        <span class="prog-stat-sub">${fullOffPct}% of programs offer every core course</span>
+      </div>
+      <div class="prog-stat-card highlight-card">
+        <span class="prog-stat-title">100% Student Completable</span>
+        <span class="prog-stat-value" style="color:#0284c7;">${fullComp} <span style="font-size:13px; font-weight:600; color:var(--text-muted);">/ ${degTotal}</span></span>
+        <span class="prog-stat-sub">${fullCompPct}% completable in ${escapeHtml(termWord)} without overlap</span>
+      </div>
+      <div class="prog-stat-card ${conflictLimitedCount > 0 ? 'warn-card' : 'opt-card'}">
+        <span class="prog-stat-title">Conflict-Limited Programs</span>
+        <span class="prog-stat-value" style="color:${conflictLimitedCount > 0 ? '#d97706' : '#059669'};">${conflictLimitedCount}</span>
+        <span class="prog-stat-sub">Offering % &gt; Completable % due to overlaps</span>
+      </div>
+      <div class="prog-stat-card">
+        <span class="prog-stat-title">Avg Offering vs. Completable</span>
+        <span class="prog-stat-value" style="font-size:18px;">${avgOff}% → ${avgComp}%</span>
+        <span class="prog-stat-sub">${avgGap > 0 ? `-${avgGap}% average loss from course overlaps` : '0% average overlap loss'}</span>
+      </div>
+    </div>
+
+    <!-- Side-by-Side Distribution Charts -->
+    <div class="prog-catalog-charts-row">
+      <div class="prog-chart-panel">
+        <div class="prog-chart-panel-head">
+          <span>Core Course Offering Distribution (${escapeHtml(locationLabel)})</span>
+          <span class="prog-chart-hint">Click bar to filter</span>
+        </div>
+        <div class="prog-chart-bars">
+          ${makeChartBarRow('100% Core Offered', fullOffered, 'full_offered', 'fill-success')}
+          ${makeChartBarRow('75–99% High Offering', highOffered, 'offering_high', 'fill-info')}
+          ${makeChartBarRow('50–74% Partial Offering', partialOffered, 'offering_partial', 'fill-warning')}
+          ${makeChartBarRow('<50% Low Offering', lowOffered, 'offering_low', 'fill-danger')}
+        </div>
+      </div>
+
+      <div class="prog-chart-panel">
+        <div class="prog-chart-panel-head">
+          <span>Simulated Student Completability (${escapeHtml(termWord)})</span>
+          <span class="prog-chart-hint">Click bar to filter</span>
+        </div>
+        <div class="prog-chart-bars">
+          ${makeChartBarRow('100% Completable', fullComp, 'full_completable', 'fill-success')}
+          ${makeChartBarRow('75–99% Near Completable', nearComp, 'comp_near', 'fill-info')}
+          ${makeChartBarRow('50–74% Partially Completable', partialComp, 'comp_partial', 'fill-warning')}
+          ${makeChartBarRow('<50% Low Completability', lowComp, 'comp_low', 'fill-danger')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Persistent Search & Filter Toolbar (never re-created while typing) -->
+    <div class="prog-catalog-toolbar">
       <div>
-        <h4 style="font-size: 15px; font-weight: 800; color: var(--text-primary);">
-          Program Completability Catalog Matrix: ${locationLabel}
+        <h4 style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin: 0;">
+          Program Offerings &amp; Completability Matrix: ${escapeHtml(locationLabel)}
         </h4>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-          Ranked by % of required curriculum scheduled ${analysis.isDistrictWide ? 'across the district' : `at ${locationLabel}`}. Click "Audit Program" on any row to drill down.
+          Comparing Core Offering % vs. Conflict-Free Student Completability across ${escapeHtml(activeTerms.join(', '))}.
+          <strong id="catalog-results-count" style="color:var(--text-primary); margin-left:4px;"></strong>
         </p>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        <input type="text" id="catalog-search-input" class="form-control" placeholder="Search catalog..." value="${appState.programCoverageCatalogSearch || ''}" style="width: 200px; padding: 6px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);">
+      <div class="prog-catalog-filters-row">
+        <div class="catalog-search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="catalog-search-input" class="form-control" placeholder="Search code or program title..." />
+          <button type="button" id="btn-clear-catalog-search" class="catalog-search-clear" title="Clear search" style="display:none;">&times;</button>
+        </div>
+
         <div class="btn-sub-toggle-group" id="catalog-degree-group">
           <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'all' ? 'active' : ''}" data-deg="all">All (${catalog.length})</button>
-          <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'associate' ? 'active' : ''}" data-deg="associate">Associate Degrees (${assocCount})</button>
+          <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'associate' ? 'active' : ''}" data-deg="associate">Associate (${assocCount})</button>
           <button type="button" class="btn-sub-layout-toggle ${filterDegree === 'certificate' ? 'active' : ''}" data-deg="certificate">Certificates (${certCount})</button>
         </div>
+
+        <select id="catalog-sort-select" class="sim-select" title="Sort catalog rows">
+          <option value="offering_desc" ${sortMode === 'offering_desc' ? 'selected' : ''}>Sort: Highest Core Offering</option>
+          <option value="completable_desc" ${sortMode === 'completable_desc' ? 'selected' : ''}>Sort: Highest Student Completable</option>
+          <option value="gap_desc" ${sortMode === 'gap_desc' ? 'selected' : ''}>Sort: Largest Overlap Gap</option>
+          <option value="courses_desc" ${sortMode === 'courses_desc' ? 'selected' : ''}>Sort: Most Core Courses</option>
+          <option value="title_asc" ${sortMode === 'title_asc' ? 'selected' : ''}>Sort: Program Title (A–Z)</option>
+        </select>
       </div>
+    </div>
+
+    <div class="prog-catalog-quick-pills" id="catalog-status-pills">
+      <button type="button" class="prog-quick-pill ${statusFilter === 'all' ? 'active' : ''}" data-status-filter="all">All Programs (${degTotal})</button>
+      <button type="button" class="prog-quick-pill ${statusFilter === 'conflict_limited' ? 'active' : ''}" data-status-filter="conflict_limited">⚠ Conflict-Limited (${conflictLimitedCount})</button>
+      <button type="button" class="prog-quick-pill ${statusFilter === 'full_offered' ? 'active' : ''}" data-status-filter="full_offered">✓ 100% Core Offered (${fullOffered})</button>
+      <button type="button" class="prog-quick-pill ${statusFilter === 'full_completable' ? 'active' : ''}" data-status-filter="full_completable">🏆 100% Completable (${fullComp})</button>
     </div>
 
     <div class="prog-catalog-table-container">
@@ -6187,59 +8082,205 @@ function renderCatalogMatrixView(container, analysis) {
             <th>Code</th>
             <th>Program Entity Title</th>
             <th>Type</th>
-            <th>Required Courses</th>
-            <th>${analysis.isDistrictWide ? 'Scheduled District-Wide' : 'Scheduled at Campus'}</th>
-            <th>Missing</th>
-            <th>Completeness</th>
+            <th>Core Courses</th>
+            <th>${analysis.isDistrictWide ? 'Offered District-Wide' : 'Offered at Campus'}</th>
+            <th>Unoffered</th>
+            <th>Core Offering</th>
+            <th>Student Completable (${escapeHtml(termWord)})</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
-        <tbody>
-          ${filteredCatalog.map(p => {
-            let fillClass = 'fill-danger';
-            if (p.completeness === 100) fillClass = 'fill-success';
-            else if (p.completeness >= 65) fillClass = 'fill-warning';
-
-            return `
-              <tr data-progid="${p.id}" style="cursor: pointer;">
-                <td style="font-family: var(--font-mono); font-weight: 700;">${p.code}</td>
-                <td style="font-weight: 700; color: var(--text-primary);">${p.title}</td>
-                <td>
-                  <span class="prog-badge-degree ${p.isAssociate ? 'prog-badge-associate' : 'prog-badge-cert'}">
-                    ${p.isAssociate ? 'Associate' : 'Certificate'}
-                  </span>
-                </td>
-                <td style="font-weight: 700;">${p.totalCourses}</td>
-                <td style="color: #059669; font-weight: 700;">${p.scheduledCourses}</td>
-                <td style="color: ${p.missingCourses > 0 ? '#dc2626' : 'var(--text-muted)'}; font-weight: 700;">${p.missingCourses}</td>
-                <td style="min-width: 130px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="prog-progress-bar-bg" style="flex: 1; height: 8px;">
-                      <div class="prog-progress-bar-fill ${fillClass}" style="width: ${p.completeness}%;"></div>
-                    </div>
-                    <span style="font-size: 11px; font-weight: 700; min-width: 32px;">${p.completeness}%</span>
-                  </div>
-                </td>
-                <td>
-                  <span class="prog-hero-status-pill status-${p.statusTier}" style="font-size: 10px; padding: 3px 8px;">
-                    ${p.completeness === 100 ? (analysis.isDistrictWide ? 'Completable across District' : '100% Completable') : (p.completeness >= 75 ? 'Near Completable' : (p.completeness >= 50 ? 'Partial' : 'Low Coverage'))}
-                  </span>
-                </td>
-                <td>
-                  <button type="button" class="btn btn-secondary btn-audit-prog" data-progid="${p.id}" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
-                    Audit
-                  </button>
-                </td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
+        <tbody id="catalog-table-tbody"></tbody>
       </table>
     </div>
   `;
 
   container.appendChild(catalogBox);
+
+  const searchInput = catalogBox.querySelector('#catalog-search-input');
+  const clearBtn = catalogBox.querySelector('#btn-clear-catalog-search');
+  const resultsCountEl = catalogBox.querySelector('#catalog-results-count');
+  const tbodyEl = catalogBox.querySelector('#catalog-table-tbody');
+
+  if (searchInput) {
+    searchInput.value = appState.programCoverageCatalogSearch || '';
+  }
+
+  function matchesStatusFilter(p, sf) {
+    if (!sf || sf === 'all') return true;
+    if (sf === 'conflict_limited') return p.isConflictLimited;
+    if (sf === 'full_offered') return p.offeringRate === 100;
+    if (sf === 'full_completable') return p.completableRate === 100;
+    if (sf === 'offering_high') return p.offeringRate >= 75 && p.offeringRate < 100;
+    if (sf === 'offering_partial') return p.offeringRate >= 50 && p.offeringRate < 75;
+    if (sf === 'offering_low') return p.offeringRate < 50;
+    if (sf === 'comp_near') return p.completableRate >= 75 && p.completableRate < 100;
+    if (sf === 'comp_partial') return p.completableRate >= 50 && p.completableRate < 75;
+    if (sf === 'comp_low') return p.completableRate < 50;
+    return true;
+  }
+
+  function renderCatalogTableBody() {
+    const q = (appState.programCoverageCatalogSearch || '').toLowerCase().trim();
+    const sf = appState.programCoverageCatalogStatusFilter || 'all';
+    const sm = appState.programCoverageCatalogSort || 'offering_desc';
+
+    if (clearBtn) {
+      clearBtn.style.display = q.length > 0 ? 'flex' : 'none';
+    }
+
+    // Update active state on status pills & chart bars without touching searchInput
+    catalogBox.querySelectorAll('[data-status-filter]').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-status-filter') === sf);
+    });
+
+    let rowsList = degreeCatalog.filter(p => matchesStatusFilter(p, sf));
+    if (q) {
+      rowsList = rowsList.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.code.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q)
+      );
+    }
+
+    rowsList = [...rowsList].sort((a, b) => {
+      if (sm === 'completable_desc') {
+        if (b.completableRate !== a.completableRate) return b.completableRate - a.completableRate;
+        if (b.offeringRate !== a.offeringRate) return b.offeringRate - a.offeringRate;
+        return a.title.localeCompare(b.title);
+      }
+      if (sm === 'gap_desc') {
+        if (b.overlapLossPct !== a.overlapLossPct) return b.overlapLossPct - a.overlapLossPct;
+        if (b.overlapBlockedCourses !== a.overlapBlockedCourses) return b.overlapBlockedCourses - a.overlapBlockedCourses;
+        return b.offeringRate - a.offeringRate;
+      }
+      if (sm === 'courses_desc') {
+        if (b.totalCourses !== a.totalCourses) return b.totalCourses - a.totalCourses;
+        return a.title.localeCompare(b.title);
+      }
+      if (sm === 'title_asc') {
+        return a.title.localeCompare(b.title);
+      }
+      // offering_desc
+      if (b.offeringRate !== a.offeringRate) return b.offeringRate - a.offeringRate;
+      if (b.completableRate !== a.completableRate) return b.completableRate - a.completableRate;
+      return a.title.localeCompare(b.title);
+    });
+
+    if (resultsCountEl) {
+      resultsCountEl.textContent = `Showing ${rowsList.length} of ${degTotal} programs`;
+    }
+
+    if (!tbodyEl) return;
+
+    if (rowsList.length === 0) {
+      tbodyEl.innerHTML = `
+        <tr>
+          <td colspan="10" style="text-align:center; padding: 28px; color: var(--text-muted); font-size: 13px;">
+            No programs match the current search or status filter.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbodyEl.innerHTML = rowsList.map(p => {
+      let offFillClass = 'fill-danger';
+      if (p.offeringRate === 100) offFillClass = 'fill-success';
+      else if (p.offeringRate >= 65) offFillClass = 'fill-warning';
+
+      let compFillClass = 'fill-danger';
+      if (p.completableRate === 100) compFillClass = 'fill-success';
+      else if (p.completableRate >= 65) compFillClass = 'fill-warning';
+
+      let statusBadgeText = '';
+      let statusBadgeCls = p.completableTier;
+      if (p.completableRate === 100) {
+        statusBadgeText = analysis.isDistrictWide ? '✓ 100% Completable' : '✓ 100% Completable';
+        statusBadgeCls = 'completable';
+      } else if (p.offeringRate === 100 && p.isConflictLimited) {
+        statusBadgeText = '⚠ 100% Offered (Overlap)';
+        statusBadgeCls = 'near';
+      } else if (p.offeringRate >= 75) {
+        statusBadgeText = 'High Offering';
+        statusBadgeCls = 'near';
+      } else if (p.offeringRate >= 50) {
+        statusBadgeText = 'Partial Offering';
+        statusBadgeCls = 'partial';
+      } else {
+        statusBadgeText = 'Low Offering';
+        statusBadgeCls = 'incomplete';
+      }
+
+      const overlapPill = p.overlapBlockedCourses > 0
+        ? `<span class="prog-overlap-pill" title="${p.overlapBlockedCourses} offered course(s) blocked by schedule overlap">-${p.overlapBlockedCourses} overlap</span>`
+        : '';
+
+      return `
+        <tr data-progid="${escapeHtml(p.id)}" style="cursor: pointer;">
+          <td style="font-family: var(--font-mono); font-weight: 700;">${escapeHtml(p.code)}</td>
+          <td style="font-weight: 700; color: var(--text-primary);">${escapeHtml(p.title)}</td>
+          <td>
+            <span class="prog-badge-degree ${p.isAssociate ? 'prog-badge-associate' : 'prog-badge-cert'}">
+              ${p.isAssociate ? 'Associate' : 'Certificate'}
+            </span>
+          </td>
+          <td style="font-weight: 700;">${p.totalCourses}</td>
+          <td style="color: #059669; font-weight: 700;">${p.offeredCourses}</td>
+          <td style="color: ${p.unofferedCourses > 0 ? '#dc2626' : 'var(--text-muted)'}; font-weight: 700;">${p.unofferedCourses}</td>
+          <td style="min-width: 120px;">
+            <div style="display: flex; align-items: center; gap: 7px;">
+              <div class="prog-progress-bar-bg" style="flex: 1; height: 8px;">
+                <div class="prog-progress-bar-fill ${offFillClass}" style="width: ${p.offeringRate}%;"></div>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; min-width: 32px;">${p.offeringRate}%</span>
+            </div>
+          </td>
+          <td style="min-width: 170px;">
+            <div style="display: flex; align-items: center; gap: 7px;">
+              <div class="prog-progress-bar-bg" style="flex: 1; height: 8px;">
+                <div class="prog-progress-bar-fill ${compFillClass}" style="width: ${p.completableRate}%;"></div>
+              </div>
+              <span style="font-size: 11px; font-weight: 800; min-width: 32px;">${p.completableRate}%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; margin-top:3px; font-size:10.5px; color:var(--text-muted);">
+              <span>${p.chainableCourses}/${p.totalCourses} chainable</span>
+              ${overlapPill}
+            </div>
+          </td>
+          <td>
+            <span class="prog-hero-status-pill status-${statusBadgeCls}" style="font-size: 10px; padding: 3px 8px; white-space: nowrap;">
+              ${escapeHtml(statusBadgeText)}
+            </span>
+          </td>
+          <td>
+            <button type="button" class="btn btn-secondary btn-audit-prog" data-progid="${escapeHtml(p.id)}" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+              Audit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Initial table body render
+  renderCatalogTableBody();
+
+  // Wire Search Input WITHOUT re-rendering the entire dashboard or losing focus!
+  searchInput?.addEventListener('input', (e) => {
+    appState.programCoverageCatalogSearch = e.target.value;
+    renderCatalogTableBody();
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    appState.programCoverageCatalogSearch = '';
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.focus();
+    }
+    renderCatalogTableBody();
+  });
 
   // Wire Degree Filter Buttons
   catalogBox.querySelectorAll('#catalog-degree-group .btn-sub-layout-toggle').forEach(btn => {
@@ -6249,24 +8290,38 @@ function renderCatalogMatrixView(container, analysis) {
     });
   });
 
-  // Wire Search Input
-  catalogBox.querySelector('#catalog-search-input')?.addEventListener('input', (e) => {
-    appState.programCoverageCatalogSearch = e.target.value;
-    renderProgramCoverageDashboard();
+  // Wire Chart Bars & Quick Status Filter Pills (update table only, preserve search focus)
+  catalogBox.querySelectorAll('[data-status-filter]').forEach(el => {
+    el.addEventListener('click', () => {
+      const clicked = el.getAttribute('data-status-filter');
+      if (el.classList.contains('prog-chart-row') && appState.programCoverageCatalogStatusFilter === clicked) {
+        appState.programCoverageCatalogStatusFilter = 'all';
+      } else {
+        appState.programCoverageCatalogStatusFilter = clicked;
+      }
+      renderCatalogTableBody();
+    });
   });
 
-  // Wire Row & Audit Button Clicks
-  catalogBox.querySelectorAll('tr[data-progid]').forEach(row => {
-    row.addEventListener('click', (e) => {
-      const pId = row.getAttribute('data-progid');
-      if (pId) {
-        appState.programCoverageSelectedProgram = pId;
-        appState.programCoverageCatalogView = false;
-        appState.filters.program.clear();
-        appState.filters.program.add(pId);
-        applyFiltersAndRender();
-      }
-    });
+  // Wire Sort Select
+  catalogBox.querySelector('#catalog-sort-select')?.addEventListener('change', (e) => {
+    appState.programCoverageCatalogSort = e.target.value;
+    renderCatalogTableBody();
+  });
+
+  // Event delegation for row & Audit button clicks
+  tbodyEl?.addEventListener('click', (e) => {
+    const row = e.target.closest('tr[data-progid]');
+    if (!row) return;
+    const pId = row.getAttribute('data-progid');
+    if (pId) {
+      appState.programCoverageSelectedProgram = pId;
+      appState.programCoverageCatalogView = false;
+      appState.programCoverageActivePathway = 'optimal';
+      appState.filters.program.clear();
+      appState.filters.program.add(pId);
+      applyFiltersAndRender();
+    }
   });
 }
 
@@ -7307,7 +9362,7 @@ function handleFileSelect(file) {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: 'array', raw: fileNameLower.endsWith('.csv') });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
@@ -7357,7 +9412,7 @@ function preparePrintHeader() {
     evening: 'Evening & Weekend Offerings Audit',
     fasttrack: 'Fast-Track Sequential Offerings Audit',
     efficiency: 'Enrollment Efficiency & FTES Productivity Audit',
-    program_coverage: 'Program of Study Coverage & Completability Audit',
+    program_coverage: 'Program Core Offerings & Student Schedule Completability Audit',
     waitlist: 'Waitlist Demand & Seat Capacity Expansion Audit'
   };
 
@@ -7579,7 +9634,7 @@ async function exportAsPdf() {
       auditTitle = `GE Breadth Audit & Coverage (${appState.geActivePattern || 'CAL-GETC'}) - ${appState.filters.location || 'All Campuses'}`;
     } else if (mode === 'program_coverage') {
       auditContainer = document.getElementById('program-coverage-container');
-      auditTitle = `Program Coverage Audit - ${appState.programCoverageSelectedProgram || 'Selected Program'}`;
+      auditTitle = `Program Core Offerings & Schedule Completability - ${appState.programCoverageSelectedProgram || 'Selected Program'}`;
     } else if (mode === 'fasttrack') {
       auditContainer = document.getElementById('fasttrack-coverage-container');
       auditTitle = `Fast-Track Sequential Pairing Audit - ${appState.filters.location || 'All Campuses'}`;
@@ -7880,9 +9935,15 @@ function setupEventListeners() {
 
         appState.fasttrackActiveTab = 'all';
         appState.efficiencyActiveTab = 'all';
-        appState.programCoverageActiveTab = 'all';
+        appState.programCoverageActiveTab = 'chains';
         appState.programCoverageSelectedProgram = '';
+        appState.programCoverageSelectedTerms = null;
+        appState.programCoverageActivePathway = 'optimal';
         appState.programCoverageCatalogView = false;
+        appState.programCoverageCatalogSearch = '';
+        appState.programCoverageDegreeFilter = 'all';
+        appState.programCoverageCatalogStatusFilter = 'all';
+        appState.programCoverageCatalogSort = 'offering_desc';
         appState.waitlistActiveTab = 'all';
         appState.waitlistModalityFilter = 'all';
         appState.waitlistSearchQuery = '';
@@ -8034,6 +10095,7 @@ function setupEventListeners() {
   if (termSelect) {
     termSelect.addEventListener('change', (e) => {
       appState.filters.term = e.target.value;
+      appState.programCoverageSelectedTerms = null;
       populateFilterControls();
       applyFiltersAndRender();
     });
@@ -8175,10 +10237,18 @@ function resetAllFilters() {
   appState.filters.traits.clear();
   appState.fasttrackActiveTab = 'all';
   appState.efficiencyActiveTab = 'all';
-  appState.programCoverageActiveTab = 'all';
+  appState.programCoverageActiveTab = 'chains';
   appState.programCoverageSubLayout = 'room';
   appState.programCoverageSelectedProgram = '';
+  appState.programCoverageSelectedTerms = null;
+  appState.programCoverageActivePathway = 'optimal';
+  appState.programCoverageMaxPerTerm = 0;
+  appState.programCoverageTravelBuffer = 30;
   appState.programCoverageCatalogView = false;
+  appState.programCoverageCatalogSearch = '';
+  appState.programCoverageDegreeFilter = 'all';
+  appState.programCoverageCatalogStatusFilter = 'all';
+  appState.programCoverageCatalogSort = 'offering_desc';
   appState.waitlistActiveTab = 'all';
   appState.waitlistModalityFilter = 'all';
   appState.waitlistSearchQuery = '';
