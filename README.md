@@ -26,11 +26,11 @@ The application provides seven specialized view layouts accessible from the top 
 - Uses interval graph partitioning to place overlapping sections into clean, side-by-side sub-columns without overlap collisions.
 - Best for department-level or subject-level schedule overviews.
 
-### 3. 🎓 Program Coverage & Completability Audit
-- **Degree & Certificate Completability**: Analyzes whether students can complete an academic program of study (e.g., *Business Administration 2.0 AS-T*, *Automotive Technology*) entirely at a specific campus (Chino, Fontana, Rancho) or district-wide.
-- **Scheduled vs. Missing Major Courses**: Categorizes all required courses into scheduled offerings vs. unscheduled requirements with clear action items.
-- **Cross-Campus Offerings**: When a required course is missing from a campus, the tool indicates where else it is offered (e.g., Rancho Campus or Online).
-- **All-Programs Catalog Matrix**: Ranks all 200+ active degrees and certificates by completion percentage to identify under-served programs.
+### 3. 🎓 Program Core Offerings & Student Schedule Simulator
+- **Core Course Offerings vs. Student Completability**: Separately measures what percentage of a program's core curriculum is offered (`Offering Rate`) versus how much a single student can actually complete without schedule overlaps or campus travel conflicts (`Student Completability`) across the filtered semester(s).
+- **Single-Student Schedule Chaining Simulator**: Solves for conflict-free course chains across one or more semesters (including sequential Fast-Track 1 → Fast-Track 2 8-week pairings, online asynchronous flexibility, and optional campus travel buffers / semester load caps), with visual weekly timetables, daily chain flows, and alternative pathways (Max Core, Daytime, Evening/Weekend, Alternate Track).
+- **Conflict Bottleneck & Unoffered Diagnostics**: Pinpoints overlapping time clusters that prevent students from chaining offered courses alongside unoffered core courses and cross-campus offerings.
+- **All-Programs Catalog Matrix**: Compares all 200+ active degrees and certificates on both **Core Offering** and **Student Completable**, complete with distribution bar charts and live search.
 - **GE Breadth for Associate Degrees**: Automatically evaluates Cal-GETC general education breadth requirements for associate degrees (see below).
 
 ### 4. 📚 General Education (GE) Coverage Audit
