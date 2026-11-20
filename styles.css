@@ -4865,6 +4865,7 @@ body {
 }
 
 .sim-blk-ft,
+.sim-blk-dates,
 .sim-blk-alt {
   font-size: 8.5px;
   font-weight: 800;
@@ -4968,7 +4969,8 @@ body {
   font-size: 10.5px;
 }
 
-.sim-chip-ft {
+.sim-chip-ft,
+.sim-chip-dates {
   font-size: 9.5px;
   font-weight: 800;
   padding: 1px 4px;
@@ -5239,8 +5241,10 @@ body {
 [data-theme="dark"] .sim-color-7 { background: #312e81; border-left-color: #818cf8; color: #e0e7ff; }
 
 [data-theme="dark"] .sim-blk-ft,
+[data-theme="dark"] .sim-blk-dates,
 [data-theme="dark"] .sim-blk-alt,
-[data-theme="dark"] .sim-chip-ft { background: rgba(0, 0, 0, 0.35); color: #ffffff; }
+[data-theme="dark"] .sim-chip-ft,
+[data-theme="dark"] .sim-chip-dates { background: rgba(0, 0, 0, 0.35); color: #ffffff; }
 [data-theme="dark"] .sim-chip-alt { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
 
 [data-theme="dark"] .sim-bottleneck-card { background: var(--bg-surface); border-color: #b45309; }
